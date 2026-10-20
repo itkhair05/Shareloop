@@ -118,18 +118,21 @@ public class GlobalExceptionHandler {
             AccessDeniedException ex,
             HttpServletRequest request
     ) {
+        String message = ex.getMessage() != null && !ex.getMessage().isBlank()
+                ? ex.getMessage()
+                : "Access is denied";
         ErrorResponse errorResponse = new ErrorResponse(
                 HttpStatus.FORBIDDEN.value(),
                 HttpStatus.FORBIDDEN.getReasonPhrase(),
-                "Access is denied",
+                message,
                 request.getRequestURI()
         );
         return ResponseEntity.status(HttpStatus.FORBIDDEN).body(errorResponse);
     }
 
-    @ExceptionHandler(DuplicateEmailException.class)
-    public ResponseEntity<ErrorResponse> handleDuplicateEmail(
-            DuplicateEmailException ex,
+    @ExceptionHandler({DuplicateEmailException.class, DuplicateRequestException.class})
+    public ResponseEntity<ErrorResponse> handleDuplicateResource(
+            RuntimeException ex,
             HttpServletRequest request
     ) {
         ErrorResponse errorResponse = new ErrorResponse(

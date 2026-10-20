@@ -89,6 +89,8 @@ public class SecurityConfig {
                         .requestMatchers("/api/health", "/actuator/health", "/actuator/info").permitAll()
                         // Error handling endpoint
                         .requestMatchers("/error").permitAll()
+                        // Listing requests require authentication
+                        .requestMatchers("/api/v1/listings/*/requests", "/api/v1/listing-requests/**").authenticated()
                         // Listing endpoints: GET /mine must require authentication before public listing matchers
                         .requestMatchers(HttpMethod.GET, "/api/v1/listings/mine").authenticated()
                         .requestMatchers(HttpMethod.GET, "/api/v1/listings", "/api/v1/listings/{id}").permitAll()
