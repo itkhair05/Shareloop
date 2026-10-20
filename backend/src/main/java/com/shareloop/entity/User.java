@@ -77,7 +77,7 @@ public class User {
 
     public User(String displayName, String email, String passwordHash, UserRole role, UserStatus status) {
         this.displayName = displayName;
-        this.email = email != null ? email.toLowerCase() : null;
+        this.email = email != null ? email.trim().toLowerCase(java.util.Locale.ROOT) : null;
         this.passwordHash = passwordHash;
         this.role = role != null ? role : UserRole.USER;
         this.status = status != null ? status : UserStatus.ACTIVE;
@@ -104,7 +104,7 @@ public class User {
     }
 
     public void setEmail(String email) {
-        this.email = email != null ? email.toLowerCase() : null;
+        this.email = email != null ? email.trim().toLowerCase(java.util.Locale.ROOT) : null;
     }
 
     public String getPhoneNumber() {
