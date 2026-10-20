@@ -89,6 +89,9 @@ public class SecurityConfig {
                         .requestMatchers("/api/health", "/actuator/health", "/actuator/info").permitAll()
                         // Error handling endpoint
                         .requestMatchers("/error").permitAll()
+                        // Listing endpoints: GET /mine must require authentication before public listing matchers
+                        .requestMatchers(HttpMethod.GET, "/api/v1/listings/mine").authenticated()
+                        .requestMatchers(HttpMethod.GET, "/api/v1/listings", "/api/v1/listings/{id}").permitAll()
                         // Admin endpoints restricted to ADMIN role
                         .requestMatchers("/api/v1/admin/**").hasRole("ADMIN")
                         // All other endpoints require authentication

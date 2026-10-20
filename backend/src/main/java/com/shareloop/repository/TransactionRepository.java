@@ -17,6 +17,8 @@ public interface TransactionRepository extends JpaRepository<Transaction, UUID> 
 
     List<Transaction> findByListingId(UUID listingId);
 
+    boolean existsByListingId(UUID listingId);
+
     List<Transaction> findByOwnerIdOrRequesterId(UUID ownerId, UUID requesterId);
 
     Optional<Transaction> findByListingIdAndStatusIn(UUID listingId, Collection<TransactionStatus> statuses);
