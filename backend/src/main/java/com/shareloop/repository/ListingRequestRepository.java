@@ -19,4 +19,6 @@ public interface ListingRequestRepository extends JpaRepository<ListingRequest, 
     Optional<ListingRequest> findByListingIdAndRequesterIdAndStatus(UUID listingId, UUID requesterId, ListingRequestStatus status);
 
     boolean existsByListingIdAndRequesterIdAndStatus(UUID listingId, UUID requesterId, ListingRequestStatus status);
+
+    boolean existsByListingId(UUID listingId);
 }
