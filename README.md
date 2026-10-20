@@ -91,6 +91,96 @@ Open `http://localhost:5173` in your browser. API requests to `/api` are automat
 
 ---
 
+## Authentication & Authorization API (Phase 4)
+
+ShareLoop uses stateless JWT Bearer token authentication signed via HMAC-SHA256 (`HS256`) and BCrypt password hashing.
+
+### Configuration
+
+Environment variables (configured in `.env` / `application.yml`):
+- `JWT_SECRET`: Secret key for signing tokens (minimum 32 characters / 256 bits).
+- `JWT_EXPIRATION_MS`: Access token lifetime in milliseconds (default: `86400000` = 24 hours).
+- `CORS_ALLOWED_ORIGINS`: Comma-separated list of allowed origins (default: `http://localhost:5173,http://localhost:3000`).
+
+### Endpoints
+
+#### 1. Register Account
+`POST /api/v1/auth/register` (Public)
+
+```bash
+curl -X POST http://localhost:8080/api/v1/auth/register \
+  -H "Content-Type: application/json" \
+  -d '{
+    "displayName": "Linh Nguyen",
+    "email": "linh.nguyen@example.com",
+    "password": "Password123!"
+  }'
+```
+
+Response (`201 Created`):
+```json
+{
+  "id": "c1f7b49e-711a-4fa0-863a-4418659dca21",
+  "displayName": "Linh Nguyen",
+  "email": "linh.nguyen@example.com",
+  "role": "USER",
+  "status": "ACTIVE",
+  "createdAt": "2026-10-20T07:30:00Z",
+  "accessToken": "eyJhbGciOiJIUzI1NiJ9...",
+  "tokenType": "Bearer"
+}
+```
+
+#### 2. Log In
+`POST /api/v1/auth/login` (Public)
+
+```bash
+curl -X POST http://localhost:8080/api/v1/auth/login \
+  -H "Content-Type: application/json" \
+  -d '{
+    "email": "linh.nguyen@example.com",
+    "password": "Password123!"
+  }'
+```
+
+Response (`200 OK`):
+```json
+{
+  "id": "c1f7b49e-711a-4fa0-863a-4418659dca21",
+  "displayName": "Linh Nguyen",
+  "email": "linh.nguyen@example.com",
+  "role": "USER",
+  "status": "ACTIVE",
+  "createdAt": "2026-10-20T07:30:00Z",
+  "accessToken": "eyJhbGciOiJIUzI1NiJ9...",
+  "tokenType": "Bearer"
+}
+```
+
+#### 3. Current User Profile
+`GET /api/v1/auth/me` (Protected - Requires Bearer Token)
+
+```bash
+curl -X GET http://localhost:8080/api/v1/auth/me \
+  -H "Authorization: Bearer <your_access_token>"
+```
+
+Response (`200 OK`):
+```json
+{
+  "id": "c1f7b49e-711a-4fa0-863a-4418659dca21",
+  "displayName": "Linh Nguyen",
+  "email": "linh.nguyen@example.com",
+  "phoneNumber": null,
+  "role": "USER",
+  "status": "ACTIVE",
+  "createdAt": "2026-10-20T07:30:00Z",
+  "updatedAt": "2026-10-20T07:30:00Z"
+}
+```
+
+---
+
 ## Verification & Testing
 
 ### Backend
