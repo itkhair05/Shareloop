@@ -56,6 +56,7 @@ class DatabaseSchemaConstraintIntegrationTest {
                 "listing_requests",
                 "listings",
                 "messages",
+                "reviews",
                 "transactions",
                 "users"
         );
@@ -755,6 +756,367 @@ class DatabaseSchemaConstraintIntegrationTest {
                     "sports-outdoors",
                     "tools-diy"
             );
+        }
+    }
+
+    @Nested
+    @DisplayName("Reviews and Ratings Constraint and Trigger Tests (Migration V6)")
+    class ReviewConstraintAndTriggerTests {
+
+        private UUID setupCompletedTransaction(UUID ownerId, UUID requesterId, String prefix) {
+            jdbcTemplate.update(
+                    "INSERT INTO users (id, display_name, email, password_hash, role, status) VALUES (?, ?, ?, ?, 'USER', 'ACTIVE')",
+                    ownerId, "Owner " + prefix, prefix + "-rev-owner@example.com", "hash_123"
+            );
+            jdbcTemplate.update(
+                    "INSERT INTO users (id, display_name, email, password_hash, role, status) VALUES (?, ?, ?, ?, 'USER', 'ACTIVE')",
+                    requesterId, "Requester " + prefix, prefix + "-rev-req@example.com", "hash_123"
+            );
+
+            UUID catId = UUID.randomUUID();
+            jdbcTemplate.update(
+                    "INSERT INTO categories (id, name, slug, is_active) VALUES (?, ?, ?, true)",
+                    catId, "Cat " + prefix, "cat-" + prefix
+            );
+
+            UUID listingId = UUID.randomUUID();
+            jdbcTemplate.update(
+                    "INSERT INTO listings (id, owner_id, category_id, listing_type, title, description, city, country, status) " +
+                            "VALUES (?, ?, ?, 'GIVEAWAY', 'Item " + prefix + "', 'Desc', 'Hanoi', 'VN', 'COMPLETED')",
+                    listingId, ownerId, catId
+            );
+
+            UUID reqId = UUID.randomUUID();
+            jdbcTemplate.update(
+                    "INSERT INTO listing_requests (id, listing_id, requester_id, status) VALUES (?, ?, ?, 'ACCEPTED')",
+                    reqId, listingId, requesterId
+            );
+
+            UUID txId = UUID.randomUUID();
+            jdbcTemplate.update(
+                    "INSERT INTO transactions (id, listing_request_id, listing_id, owner_id, requester_id, status, owner_completed, requester_completed, owner_completed_at, requester_completed_at) " +
+                            "VALUES (?, ?, ?, ?, ?, 'COMPLETED', TRUE, TRUE, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)",
+                    txId, reqId, listingId, ownerId, requesterId
+            );
+
+            return txId;
+        }
+
+        private UUID setupPendingTransaction(UUID ownerId, UUID requesterId, String prefix) {
+            jdbcTemplate.update(
+                    "INSERT INTO users (id, display_name, email, password_hash, role, status) VALUES (?, ?, ?, ?, 'USER', 'ACTIVE')",
+                    ownerId, "Owner " + prefix, prefix + "-rev-p-owner@example.com", "hash_123"
+            );
+            jdbcTemplate.update(
+                    "INSERT INTO users (id, display_name, email, password_hash, role, status) VALUES (?, ?, ?, ?, 'USER', 'ACTIVE')",
+                    requesterId, "Requester " + prefix, prefix + "-rev-p-req@example.com", "hash_123"
+            );
+
+            UUID catId = UUID.randomUUID();
+            jdbcTemplate.update(
+                    "INSERT INTO categories (id, name, slug, is_active) VALUES (?, ?, ?, true)",
+                    catId, "Cat " + prefix, "cat-" + prefix
+            );
+
+            UUID listingId = UUID.randomUUID();
+            jdbcTemplate.update(
+                    "INSERT INTO listings (id, owner_id, category_id, listing_type, title, description, city, country, status) " +
+                            "VALUES (?, ?, ?, 'GIVEAWAY', 'Item " + prefix + "', 'Desc', 'Hanoi', 'VN', 'RESERVED')",
+                    listingId, ownerId, catId
+            );
+
+            UUID reqId = UUID.randomUUID();
+            jdbcTemplate.update(
+                    "INSERT INTO listing_requests (id, listing_id, requester_id, status) VALUES (?, ?, ?, 'ACCEPTED')",
+                    reqId, listingId, requesterId
+            );
+
+            UUID txId = UUID.randomUUID();
+            jdbcTemplate.update(
+                    "INSERT INTO transactions (id, listing_request_id, listing_id, owner_id, requester_id, status) " +
+                            "VALUES (?, ?, ?, ?, ?, 'PENDING')",
+                    txId, reqId, listingId, ownerId, requesterId
+            );
+
+            return txId;
+        }
+
+        @Test
+        @DisplayName("Verify reviews table exists with all required columns")
+        void reviewsTableAndColumnsExist() {
+            List<String> columns = jdbcTemplate.query(
+                    "SELECT column_name FROM information_schema.columns WHERE table_name = 'reviews' ORDER BY column_name",
+                    (rs, rowNum) -> rs.getString("column_name")
+            );
+
+            assertThat(columns).contains(
+                    "id",
+                    "transaction_id",
+                    "reviewer_id",
+                    "reviewee_id",
+                    "rating",
+                    "comment",
+                    "is_hidden",
+                    "moderated_by",
+                    "moderated_at",
+                    "moderation_reason",
+                    "created_at",
+                    "updated_at"
+            );
+        }
+
+        @Test
+        @DisplayName("Both participants can submit a review for a COMPLETED transaction")
+        void bothParticipantsCanReviewCompletedTransaction() {
+            UUID ownerId = UUID.randomUUID();
+            UUID requesterId = UUID.randomUUID();
+            UUID txId = setupCompletedTransaction(ownerId, requesterId, "both-ok");
+
+            UUID r1 = UUID.randomUUID();
+            int rows1 = jdbcTemplate.update(
+                    "INSERT INTO reviews (id, transaction_id, reviewer_id, reviewee_id, rating, comment) " +
+                            "VALUES (?, ?, ?, ?, 5, 'Great exchange!')",
+                    r1, txId, ownerId, requesterId
+            );
+            assertThat(rows1).isEqualTo(1);
+
+            UUID r2 = UUID.randomUUID();
+            int rows2 = jdbcTemplate.update(
+                    "INSERT INTO reviews (id, transaction_id, reviewer_id, reviewee_id, rating, comment) " +
+                            "VALUES (?, ?, ?, ?, 4, NULL)",
+                    r2, txId, requesterId, ownerId
+            );
+            assertThat(rows2).isEqualTo(1);
+        }
+
+        @Test
+        @DisplayName("Duplicate review by the same participant on the same transaction is rejected")
+        void duplicateReviewBySameParticipantRejected() {
+            UUID ownerId = UUID.randomUUID();
+            UUID requesterId = UUID.randomUUID();
+            UUID txId = setupCompletedTransaction(ownerId, requesterId, "dup-rev");
+
+            UUID r1 = UUID.randomUUID();
+            jdbcTemplate.update(
+                    "INSERT INTO reviews (id, transaction_id, reviewer_id, reviewee_id, rating, comment) " +
+                            "VALUES (?, ?, ?, ?, 5, 'First review')",
+                    r1, txId, ownerId, requesterId
+            );
+
+            UUID r2 = UUID.randomUUID();
+            assertThatThrownBy(() -> jdbcTemplate.update(
+                    "INSERT INTO reviews (id, transaction_id, reviewer_id, reviewee_id, rating, comment) " +
+                            "VALUES (?, ?, ?, ?, 3, 'Second review attempt')",
+                    r2, txId, ownerId, requesterId
+            )).isInstanceOf(DataIntegrityViolationException.class);
+        }
+
+        @Test
+        @DisplayName("Rating below 1 is rejected")
+        void ratingBelowOneRejected() {
+            UUID ownerId = UUID.randomUUID();
+            UUID requesterId = UUID.randomUUID();
+            UUID txId = setupCompletedTransaction(ownerId, requesterId, "rating-low");
+
+            UUID r0 = UUID.randomUUID();
+            assertThatThrownBy(() -> jdbcTemplate.update(
+                    "INSERT INTO reviews (id, transaction_id, reviewer_id, reviewee_id, rating, comment) " +
+                            "VALUES (?, ?, ?, ?, 0, 'Zero rating')",
+                    r0, txId, ownerId, requesterId
+            )).isInstanceOf(DataIntegrityViolationException.class);
+        }
+
+        @Test
+        @DisplayName("Rating above 5 is rejected")
+        void ratingAboveFiveRejected() {
+            UUID ownerId = UUID.randomUUID();
+            UUID requesterId = UUID.randomUUID();
+            UUID txId = setupCompletedTransaction(ownerId, requesterId, "rating-high");
+
+            UUID r6 = UUID.randomUUID();
+            assertThatThrownBy(() -> jdbcTemplate.update(
+                    "INSERT INTO reviews (id, transaction_id, reviewer_id, reviewee_id, rating, comment) " +
+                            "VALUES (?, ?, ?, ?, 6, 'Six rating')",
+                    r6, txId, ownerId, requesterId
+            )).isInstanceOf(DataIntegrityViolationException.class);
+        }
+
+        @Test
+        @DisplayName("Blank whitespace-only comment is rejected")
+        void blankWhitespaceCommentRejected() {
+            UUID ownerId = UUID.randomUUID();
+            UUID requesterId = UUID.randomUUID();
+            UUID txId = setupCompletedTransaction(ownerId, requesterId, "blank-cmt");
+
+            UUID r = UUID.randomUUID();
+            assertThatThrownBy(() -> jdbcTemplate.update(
+                    "INSERT INTO reviews (id, transaction_id, reviewer_id, reviewee_id, rating, comment) " +
+                            "VALUES (?, ?, ?, ?, 4, '    ')",
+                    r, txId, ownerId, requesterId
+            )).isInstanceOf(DataIntegrityViolationException.class);
+        }
+
+        @Test
+        @DisplayName("Reviewer and reviewee cannot be the same user")
+        void reviewerAndRevieweeMustDiffer() {
+            UUID ownerId = UUID.randomUUID();
+            UUID requesterId = UUID.randomUUID();
+            UUID txId = setupCompletedTransaction(ownerId, requesterId, "same-user");
+
+            UUID r = UUID.randomUUID();
+            assertThatThrownBy(() -> jdbcTemplate.update(
+                    "INSERT INTO reviews (id, transaction_id, reviewer_id, reviewee_id, rating, comment) " +
+                            "VALUES (?, ?, ?, ?, 5, 'Self review')",
+                    r, txId, ownerId, ownerId
+            )).isInstanceOf(DataIntegrityViolationException.class);
+        }
+
+        @Test
+        @DisplayName("Cannot review a non-completed transaction")
+        void cannotReviewNonCompletedTransaction() {
+            UUID ownerId = UUID.randomUUID();
+            UUID requesterId = UUID.randomUUID();
+            UUID txId = setupPendingTransaction(ownerId, requesterId, "non-comp");
+
+            UUID r = UUID.randomUUID();
+            assertThatThrownBy(() -> jdbcTemplate.update(
+                    "INSERT INTO reviews (id, transaction_id, reviewer_id, reviewee_id, rating, comment) " +
+                            "VALUES (?, ?, ?, ?, 5, 'Review on pending')",
+                    r, txId, ownerId, requesterId
+            )).isInstanceOf(DataIntegrityViolationException.class)
+                    .hasMessageContaining("expected COMPLETED");
+        }
+
+        @Test
+        @DisplayName("Non-participant reviewer is rejected")
+        void nonParticipantReviewerRejected() {
+            UUID ownerId = UUID.randomUUID();
+            UUID requesterId = UUID.randomUUID();
+            UUID txId = setupCompletedTransaction(ownerId, requesterId, "non-part-r");
+
+            UUID outsiderId = createTestUser("outsider-rev1@example.com");
+
+            UUID r1 = UUID.randomUUID();
+            assertThatThrownBy(() -> jdbcTemplate.update(
+                    "INSERT INTO reviews (id, transaction_id, reviewer_id, reviewee_id, rating, comment) " +
+                            "VALUES (?, ?, ?, ?, 5, 'Outsider reviewer')",
+                    r1, txId, outsiderId, ownerId
+            )).isInstanceOf(DataIntegrityViolationException.class)
+                    .hasMessageContaining("do not match transaction");
+        }
+
+        @Test
+        @DisplayName("Non-participant reviewee is rejected")
+        void nonParticipantRevieweeRejected() {
+            UUID ownerId = UUID.randomUUID();
+            UUID requesterId = UUID.randomUUID();
+            UUID txId = setupCompletedTransaction(ownerId, requesterId, "non-part-e");
+
+            UUID outsiderId = createTestUser("outsider-rev2@example.com");
+
+            UUID r2 = UUID.randomUUID();
+            assertThatThrownBy(() -> jdbcTemplate.update(
+                    "INSERT INTO reviews (id, transaction_id, reviewer_id, reviewee_id, rating, comment) " +
+                            "VALUES (?, ?, ?, ?, 5, 'Outsider reviewee')",
+                    r2, txId, ownerId, outsiderId
+            )).isInstanceOf(DataIntegrityViolationException.class)
+                    .hasMessageContaining("do not match transaction");
+        }
+
+        @Test
+        @DisplayName("Hidden review without moderation metadata is rejected")
+        void hiddenReviewWithoutModerationMetadataRejected() {
+            UUID ownerId = UUID.randomUUID();
+            UUID requesterId = UUID.randomUUID();
+            UUID txId = setupCompletedTransaction(ownerId, requesterId, "mod-meta-1");
+
+            UUID r1 = UUID.randomUUID();
+            assertThatThrownBy(() -> jdbcTemplate.update(
+                    "INSERT INTO reviews (id, transaction_id, reviewer_id, reviewee_id, rating, comment, is_hidden) " +
+                            "VALUES (?, ?, ?, ?, 5, 'Hidden without mod', TRUE)",
+                    r1, txId, ownerId, requesterId
+            )).isInstanceOf(DataIntegrityViolationException.class)
+                    .hasMessageContaining("moderated_by must not be null for hidden reviews");
+        }
+
+        @Test
+        @DisplayName("Unhidden review retaining moderation metadata is rejected")
+        void unhiddenReviewWithModerationMetadataRejected() {
+            UUID ownerId = UUID.randomUUID();
+            UUID requesterId = UUID.randomUUID();
+            UUID txId = setupCompletedTransaction(ownerId, requesterId, "mod-meta-2");
+
+            UUID adminId = UUID.randomUUID();
+            jdbcTemplate.update(
+                    "INSERT INTO users (id, display_name, email, password_hash, role, status) VALUES (?, 'Admin Rev 2', 'admin-rev2@example.com', 'hash_123', 'ADMIN', 'ACTIVE')",
+                    adminId
+            );
+
+            UUID r2 = UUID.randomUUID();
+            assertThatThrownBy(() -> jdbcTemplate.update(
+                    "INSERT INTO reviews (id, transaction_id, reviewer_id, reviewee_id, rating, comment, is_hidden, moderated_by) " +
+                            "VALUES (?, ?, ?, ?, 5, 'Unhidden with mod', FALSE, ?)",
+                    r2, txId, ownerId, requesterId, adminId
+            )).isInstanceOf(DataIntegrityViolationException.class)
+                    .hasMessageContaining("Moderation metadata must be null for non-hidden reviews");
+        }
+
+        @Test
+        @DisplayName("Hidden review with complete moderation metadata succeeds")
+        void hiddenReviewWithProperModerationMetadataSucceeds() {
+            UUID ownerId = UUID.randomUUID();
+            UUID requesterId = UUID.randomUUID();
+            UUID txId = setupCompletedTransaction(ownerId, requesterId, "mod-meta-3");
+
+            UUID adminId = UUID.randomUUID();
+            jdbcTemplate.update(
+                    "INSERT INTO users (id, display_name, email, password_hash, role, status) VALUES (?, 'Admin Rev 3', 'admin-rev3@example.com', 'hash_123', 'ADMIN', 'ACTIVE')",
+                    adminId
+            );
+
+            UUID r3 = UUID.randomUUID();
+            int rows = jdbcTemplate.update(
+                    "INSERT INTO reviews (id, transaction_id, reviewer_id, reviewee_id, rating, comment, is_hidden, moderated_by, moderated_at, moderation_reason) " +
+                            "VALUES (?, ?, ?, ?, 1, 'Inappropriate review', TRUE, ?, CURRENT_TIMESTAMP, 'Violation of guidelines')",
+                    r3, txId, ownerId, requesterId, adminId
+            );
+            assertThat(rows).isEqualTo(1);
+        }
+
+        @Test
+        @DisplayName("Updated_at trigger advances on review modification")
+        void updatedAtTriggerAdvancesOnUpdate() throws InterruptedException {
+            UUID ownerId = UUID.randomUUID();
+            UUID requesterId = UUID.randomUUID();
+            UUID txId = setupCompletedTransaction(ownerId, requesterId, "upd-trig");
+
+            UUID r = UUID.randomUUID();
+            jdbcTemplate.update(
+                    "INSERT INTO reviews (id, transaction_id, reviewer_id, reviewee_id, rating, comment) " +
+                            "VALUES (?, ?, ?, ?, 4, 'Initial comment')",
+                    r, txId, ownerId, requesterId
+            );
+
+            var initialUpdatedAt = jdbcTemplate.queryForObject(
+                    "SELECT updated_at FROM reviews WHERE id = ?",
+                    java.time.OffsetDateTime.class,
+                    r
+            );
+
+            Thread.sleep(50);
+
+            jdbcTemplate.update(
+                    "UPDATE reviews SET comment = 'Updated comment' WHERE id = ?",
+                    r
+            );
+
+            var newUpdatedAt = jdbcTemplate.queryForObject(
+                    "SELECT updated_at FROM reviews WHERE id = ?",
+                    java.time.OffsetDateTime.class,
+                    r
+            );
+
+            assertThat(newUpdatedAt).isAfterOrEqualTo(initialUpdatedAt);
         }
     }
 }

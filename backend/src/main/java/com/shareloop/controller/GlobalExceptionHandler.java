@@ -130,7 +130,7 @@ public class GlobalExceptionHandler {
         return ResponseEntity.status(HttpStatus.FORBIDDEN).body(errorResponse);
     }
 
-    @ExceptionHandler({DuplicateEmailException.class, DuplicateRequestException.class, DuplicateSlugException.class})
+    @ExceptionHandler({DuplicateEmailException.class, DuplicateRequestException.class, DuplicateSlugException.class, DuplicateReviewException.class})
     public ResponseEntity<ErrorResponse> handleDuplicateResource(
             RuntimeException ex,
             HttpServletRequest request
@@ -194,10 +194,14 @@ public class GlobalExceptionHandler {
             HttpServletRequest request
     ) {
         log.error("Database integrity violation processing request to {}: {}", request.getRequestURI(), ex.getMessage());
+        String detailMessage = "The requested operation could not be completed due to a database integrity conflict";
+        if (ex.getMessage() != null && ex.getMessage().contains("uq_reviews_transaction_reviewer")) {
+            detailMessage = "You have already submitted a review for this transaction";
+        }
         ErrorResponse errorResponse = new ErrorResponse(
                 HttpStatus.CONFLICT.value(),
                 HttpStatus.CONFLICT.getReasonPhrase(),
-                "The requested operation could not be completed due to a database integrity conflict",
+                detailMessage,
                 request.getRequestURI()
         );
         return ResponseEntity.status(HttpStatus.CONFLICT).body(errorResponse);
