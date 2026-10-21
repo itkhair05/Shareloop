@@ -5,6 +5,8 @@ import com.shareloop.dto.notification.NotificationResponse;
 import com.shareloop.dto.notification.UnreadCountResponse;
 import com.shareloop.security.UserPrincipal;
 import com.shareloop.service.NotificationService;
+import io.swagger.v3.oas.annotations.security.SecurityRequirement;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import org.springframework.data.domain.Page;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
@@ -12,6 +14,8 @@ import org.springframework.web.bind.annotation.*;
 
 import java.util.UUID;
 
+@Tag(name = "Notifications", description = "In-app notifications and read status updates")
+@SecurityRequirement(name = "bearerAuth")
 @RestController
 @RequestMapping("/api/v1/notifications")
 public class NotificationController {

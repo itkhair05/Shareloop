@@ -3,6 +3,8 @@ package com.shareloop.controller;
 import com.shareloop.dto.review.*;
 import com.shareloop.security.UserPrincipal;
 import com.shareloop.service.ReviewService;
+import io.swagger.v3.oas.annotations.security.SecurityRequirement;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import org.springframework.data.domain.Page;
 import org.springframework.http.HttpStatus;
@@ -14,6 +16,7 @@ import org.springframework.web.bind.annotation.*;
 import java.util.List;
 import java.util.UUID;
 
+@Tag(name = "Reviews", description = "Participant ratings, reputation feedback, and moderation")
 @RestController
 public class ReviewController {
 
@@ -26,6 +29,7 @@ public class ReviewController {
     /**
      * Authenticated: Submit a review for a completed transaction.
      */
+    @SecurityRequirement(name = "bearerAuth")
     @PostMapping("/api/v1/transactions/{transactionId}/reviews")
     public ResponseEntity<ReviewResponse> createReview(
             @PathVariable UUID transactionId,
@@ -39,6 +43,7 @@ public class ReviewController {
     /**
      * Authenticated: Retrieve reviews for a transaction (participants or ADMIN).
      */
+    @SecurityRequirement(name = "bearerAuth")
     @GetMapping("/api/v1/transactions/{transactionId}/reviews")
     public ResponseEntity<List<ReviewResponse>> getTransactionReviews(
             @PathVariable UUID transactionId,
@@ -73,6 +78,7 @@ public class ReviewController {
     /**
      * Admin: Soft-moderate (hide) an inappropriate review.
      */
+    @SecurityRequirement(name = "bearerAuth")
     @DeleteMapping("/api/v1/admin/reviews/{reviewId}")
     @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<Void> moderateReview(

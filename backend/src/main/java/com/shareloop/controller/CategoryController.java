@@ -2,6 +2,8 @@ package com.shareloop.controller;
 
 import com.shareloop.dto.category.*;
 import com.shareloop.service.CategoryService;
+import io.swagger.v3.oas.annotations.security.SecurityRequirement;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -10,6 +12,7 @@ import org.springframework.web.bind.annotation.*;
 import java.util.List;
 import java.util.UUID;
 
+@Tag(name = "Categories", description = "Item category catalog and hierarchical lookup")
 @RestController
 public class CategoryController {
 
@@ -40,6 +43,7 @@ public class CategoryController {
     /**
      * Admin: Create a new category.
      */
+    @SecurityRequirement(name = "bearerAuth")
     @PostMapping("/api/v1/admin/categories")
     public ResponseEntity<CategoryResponse> createCategory(@Valid @RequestBody CreateCategoryRequest request) {
         CategoryResponse response = categoryService.createCategory(request);
@@ -49,6 +53,7 @@ public class CategoryController {
     /**
      * Admin: Update category details by ID.
      */
+    @SecurityRequirement(name = "bearerAuth")
     @PutMapping("/api/v1/admin/categories/{id}")
     public ResponseEntity<CategoryResponse> updateCategory(
             @PathVariable UUID id,
@@ -61,6 +66,7 @@ public class CategoryController {
     /**
      * Admin: Activate or deactivate a category.
      */
+    @SecurityRequirement(name = "bearerAuth")
     @PatchMapping("/api/v1/admin/categories/{id}/status")
     public ResponseEntity<CategoryResponse> updateCategoryStatus(
             @PathVariable UUID id,
