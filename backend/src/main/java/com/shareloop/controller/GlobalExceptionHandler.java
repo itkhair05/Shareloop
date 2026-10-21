@@ -130,7 +130,7 @@ public class GlobalExceptionHandler {
         return ResponseEntity.status(HttpStatus.FORBIDDEN).body(errorResponse);
     }
 
-    @ExceptionHandler({DuplicateEmailException.class, DuplicateRequestException.class})
+    @ExceptionHandler({DuplicateEmailException.class, DuplicateRequestException.class, DuplicateSlugException.class})
     public ResponseEntity<ErrorResponse> handleDuplicateResource(
             RuntimeException ex,
             HttpServletRequest request

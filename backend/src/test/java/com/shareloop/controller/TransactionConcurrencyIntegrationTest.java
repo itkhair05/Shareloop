@@ -98,7 +98,9 @@ class TransactionConcurrencyIntegrationTest {
         transactionRepository.deleteAll();
         listingRequestRepository.deleteAll();
         listingRepository.deleteAll();
-        categoryRepository.deleteAll();
+        if (generalCategory != null && generalCategory.getId() != null) {
+            categoryRepository.deleteById(generalCategory.getId());
+        }
         userRepository.deleteAll();
     }
 

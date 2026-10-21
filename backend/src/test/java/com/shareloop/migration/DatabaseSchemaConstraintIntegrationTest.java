@@ -731,4 +731,30 @@ class DatabaseSchemaConstraintIntegrationTest {
             assertThat(rows).isEqualTo(1);
         }
     }
+
+    @Nested
+    @DisplayName("Flyway V5 - Default Categories Seed Verification")
+    class FlywayV5DefaultCategoriesSeedTests {
+
+        @Test
+        @DisplayName("Verify that all 9 default community categories are seeded with valid slugs and active status")
+        void defaultCategoriesAreSeeded() {
+            List<String> slugs = jdbcTemplate.query(
+                    "SELECT slug FROM categories WHERE is_active = TRUE ORDER BY slug",
+                    (rs, rowNum) -> rs.getString("slug")
+            );
+
+            assertThat(slugs).contains(
+                    "baby-kids",
+                    "books-media",
+                    "clothing-accessories",
+                    "electronics-appliances",
+                    "food-pantry",
+                    "home-furniture",
+                    "other",
+                    "sports-outdoors",
+                    "tools-diy"
+            );
+        }
+    }
 }

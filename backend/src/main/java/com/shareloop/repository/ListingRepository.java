@@ -51,4 +51,6 @@ public interface ListingRepository extends JpaRepository<Listing, UUID>, JpaSpec
     List<Listing> findByListingTypeAndStatus(ListingType listingType, ListingStatus status);
 
     List<Listing> findByCityIgnoreCaseAndStatus(String city, ListingStatus status);
+
+    long countByCategoryIdAndStatus(UUID categoryId, ListingStatus status);
 }

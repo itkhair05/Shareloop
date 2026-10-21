@@ -97,6 +97,8 @@ public class SecurityConfig {
                         .requestMatchers("/api/v1/listings/*/transaction", "/api/v1/transactions/**").authenticated()
                         // Listing endpoints: GET /mine must require authentication before public listing matchers
                         .requestMatchers(HttpMethod.GET, "/api/v1/listings/mine").authenticated()
+                        // Category endpoints: public retrieval
+                        .requestMatchers(HttpMethod.GET, "/api/v1/categories", "/api/v1/categories/{slug}").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/v1/listings", "/api/v1/listings/{id}").permitAll()
                         // Admin endpoints restricted to ADMIN role
                         .requestMatchers("/api/v1/admin/**").hasRole("ADMIN")

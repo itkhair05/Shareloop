@@ -103,7 +103,9 @@ class ChatConcurrencyIntegrationTest {
         chatMessageRepository.deleteAll();
         conversationRepository.deleteAll();
         listingRepository.deleteAll();
-        categoryRepository.deleteAll();
+        if (generalCategory != null && generalCategory.getId() != null) {
+            categoryRepository.deleteById(generalCategory.getId());
+        }
         userRepository.deleteAll();
     }
 
