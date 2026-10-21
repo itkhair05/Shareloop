@@ -56,6 +56,7 @@ class DatabaseSchemaConstraintIntegrationTest {
                 "listing_requests",
                 "listings",
                 "messages",
+                "notifications",
                 "reviews",
                 "transactions",
                 "users"
@@ -1114,6 +1115,130 @@ class DatabaseSchemaConstraintIntegrationTest {
                     "SELECT updated_at FROM reviews WHERE id = ?",
                     java.time.OffsetDateTime.class,
                     r
+            );
+
+            assertThat(newUpdatedAt).isAfterOrEqualTo(initialUpdatedAt);
+        }
+    }
+
+    @Nested
+    @DisplayName("Notification Constraint Tests")
+    class NotificationConstraintTests {
+
+        @Test
+        @DisplayName("Valid notification inserts with default unread state and null read_at")
+        void validNotificationInsertsSuccessfully() {
+            UUID recipient = createTestUser("notif-user-" + UUID.randomUUID() + "@example.com");
+            UUID notifId = UUID.randomUUID();
+
+            jdbcTemplate.update(
+                    "INSERT INTO notifications (id, recipient_id, type, title, message) VALUES (?, ?, 'REQUEST_RECEIVED', 'New Request', 'Someone requested your item')",
+                    notifId, recipient
+            );
+
+            Boolean isRead = jdbcTemplate.queryForObject(
+                    "SELECT is_read FROM notifications WHERE id = ?",
+                    Boolean.class,
+                    notifId
+            );
+            assertThat(isRead).isFalse();
+
+            var readAt = jdbcTemplate.queryForObject(
+                    "SELECT read_at FROM notifications WHERE id = ?",
+                    java.time.OffsetDateTime.class,
+                    notifId
+            );
+            assertThat(readAt).isNull();
+        }
+
+        @Test
+        @DisplayName("chk_notifications_read_consistency: is_read=true requires read_at not null")
+        void isReadTrueRequiresReadAtNotNull() {
+            UUID recipient = createTestUser("notif-user-" + UUID.randomUUID() + "@example.com");
+            UUID notifId = UUID.randomUUID();
+
+            assertThatThrownBy(() -> jdbcTemplate.update(
+                    "INSERT INTO notifications (id, recipient_id, type, title, message, is_read, read_at) VALUES (?, ?, 'REQUEST_RECEIVED', 'Title', 'Message', true, null)",
+                    notifId, recipient
+            )).isInstanceOf(DataIntegrityViolationException.class);
+        }
+
+        @Test
+        @DisplayName("chk_notifications_read_consistency: is_read=false requires read_at null")
+        void isReadFalseRequiresReadAtNull() {
+            UUID recipient = createTestUser("notif-user-" + UUID.randomUUID() + "@example.com");
+            UUID notifId = UUID.randomUUID();
+
+            assertThatThrownBy(() -> jdbcTemplate.update(
+                    "INSERT INTO notifications (id, recipient_id, type, title, message, is_read, read_at) VALUES (?, ?, 'REQUEST_RECEIVED', 'Title', 'Message', false, CURRENT_TIMESTAMP)",
+                    notifId, recipient
+            )).isInstanceOf(DataIntegrityViolationException.class);
+        }
+
+        @Test
+        @DisplayName("chk_notifications_title_not_blank: Blank title is rejected")
+        void blankTitleIsRejected() {
+            UUID recipient = createTestUser("notif-user-" + UUID.randomUUID() + "@example.com");
+            UUID notifId = UUID.randomUUID();
+
+            assertThatThrownBy(() -> jdbcTemplate.update(
+                    "INSERT INTO notifications (id, recipient_id, type, title, message) VALUES (?, ?, 'REQUEST_RECEIVED', '   ', 'Message')",
+                    notifId, recipient
+            )).isInstanceOf(DataIntegrityViolationException.class);
+        }
+
+        @Test
+        @DisplayName("chk_notifications_message_not_blank: Blank message is rejected")
+        void blankMessageIsRejected() {
+            UUID recipient = createTestUser("notif-user-" + UUID.randomUUID() + "@example.com");
+            UUID notifId = UUID.randomUUID();
+
+            assertThatThrownBy(() -> jdbcTemplate.update(
+                    "INSERT INTO notifications (id, recipient_id, type, title, message) VALUES (?, ?, 'REQUEST_RECEIVED', 'Title', '   ')",
+                    notifId, recipient
+            )).isInstanceOf(DataIntegrityViolationException.class);
+        }
+
+        @Test
+        @DisplayName("Foreign key violation when recipient does not exist")
+        void foreignKeyRecipientDoesNotExist() {
+            UUID notifId = UUID.randomUUID();
+            UUID nonExistentRecipient = UUID.randomUUID();
+
+            assertThatThrownBy(() -> jdbcTemplate.update(
+                    "INSERT INTO notifications (id, recipient_id, type, title, message) VALUES (?, ?, 'REQUEST_RECEIVED', 'Title', 'Message')",
+                    notifId, nonExistentRecipient
+            )).isInstanceOf(DataIntegrityViolationException.class);
+        }
+
+        @Test
+        @DisplayName("trg_notifications_updated_at updates timestamp on row modification")
+        void updatedAtTriggerFires() throws Exception {
+            UUID recipient = createTestUser("notif-user-" + UUID.randomUUID() + "@example.com");
+            UUID notifId = UUID.randomUUID();
+
+            jdbcTemplate.update(
+                    "INSERT INTO notifications (id, recipient_id, type, title, message) VALUES (?, ?, 'REQUEST_RECEIVED', 'Title', 'Message')",
+                    notifId, recipient
+            );
+
+            var initialUpdatedAt = jdbcTemplate.queryForObject(
+                    "SELECT updated_at FROM notifications WHERE id = ?",
+                    java.time.OffsetDateTime.class,
+                    notifId
+            );
+
+            Thread.sleep(50);
+
+            jdbcTemplate.update(
+                    "UPDATE notifications SET is_read = true, read_at = CURRENT_TIMESTAMP WHERE id = ?",
+                    notifId
+            );
+
+            var newUpdatedAt = jdbcTemplate.queryForObject(
+                    "SELECT updated_at FROM notifications WHERE id = ?",
+                    java.time.OffsetDateTime.class,
+                    notifId
             );
 
             assertThat(newUpdatedAt).isAfterOrEqualTo(initialUpdatedAt);

@@ -8,6 +8,7 @@ import com.shareloop.entity.Transaction;
 import com.shareloop.entity.User;
 import com.shareloop.entity.enums.ListingRequestStatus;
 import com.shareloop.entity.enums.ListingStatus;
+import com.shareloop.entity.enums.NotificationType;
 import com.shareloop.entity.enums.TransactionStatus;
 import com.shareloop.entity.enums.UserRole;
 import com.shareloop.exception.ResourceNotFoundException;
@@ -36,17 +37,20 @@ public class TransactionService {
     private final ListingRepository listingRepository;
     private final ListingRequestRepository listingRequestRepository;
     private final UserRepository userRepository;
+    private final NotificationService notificationService;
 
     public TransactionService(
             TransactionRepository transactionRepository,
             ListingRepository listingRepository,
             ListingRequestRepository listingRequestRepository,
-            UserRepository userRepository
+            UserRepository userRepository,
+            NotificationService notificationService
     ) {
         this.transactionRepository = transactionRepository;
         this.listingRepository = listingRepository;
         this.listingRequestRepository = listingRequestRepository;
         this.userRepository = userRepository;
+        this.notificationService = notificationService;
     }
 
     /**
@@ -201,6 +205,24 @@ public class TransactionService {
                 listing.setStatus(ListingStatus.COMPLETED);
                 listingRepository.saveAndFlush(listing);
             }
+
+            notificationService.createNotification(
+                    transaction.getOwner(),
+                    NotificationType.TRANSACTION_COMPLETED,
+                    "Transaction Completed",
+                    "Your transaction for \"" + listing.getTitle() + "\" has been completed. You can now leave a review.",
+                    "TRANSACTION",
+                    transaction.getId()
+            );
+
+            notificationService.createNotification(
+                    transaction.getRequester(),
+                    NotificationType.TRANSACTION_COMPLETED,
+                    "Transaction Completed",
+                    "Your transaction for \"" + listing.getTitle() + "\" has been completed. You can now leave a review.",
+                    "TRANSACTION",
+                    transaction.getId()
+            );
         } else {
             transaction.setStatus(TransactionStatus.IN_PROGRESS);
         }

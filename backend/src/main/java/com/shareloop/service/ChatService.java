@@ -10,6 +10,7 @@ import com.shareloop.entity.Listing;
 import com.shareloop.entity.ListingRequest;
 import com.shareloop.entity.User;
 import com.shareloop.entity.enums.ListingStatus;
+import com.shareloop.entity.enums.NotificationType;
 import com.shareloop.exception.ResourceNotFoundException;
 import com.shareloop.repository.ChatMessageRepository;
 import com.shareloop.repository.ConversationRepository;
@@ -44,6 +45,7 @@ public class ChatService {
     private final ListingRepository listingRepository;
     private final ListingRequestRepository listingRequestRepository;
     private final UserRepository userRepository;
+    private final NotificationService notificationService;
 
     @Autowired
     @Lazy
@@ -54,13 +56,15 @@ public class ChatService {
             ChatMessageRepository chatMessageRepository,
             ListingRepository listingRepository,
             ListingRequestRepository listingRequestRepository,
-            UserRepository userRepository
+            UserRepository userRepository,
+            NotificationService notificationService
     ) {
         this.conversationRepository = conversationRepository;
         this.chatMessageRepository = chatMessageRepository;
         this.listingRepository = listingRepository;
         this.listingRequestRepository = listingRequestRepository;
         this.userRepository = userRepository;
+        this.notificationService = notificationService;
     }
 
     /**
@@ -171,6 +175,15 @@ public class ChatService {
             savedConversation.setLastMessageAt(savedMessage.getCreatedAt());
             savedConversation = conversationRepository.saveAndFlush(savedConversation);
             messagePreview = savedMessage.getContent();
+
+            notificationService.createNotification(
+                    listing.getOwner(),
+                    NotificationType.CHAT_MESSAGE,
+                    "New Message",
+                    "You received a new message from " + requester.getDisplayName(),
+                    "CONVERSATION",
+                    savedConversation.getId()
+            );
         }
 
         return ConversationResponse.fromEntity(savedConversation, requesterId, messagePreview);
@@ -282,6 +295,19 @@ public class ChatService {
         }
         conversation.setLastMessageAt(messageTime);
         conversationRepository.saveAndFlush(conversation);
+
+        User recipient = conversation.getOwner().getId().equals(sender.getId())
+                ? conversation.getRequester()
+                : conversation.getOwner();
+
+        notificationService.createNotification(
+                recipient,
+                NotificationType.CHAT_MESSAGE,
+                "New Message",
+                "You received a new message from " + sender.getDisplayName(),
+                "CONVERSATION",
+                conversation.getId()
+        );
 
         return ChatMessageResponse.fromEntity(savedMessage);
     }

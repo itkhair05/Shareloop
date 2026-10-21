@@ -10,6 +10,7 @@ import com.shareloop.entity.User;
 import com.shareloop.entity.enums.ListingRequestStatus;
 import com.shareloop.entity.enums.ListingStatus;
 import com.shareloop.entity.enums.ListingType;
+import com.shareloop.entity.enums.NotificationType;
 import com.shareloop.entity.enums.TransactionStatus;
 import com.shareloop.entity.enums.UserRole;
 import com.shareloop.exception.DuplicateRequestException;
@@ -37,17 +38,20 @@ public class ListingRequestService {
     private final ListingRepository listingRepository;
     private final UserRepository userRepository;
     private final TransactionRepository transactionRepository;
+    private final NotificationService notificationService;
 
     public ListingRequestService(
             ListingRequestRepository listingRequestRepository,
             ListingRepository listingRepository,
             UserRepository userRepository,
-            TransactionRepository transactionRepository
+            TransactionRepository transactionRepository,
+            NotificationService notificationService
     ) {
         this.listingRequestRepository = listingRequestRepository;
         this.listingRepository = listingRepository;
         this.userRepository = userRepository;
         this.transactionRepository = transactionRepository;
+        this.notificationService = notificationService;
     }
 
     /**
@@ -99,6 +103,16 @@ public class ListingRequestService {
         );
 
         ListingRequest saved = listingRequestRepository.save(request);
+
+        notificationService.createNotification(
+                listing.getOwner(),
+                NotificationType.REQUEST_RECEIVED,
+                "New Request Received",
+                requester.getDisplayName() + " requested your listing \"" + listing.getTitle() + "\"",
+                "LISTING_REQUEST",
+                saved.getId()
+        );
+
         return ListingRequestResponse.fromEntity(saved);
     }
 
@@ -244,10 +258,29 @@ public class ListingRequestService {
             lockedListing.setStatus(ListingStatus.RESERVED);
             listingRepository.saveAndFlush(lockedListing);
 
+            notificationService.createNotification(
+                    request.getRequester(),
+                    NotificationType.REQUEST_ACCEPTED,
+                    "Request Accepted",
+                    "Your request for \"" + lockedListing.getTitle() + "\" was accepted",
+                    "TRANSACTION",
+                    transaction.getId()
+            );
+
             return ListingRequestResponse.fromEntity(savedRequest);
         } else {
             request.setStatus(ListingRequestStatus.REJECTED);
             ListingRequest savedRequest = listingRequestRepository.save(request);
+
+            notificationService.createNotification(
+                    request.getRequester(),
+                    NotificationType.REQUEST_REJECTED,
+                    "Request Declined",
+                    "Your request for \"" + request.getListing().getTitle() + "\" was declined",
+                    "LISTING_REQUEST",
+                    savedRequest.getId()
+            );
+
             return ListingRequestResponse.fromEntity(savedRequest);
         }
     }

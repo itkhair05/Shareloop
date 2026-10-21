@@ -95,6 +95,8 @@ public class SecurityConfig {
                         .requestMatchers("/api/v1/listings/*/conversations", "/api/v1/conversations/**").authenticated()
                         // Transactions require authentication
                         .requestMatchers("/api/v1/listings/*/transaction", "/api/v1/transactions/**").authenticated()
+                        // Notifications require authentication
+                        .requestMatchers("/api/v1/notifications/**").authenticated()
                         // Listing endpoints: GET /mine must require authentication before public listing matchers
                         .requestMatchers(HttpMethod.GET, "/api/v1/listings/mine").authenticated()
                         // Category endpoints: public retrieval
