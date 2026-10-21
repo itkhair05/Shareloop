@@ -91,6 +91,8 @@ public class SecurityConfig {
                         .requestMatchers("/error").permitAll()
                         // Listing requests require authentication
                         .requestMatchers("/api/v1/listings/*/requests", "/api/v1/listing-requests/**").authenticated()
+                        // Chat conversations and messages require authentication
+                        .requestMatchers("/api/v1/listings/*/conversations", "/api/v1/conversations/**").authenticated()
                         // Listing endpoints: GET /mine must require authentication before public listing matchers
                         .requestMatchers(HttpMethod.GET, "/api/v1/listings/mine").authenticated()
                         .requestMatchers(HttpMethod.GET, "/api/v1/listings", "/api/v1/listings/{id}").permitAll()
