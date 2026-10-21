@@ -50,10 +50,12 @@ class DatabaseSchemaConstraintIntegrationTest {
 
         assertThat(tables).contains(
                 "categories",
+                "conversations",
                 "flyway_schema_history",
                 "listing_images",
                 "listing_requests",
                 "listings",
+                "messages",
                 "transactions",
                 "users"
         );
@@ -406,6 +408,213 @@ class DatabaseSchemaConstraintIntegrationTest {
                     anotherUser, requestId
             )).isInstanceOf(DataIntegrityViolationException.class)
                     .hasMessageContaining("Cannot change listing or requester on an accepted listing request");
+        }
+    }
+
+    @Nested
+    @DisplayName("Chat Conversation and Message Constraint Tests")
+    class ChatConversationAndMessageConstraintTests {
+
+        private UUID setupConversationPrerequisites(UUID ownerId, UUID requesterId, String prefix) {
+            jdbcTemplate.update(
+                    "INSERT INTO users (id, display_name, email, password_hash, role, status) VALUES (?, ?, ?, ?, 'USER', 'ACTIVE')",
+                    ownerId, "Owner " + prefix, prefix + "-owner@example.com", "hash_123"
+            );
+            jdbcTemplate.update(
+                    "INSERT INTO users (id, display_name, email, password_hash, role, status) VALUES (?, ?, ?, ?, 'USER', 'ACTIVE')",
+                    requesterId, "Requester " + prefix, prefix + "-requester@example.com", "hash_123"
+            );
+
+            UUID catId = UUID.randomUUID();
+            jdbcTemplate.update(
+                    "INSERT INTO categories (id, name, slug, is_active) VALUES (?, ?, ?, true)",
+                    catId, "Cat " + prefix, "cat-" + prefix
+            );
+
+            UUID listingId = UUID.randomUUID();
+            jdbcTemplate.update(
+                    "INSERT INTO listings (id, owner_id, category_id, listing_type, title, description, city, country, status) " +
+                            "VALUES (?, ?, ?, 'GIVEAWAY', 'Item " + prefix + "', 'Desc', 'Hanoi', 'VN', 'ACTIVE')",
+                    listingId, ownerId, catId
+            );
+
+            return listingId;
+        }
+
+        @Test
+        @DisplayName("Conversations must have distinct owner and requester (chk_conversations_distinct_parties)")
+        void conversationsMustHaveDistinctParties() {
+            UUID userId = createTestUser("self-conv@example.com");
+            UUID catId = createTestCategory("self-conv-cat");
+            UUID listingId = UUID.randomUUID();
+
+            jdbcTemplate.update(
+                    "INSERT INTO listings (id, owner_id, category_id, listing_type, title, description, city, country, status) " +
+                            "VALUES (?, ?, ?, 'GIVEAWAY', 'Item', 'Desc', 'Hanoi', 'VN', 'ACTIVE')",
+                    listingId, userId, catId
+            );
+
+            UUID convId = UUID.randomUUID();
+            assertThatThrownBy(() -> jdbcTemplate.update(
+                    "INSERT INTO conversations (id, listing_id, owner_id, requester_id) VALUES (?, ?, ?, ?)",
+                    convId, listingId, userId, userId
+            )).isInstanceOf(DataIntegrityViolationException.class)
+                    .hasMessageContaining("chk_conversations_distinct_parties");
+        }
+
+        @Test
+        @DisplayName("Only one conversation per listing and requester (uq_conversations_listing_requester)")
+        void uniqueConversationPerListingAndRequester() {
+            UUID ownerId = UUID.randomUUID();
+            UUID requesterId = UUID.randomUUID();
+            UUID listingId = setupConversationPrerequisites(ownerId, requesterId, "unique-conv");
+
+            UUID conv1 = UUID.randomUUID();
+            jdbcTemplate.update(
+                    "INSERT INTO conversations (id, listing_id, owner_id, requester_id) VALUES (?, ?, ?, ?)",
+                    conv1, listingId, ownerId, requesterId
+            );
+
+            UUID conv2 = UUID.randomUUID();
+            assertThatThrownBy(() -> jdbcTemplate.update(
+                    "INSERT INTO conversations (id, listing_id, owner_id, requester_id) VALUES (?, ?, ?, ?)",
+                    conv2, listingId, ownerId, requesterId
+            )).isInstanceOf(DataIntegrityViolationException.class)
+                    .hasMessageContaining("uq_conversations_listing_requester");
+        }
+
+        @Test
+        @DisplayName("Conversation owner must match listing owner (trg_validate_conversation_integrity)")
+        void conversationOwnerMustMatchListingOwner() {
+            UUID ownerId = UUID.randomUUID();
+            UUID requesterId = UUID.randomUUID();
+            UUID listingId = setupConversationPrerequisites(ownerId, requesterId, "owner-mismatch");
+
+            UUID wrongOwner = createTestUser("wrong-owner@example.com");
+            UUID convId = UUID.randomUUID();
+
+            assertThatThrownBy(() -> jdbcTemplate.update(
+                    "INSERT INTO conversations (id, listing_id, owner_id, requester_id) VALUES (?, ?, ?, ?)",
+                    convId, listingId, wrongOwner, requesterId
+            )).isInstanceOf(DataIntegrityViolationException.class)
+                    .hasMessageContaining("Conversation owner_id")
+                    .hasMessageContaining("does not match listing owner_id");
+        }
+
+        @Test
+        @DisplayName("Conversation linked listing_request must match listing and requester")
+        void conversationListingRequestMustMatchParties() {
+            UUID ownerId = UUID.randomUUID();
+            UUID requesterId = UUID.randomUUID();
+            UUID listingId = setupConversationPrerequisites(ownerId, requesterId, "req-mismatch");
+
+            UUID otherListingId = setupConversationPrerequisites(UUID.randomUUID(), UUID.randomUUID(), "other-listing");
+            UUID reqId = UUID.randomUUID();
+            jdbcTemplate.update(
+                    "INSERT INTO listing_requests (id, listing_id, requester_id, status) VALUES (?, ?, ?, 'PENDING')",
+                    reqId, otherListingId, requesterId
+            );
+
+            UUID convId = UUID.randomUUID();
+            assertThatThrownBy(() -> jdbcTemplate.update(
+                    "INSERT INTO conversations (id, listing_id, owner_id, requester_id, listing_request_id) VALUES (?, ?, ?, ?, ?)",
+                    convId, listingId, ownerId, requesterId, reqId
+            )).isInstanceOf(DataIntegrityViolationException.class)
+                    .hasMessageContaining("does not match conversation listing_id");
+        }
+
+        @Test
+        @DisplayName("Messages content must not be blank or whitespace-only (chk_messages_content_not_empty)")
+        void messagesContentMustNotBeBlank() {
+            UUID ownerId = UUID.randomUUID();
+            UUID requesterId = UUID.randomUUID();
+            UUID listingId = setupConversationPrerequisites(ownerId, requesterId, "empty-msg");
+
+            UUID convId = UUID.randomUUID();
+            jdbcTemplate.update(
+                    "INSERT INTO conversations (id, listing_id, owner_id, requester_id) VALUES (?, ?, ?, ?)",
+                    convId, listingId, ownerId, requesterId
+            );
+
+            assertThatThrownBy(() -> jdbcTemplate.update(
+                    "INSERT INTO messages (id, conversation_id, sender_id, content) VALUES (?, ?, ?, ?)",
+                    UUID.randomUUID(), convId, requesterId, "   "
+            )).isInstanceOf(DataIntegrityViolationException.class)
+                    .hasMessageContaining("chk_messages_content_not_empty");
+        }
+
+        @Test
+        @DisplayName("Message sender must be a participant of the conversation (trg_validate_message_sender_is_participant)")
+        void messageSenderMustBeParticipant() {
+            UUID ownerId = UUID.randomUUID();
+            UUID requesterId = UUID.randomUUID();
+            UUID listingId = setupConversationPrerequisites(ownerId, requesterId, "third-party-msg");
+
+            UUID convId = UUID.randomUUID();
+            jdbcTemplate.update(
+                    "INSERT INTO conversations (id, listing_id, owner_id, requester_id) VALUES (?, ?, ?, ?)",
+                    convId, listingId, ownerId, requesterId
+            );
+
+            UUID outsiderId = createTestUser("outsider@example.com");
+
+            assertThatThrownBy(() -> jdbcTemplate.update(
+                    "INSERT INTO messages (id, conversation_id, sender_id, content) VALUES (?, ?, ?, ?)",
+                    UUID.randomUUID(), convId, outsiderId, "Hello from outsider"
+            )).isInstanceOf(DataIntegrityViolationException.class)
+                    .hasMessageContaining("is not a participant in conversation");
+        }
+
+        @Test
+        @DisplayName("Cannot change listing owner when conversations exist for that listing")
+        void cannotChangeListingOwnerIfConversationsExist() {
+            UUID ownerId = UUID.randomUUID();
+            UUID requesterId = UUID.randomUUID();
+            UUID listingId = setupConversationPrerequisites(ownerId, requesterId, "listing-owner-change");
+
+            UUID convId = UUID.randomUUID();
+            jdbcTemplate.update(
+                    "INSERT INTO conversations (id, listing_id, owner_id, requester_id) VALUES (?, ?, ?, ?)",
+                    convId, listingId, ownerId, requesterId
+            );
+
+            UUID newOwner = createTestUser("new-owner@example.com");
+
+            assertThatThrownBy(() -> jdbcTemplate.update(
+                    "UPDATE listings SET owner_id = ? WHERE id = ?",
+                    newOwner, listingId
+            )).isInstanceOf(DataIntegrityViolationException.class)
+                    .hasMessageContaining("Cannot change owner of listing")
+                    .hasMessageContaining("because conversations exist for it");
+        }
+
+        @Test
+        @DisplayName("Cannot change listing or requester on a listing request linked to a conversation")
+        void cannotMutateLinkedListingRequest() {
+            UUID ownerId = UUID.randomUUID();
+            UUID requesterId = UUID.randomUUID();
+            UUID listingId = setupConversationPrerequisites(ownerId, requesterId, "linked-req-mutate");
+
+            UUID reqId = UUID.randomUUID();
+            jdbcTemplate.update(
+                    "INSERT INTO listing_requests (id, listing_id, requester_id, status) VALUES (?, ?, ?, 'PENDING')",
+                    reqId, listingId, requesterId
+            );
+
+            UUID convId = UUID.randomUUID();
+            jdbcTemplate.update(
+                    "INSERT INTO conversations (id, listing_id, owner_id, requester_id, listing_request_id) VALUES (?, ?, ?, ?, ?)",
+                    convId, listingId, ownerId, requesterId, reqId
+            );
+
+            UUID anotherUser = createTestUser("another-linked-req@example.com");
+
+            assertThatThrownBy(() -> jdbcTemplate.update(
+                    "UPDATE listing_requests SET requester_id = ? WHERE id = ?",
+                    anotherUser, reqId
+            )).isInstanceOf(DataIntegrityViolationException.class)
+                    .hasMessageContaining("Cannot change listing or requester on listing request")
+                    .hasMessageContaining("because a conversation is linked to it");
         }
     }
 }
