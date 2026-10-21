@@ -56,6 +56,16 @@ public class Transaction {
     @Column(name = "requester_completed_at")
     private Instant requesterCompletedAt;
 
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "cancelled_by")
+    private User cancelledBy;
+
+    @Column(name = "cancelled_at")
+    private Instant cancelledAt;
+
+    @Column(name = "cancellation_reason", length = 500)
+    private String cancellationReason;
+
     @Column(name = "created_at", nullable = false, updatable = false)
     private Instant createdAt;
 
@@ -177,6 +187,46 @@ public class Transaction {
 
     public void setRequesterCompletedAt(Instant requesterCompletedAt) {
         this.requesterCompletedAt = requesterCompletedAt;
+    }
+
+    public User getCancelledBy() {
+        return cancelledBy;
+    }
+
+    public void setCancelledBy(User cancelledBy) {
+        this.cancelledBy = cancelledBy;
+    }
+
+    public Instant getCancelledAt() {
+        return cancelledAt;
+    }
+
+    public void setCancelledAt(Instant cancelledAt) {
+        this.cancelledAt = cancelledAt;
+    }
+
+    public String getCancellationReason() {
+        return cancellationReason;
+    }
+
+    public void setCancellationReason(String cancellationReason) {
+        this.cancellationReason = cancellationReason;
+    }
+
+    public boolean isParticipant(UUID userId) {
+        if (userId == null) {
+            return false;
+        }
+        return (owner != null && userId.equals(owner.getId())) ||
+                (requester != null && userId.equals(requester.getId()));
+    }
+
+    public boolean isOwner(UUID userId) {
+        return owner != null && userId != null && userId.equals(owner.getId());
+    }
+
+    public boolean isRequester(UUID userId) {
+        return requester != null && userId != null && userId.equals(requester.getId());
     }
 
     public Instant getCreatedAt() {

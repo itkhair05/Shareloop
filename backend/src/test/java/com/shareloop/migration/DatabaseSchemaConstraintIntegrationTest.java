@@ -617,4 +617,118 @@ class DatabaseSchemaConstraintIntegrationTest {
                     .hasMessageContaining("because a conversation is linked to it");
         }
     }
+
+    @Nested
+    @DisplayName("Transaction Cancellation Constraint Tests (Migration V4)")
+    class TransactionCancellationConstraintTests {
+
+        private UUID setupTransactionPrerequisites(UUID ownerId, UUID requesterId, String prefix) {
+            jdbcTemplate.update(
+                    "INSERT INTO users (id, display_name, email, password_hash, role, status) VALUES (?, ?, ?, ?, 'USER', 'ACTIVE')",
+                    ownerId, "Owner " + prefix, prefix + "-tx-owner@example.com", "hash_123"
+            );
+            jdbcTemplate.update(
+                    "INSERT INTO users (id, display_name, email, password_hash, role, status) VALUES (?, ?, ?, ?, 'USER', 'ACTIVE')",
+                    requesterId, "Requester " + prefix, prefix + "-tx-req@example.com", "hash_123"
+            );
+
+            UUID catId = UUID.randomUUID();
+            jdbcTemplate.update(
+                    "INSERT INTO categories (id, name, slug, is_active) VALUES (?, ?, ?, true)",
+                    catId, "Cat " + prefix, "cat-" + prefix
+            );
+
+            UUID listingId = UUID.randomUUID();
+            jdbcTemplate.update(
+                    "INSERT INTO listings (id, owner_id, category_id, listing_type, title, description, city, country, status) " +
+                            "VALUES (?, ?, ?, 'GIVEAWAY', 'Item " + prefix + "', 'Desc', 'Hanoi', 'VN', 'RESERVED')",
+                    listingId, ownerId, catId
+            );
+
+            UUID reqId = UUID.randomUUID();
+            jdbcTemplate.update(
+                    "INSERT INTO listing_requests (id, listing_id, requester_id, status) VALUES (?, ?, ?, 'ACCEPTED')",
+                    reqId, listingId, requesterId
+            );
+
+            return reqId;
+        }
+
+        @Test
+        @DisplayName("Non-cancelled transaction cannot have cancellation metadata")
+        void nonCancelledTransactionCannotHaveCancellationMetadata() {
+            UUID ownerId = UUID.randomUUID();
+            UUID requesterId = UUID.randomUUID();
+            UUID reqId = setupTransactionPrerequisites(ownerId, requesterId, "non-cancel");
+
+            UUID listingId = jdbcTemplate.queryForObject("SELECT listing_id FROM listing_requests WHERE id = ?", UUID.class, reqId);
+            UUID txId = UUID.randomUUID();
+
+            assertThatThrownBy(() -> jdbcTemplate.update(
+                    "INSERT INTO transactions (id, listing_request_id, listing_id, owner_id, requester_id, status, cancelled_at, cancelled_by) " +
+                            "VALUES (?, ?, ?, ?, ?, 'PENDING', CURRENT_TIMESTAMP, ?)",
+                    txId, reqId, listingId, ownerId, requesterId, ownerId
+            )).isInstanceOf(DataIntegrityViolationException.class)
+                    .hasMessageContaining("Cancellation metadata must be null for non-cancelled transactions");
+        }
+
+        @Test
+        @DisplayName("Cancelled transaction requires non-null cancelled_at and cancelled_by")
+        void cancelledTransactionRequiresMetadata() {
+            UUID ownerId = UUID.randomUUID();
+            UUID requesterId = UUID.randomUUID();
+            UUID reqId = setupTransactionPrerequisites(ownerId, requesterId, "cancel-null-meta");
+
+            UUID listingId = jdbcTemplate.queryForObject("SELECT listing_id FROM listing_requests WHERE id = ?", UUID.class, reqId);
+            UUID txId = UUID.randomUUID();
+
+            assertThatThrownBy(() -> jdbcTemplate.update(
+                    "INSERT INTO transactions (id, listing_request_id, listing_id, owner_id, requester_id, status) " +
+                            "VALUES (?, ?, ?, ?, ?, 'CANCELLED')",
+                    txId, reqId, listingId, ownerId, requesterId
+            )).isInstanceOf(DataIntegrityViolationException.class)
+                    .hasMessageContaining("cancelled_at must not be null when transaction is cancelled");
+        }
+
+        @Test
+        @DisplayName("Admin cancellation requires non-empty cancellation_reason")
+        void adminCancellationRequiresReason() {
+            UUID ownerId = UUID.randomUUID();
+            UUID requesterId = UUID.randomUUID();
+            UUID reqId = setupTransactionPrerequisites(ownerId, requesterId, "admin-cancel-req");
+
+            UUID listingId = jdbcTemplate.queryForObject("SELECT listing_id FROM listing_requests WHERE id = ?", UUID.class, reqId);
+            UUID adminId = UUID.randomUUID();
+            jdbcTemplate.update(
+                    "INSERT INTO users (id, display_name, email, password_hash, role, status) VALUES (?, 'Admin User', 'admin-tx-cancel@example.com', 'hash_123', 'ADMIN', 'ACTIVE')",
+                    adminId
+            );
+
+            UUID txId = UUID.randomUUID();
+            assertThatThrownBy(() -> jdbcTemplate.update(
+                    "INSERT INTO transactions (id, listing_request_id, listing_id, owner_id, requester_id, status, cancelled_at, cancelled_by, cancellation_reason) " +
+                            "VALUES (?, ?, ?, ?, ?, 'CANCELLED', CURRENT_TIMESTAMP, ?, '   ')",
+                    txId, reqId, listingId, ownerId, requesterId, adminId
+            )).isInstanceOf(DataIntegrityViolationException.class)
+                    .hasMessageContaining("cancellation_reason is mandatory for administrator cancellation");
+        }
+
+        @Test
+        @DisplayName("Participant cancellation succeeds with or without cancellation reason")
+        void participantCancellationSucceedsWithoutReason() {
+            UUID ownerId = UUID.randomUUID();
+            UUID requesterId = UUID.randomUUID();
+            UUID reqId = setupTransactionPrerequisites(ownerId, requesterId, "part-cancel-ok");
+
+            UUID listingId = jdbcTemplate.queryForObject("SELECT listing_id FROM listing_requests WHERE id = ?", UUID.class, reqId);
+            UUID txId = UUID.randomUUID();
+
+            int rows = jdbcTemplate.update(
+                    "INSERT INTO transactions (id, listing_request_id, listing_id, owner_id, requester_id, status, cancelled_at, cancelled_by, cancellation_reason) " +
+                            "VALUES (?, ?, ?, ?, ?, 'CANCELLED', CURRENT_TIMESTAMP, ?, NULL)",
+                    txId, reqId, listingId, ownerId, requesterId, ownerId
+            );
+            assertThat(rows).isEqualTo(1);
+        }
+    }
 }
