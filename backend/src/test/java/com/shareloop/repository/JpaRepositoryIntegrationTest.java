@@ -16,6 +16,10 @@ import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
+import com.shareloop.dto.review.RatingCountProjection;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
@@ -40,6 +44,9 @@ class JpaRepositoryIntegrationTest {
 
     @Autowired
     private TransactionRepository transactionRepository;
+
+    @Autowired
+    private ReviewRepository reviewRepository;
 
     private User createAndPersistUser(String email, String displayName) {
         User user = new User(displayName, email, "$2a$10$dummyHashValueForTestingPurposesOnly", UserRole.USER, UserStatus.ACTIVE);
@@ -380,6 +387,218 @@ class JpaRepositoryIntegrationTest {
             assertThat(completedTx.getStatus()).isEqualTo(TransactionStatus.COMPLETED);
             assertThat(completedTx.getOwnerCompleted()).isTrue();
             assertThat(completedTx.getRequesterCompleted()).isTrue();
+        }
+    }
+
+    @Nested
+    @DisplayName("Review Entity and Repository Tests (Phase 10A)")
+    class ReviewPersistenceTests {
+
+        private Transaction setupCompletedTransaction(String prefix) {
+            User owner = createAndPersistUser(prefix + "-rev-owner@example.com", "Owner " + prefix);
+            User requester = createAndPersistUser(prefix + "-rev-req@example.com", "Requester " + prefix);
+            Category category = createAndPersistCategory("cat-" + prefix, "Cat " + prefix);
+            Listing listing = listingRepository.save(new Listing(owner, category, ListingType.GIVEAWAY, "Item " + prefix, "Description", "Hanoi"));
+
+            ListingRequest req = listingRequestRepository.save(
+                    new ListingRequest(listing, requester, "Interested", ListingRequestStatus.ACCEPTED)
+            );
+
+            Transaction tx = new Transaction(req, listing, owner, requester, TransactionStatus.PENDING);
+            tx.setOwnerCompleted(true);
+            tx.setOwnerCompletedAt(Instant.now());
+            tx.setRequesterCompleted(true);
+            tx.setRequesterCompletedAt(Instant.now());
+            tx.setStatus(TransactionStatus.COMPLETED);
+
+            return transactionRepository.saveAndFlush(tx);
+        }
+
+        @Test
+        @DisplayName("Persist and find review with eager details")
+        void persistAndFindReviewWithDetails() {
+            Transaction tx = setupCompletedTransaction("jpa-rev-det");
+            User owner = tx.getOwner();
+            User requester = tx.getRequester();
+
+            Review review = new Review(tx, owner, requester, 5, "Smooth handoff and friendly member!");
+            Review saved = reviewRepository.saveAndFlush(review);
+
+            assertThat(saved.getId()).isNotNull();
+            assertThat(saved.getCreatedAt()).isNotNull();
+            assertThat(saved.getUpdatedAt()).isNotNull();
+            assertThat(saved.getIsHidden()).isFalse();
+
+            Optional<Review> foundWithDetails = reviewRepository.findWithDetailsById(saved.getId());
+            assertThat(foundWithDetails).isPresent();
+            assertThat(foundWithDetails.get().getReviewer().getId()).isEqualTo(owner.getId());
+            assertThat(foundWithDetails.get().getReviewee().getId()).isEqualTo(requester.getId());
+            assertThat(foundWithDetails.get().getTransaction().getId()).isEqualTo(tx.getId());
+            assertThat(foundWithDetails.get().getRating()).isEqualTo(5);
+            assertThat(foundWithDetails.get().getComment()).isEqualTo("Smooth handoff and friendly member!");
+        }
+
+        @Test
+        @DisplayName("Check existence by transaction and reviewer and find all reviews for transaction")
+        void checkExistenceAndFindByTransaction() {
+            Transaction tx = setupCompletedTransaction("jpa-rev-exist");
+            User owner = tx.getOwner();
+            User requester = tx.getRequester();
+
+            assertThat(reviewRepository.existsByTransactionIdAndReviewerId(tx.getId(), owner.getId())).isFalse();
+
+            Review r1 = new Review(tx, owner, requester, 5, "Great experience");
+            reviewRepository.saveAndFlush(r1);
+
+            assertThat(reviewRepository.existsByTransactionIdAndReviewerId(tx.getId(), owner.getId())).isTrue();
+            assertThat(reviewRepository.existsByTransactionIdAndReviewerId(tx.getId(), requester.getId())).isFalse();
+
+            Review r2 = new Review(tx, requester, owner, 4);
+            reviewRepository.saveAndFlush(r2);
+
+            List<Review> txReviews = reviewRepository.findByTransactionId(tx.getId());
+            assertThat(txReviews).hasSize(2);
+        }
+
+        @Test
+        @DisplayName("Paginated reviews exclude hidden reviews for public queries")
+        void paginatedReviewsExcludeHidden() {
+            Transaction tx1 = setupCompletedTransaction("jpa-pg-1");
+            Transaction tx2 = setupCompletedTransaction("jpa-pg-2");
+            User targetUser = tx1.getRequester();
+
+            // Setup tx2 so that targetUser is also the reviewee
+            Transaction tx2Custom = setupCompletedTransaction("jpa-pg-3");
+            User reviewer2 = tx2Custom.getOwner();
+            // To test reviewee queries, create review on tx1 for targetUser
+            Review activeReview = new Review(tx1, tx1.getOwner(), targetUser, 5, "Publicly visible review");
+            reviewRepository.saveAndFlush(activeReview);
+
+            // Now create a hidden review for targetUser on another transaction where targetUser is requester
+            User owner2 = createAndPersistUser("pg-owner2@example.com", "Owner 2");
+            Category cat2 = createAndPersistCategory("pg-cat2", "Cat 2");
+            Listing listing2 = listingRepository.save(new Listing(owner2, cat2, ListingType.GIVEAWAY, "Item 2", "Desc", "Hanoi"));
+            ListingRequest req2 = listingRequestRepository.save(new ListingRequest(listing2, targetUser, "Request 2", ListingRequestStatus.ACCEPTED));
+            Transaction txForHidden = new Transaction(req2, listing2, owner2, targetUser, TransactionStatus.PENDING);
+            txForHidden.setOwnerCompleted(true);
+            txForHidden.setOwnerCompletedAt(Instant.now());
+            txForHidden.setRequesterCompleted(true);
+            txForHidden.setRequesterCompletedAt(Instant.now());
+            txForHidden.setStatus(TransactionStatus.COMPLETED);
+            transactionRepository.saveAndFlush(txForHidden);
+
+            User admin = new User("Admin", "admin-rev-jpa@example.com", "hash", UserRole.ADMIN, UserStatus.ACTIVE);
+            userRepository.saveAndFlush(admin);
+
+            Review hiddenReview = new Review(txForHidden, owner2, targetUser, 1, "Offensive content");
+            hiddenReview.setIsHidden(true);
+            hiddenReview.setModeratedBy(admin);
+            hiddenReview.setModeratedAt(Instant.now());
+            hiddenReview.setModerationReason("Inappropriate language");
+            reviewRepository.saveAndFlush(hiddenReview);
+
+            Page<Review> publicPage = reviewRepository.findActiveByRevieweeId(targetUser.getId(), PageRequest.of(0, 10));
+            assertThat(publicPage.getTotalElements()).isEqualTo(1);
+            assertThat(publicPage.getContent().get(0).getId()).isEqualTo(activeReview.getId());
+            assertThat(publicPage.getContent().get(0).getRating()).isEqualTo(5);
+        }
+
+        @Test
+        @DisplayName("Aggregation queries compute correct active rating summary and distribution")
+        void aggregationQueriesComputeActiveRatingsSummary() {
+            User targetUser = createAndPersistUser("target-summary@example.com", "Target User");
+
+            // Transaction 1: rating 5
+            User reviewer1 = createAndPersistUser("rev1-sum@example.com", "Rev 1");
+            Category cat1 = createAndPersistCategory("cat-sum1", "Cat Sum 1");
+            Listing l1 = listingRepository.save(new Listing(reviewer1, cat1, ListingType.GIVEAWAY, "Item 1", "Desc", "Hanoi"));
+            ListingRequest req1 = listingRequestRepository.save(new ListingRequest(l1, targetUser, "Req 1", ListingRequestStatus.ACCEPTED));
+            Transaction tx1 = new Transaction(req1, l1, reviewer1, targetUser, TransactionStatus.PENDING);
+            tx1.setOwnerCompleted(true);
+            tx1.setOwnerCompletedAt(Instant.now());
+            tx1.setRequesterCompleted(true);
+            tx1.setRequesterCompletedAt(Instant.now());
+            tx1.setStatus(TransactionStatus.COMPLETED);
+            transactionRepository.saveAndFlush(tx1);
+
+            reviewRepository.saveAndFlush(new Review(tx1, reviewer1, targetUser, 5, "Loved it"));
+
+            // Transaction 2: rating 4
+            User reviewer2 = createAndPersistUser("rev2-sum@example.com", "Rev 2");
+            Category cat2 = createAndPersistCategory("cat-sum2", "Cat Sum 2");
+            Listing l2 = listingRepository.save(new Listing(reviewer2, cat2, ListingType.GIVEAWAY, "Item 2", "Desc", "Hanoi"));
+            ListingRequest req2 = listingRequestRepository.save(new ListingRequest(l2, targetUser, "Req 2", ListingRequestStatus.ACCEPTED));
+            Transaction tx2 = new Transaction(req2, l2, reviewer2, targetUser, TransactionStatus.PENDING);
+            tx2.setOwnerCompleted(true);
+            tx2.setOwnerCompletedAt(Instant.now());
+            tx2.setRequesterCompleted(true);
+            tx2.setRequesterCompletedAt(Instant.now());
+            tx2.setStatus(TransactionStatus.COMPLETED);
+            transactionRepository.saveAndFlush(tx2);
+
+            reviewRepository.saveAndFlush(new Review(tx2, reviewer2, targetUser, 4, "Good"));
+
+            // Transaction 3: rating 5
+            User reviewer3 = createAndPersistUser("rev3-sum@example.com", "Rev 3");
+            Category cat3 = createAndPersistCategory("cat-sum3", "Cat Sum 3");
+            Listing l3 = listingRepository.save(new Listing(reviewer3, cat3, ListingType.GIVEAWAY, "Item 3", "Desc", "Hanoi"));
+            ListingRequest req3 = listingRequestRepository.save(new ListingRequest(l3, targetUser, "Req 3", ListingRequestStatus.ACCEPTED));
+            Transaction tx3 = new Transaction(req3, l3, reviewer3, targetUser, TransactionStatus.PENDING);
+            tx3.setOwnerCompleted(true);
+            tx3.setOwnerCompletedAt(Instant.now());
+            tx3.setRequesterCompleted(true);
+            tx3.setRequesterCompletedAt(Instant.now());
+            tx3.setStatus(TransactionStatus.COMPLETED);
+            transactionRepository.saveAndFlush(tx3);
+
+            reviewRepository.saveAndFlush(new Review(tx3, reviewer3, targetUser, 5, "Awesome again"));
+
+            // Transaction 4: rating 1, but HIDDEN by admin
+            User reviewer4 = createAndPersistUser("rev4-sum@example.com", "Rev 4");
+            Category cat4 = createAndPersistCategory("cat-sum4", "Cat Sum 4");
+            Listing l4 = listingRepository.save(new Listing(reviewer4, cat4, ListingType.GIVEAWAY, "Item 4", "Desc", "Hanoi"));
+            ListingRequest req4 = listingRequestRepository.save(new ListingRequest(l4, targetUser, "Req 4", ListingRequestStatus.ACCEPTED));
+            Transaction tx4 = new Transaction(req4, l4, reviewer4, targetUser, TransactionStatus.PENDING);
+            tx4.setOwnerCompleted(true);
+            tx4.setOwnerCompletedAt(Instant.now());
+            tx4.setRequesterCompleted(true);
+            tx4.setRequesterCompletedAt(Instant.now());
+            tx4.setStatus(TransactionStatus.COMPLETED);
+            transactionRepository.saveAndFlush(tx4);
+
+            User admin = userRepository.saveAndFlush(new User("Admin Sum", "admin-sum@example.com", "hash", UserRole.ADMIN, UserStatus.ACTIVE));
+            Review hiddenRev = new Review(tx4, reviewer4, targetUser, 1, "Troll review");
+            hiddenRev.setIsHidden(true);
+            hiddenRev.setModeratedBy(admin);
+            hiddenRev.setModeratedAt(Instant.now());
+            hiddenRev.setModerationReason("Spam");
+            reviewRepository.saveAndFlush(hiddenRev);
+
+            // Verify active count excludes hidden review
+            long count = reviewRepository.countActiveByRevieweeId(targetUser.getId());
+            assertThat(count).isEqualTo(3);
+
+            // Verify average rating: (5 + 4 + 5) / 3 = 14 / 3 ~ 4.6666...
+            Double avg = reviewRepository.getAverageRatingByRevieweeId(targetUser.getId());
+            assertThat(avg).isNotNull();
+            assertThat(avg).isCloseTo(4.666, org.assertj.core.data.Offset.offset(0.01));
+
+            // Verify grouped rating distribution
+            List<RatingCountProjection> distribution = reviewRepository.countRatingsByRevieweeIdGrouped(targetUser.getId());
+            assertThat(distribution).hasSize(2);
+            // Expected: rating 5 -> count 2; rating 4 -> count 1
+            long countRating5 = distribution.stream()
+                    .filter(d -> d.getRating() == 5)
+                    .mapToLong(RatingCountProjection::getCount)
+                    .findFirst()
+                    .orElse(0L);
+            long countRating4 = distribution.stream()
+                    .filter(d -> d.getRating() == 4)
+                    .mapToLong(RatingCountProjection::getCount)
+                    .findFirst()
+                    .orElse(0L);
+            assertThat(countRating5).isEqualTo(2);
+            assertThat(countRating4).isEqualTo(1);
         }
     }
 }
