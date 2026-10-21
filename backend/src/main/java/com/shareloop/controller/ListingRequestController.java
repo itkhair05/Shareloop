@@ -6,6 +6,8 @@ import com.shareloop.dto.request.UpdateListingRequestStatusRequest;
 import com.shareloop.entity.enums.ListingRequestStatus;
 import com.shareloop.security.UserPrincipal;
 import com.shareloop.service.ListingRequestService;
+import io.swagger.v3.oas.annotations.security.SecurityRequirement;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import org.springframework.data.domain.Page;
 import org.springframework.http.HttpStatus;
@@ -15,6 +17,8 @@ import org.springframework.web.bind.annotation.*;
 
 import java.util.UUID;
 
+@Tag(name = "Listing Requests", description = "Item requests, offers, and lifecycle transitions")
+@SecurityRequirement(name = "bearerAuth")
 @RestController
 public class ListingRequestController {
 

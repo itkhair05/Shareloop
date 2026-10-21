@@ -8,6 +8,8 @@ import com.shareloop.entity.enums.ListingStatus;
 import com.shareloop.entity.enums.ListingType;
 import com.shareloop.security.UserPrincipal;
 import com.shareloop.service.ListingService;
+import io.swagger.v3.oas.annotations.security.SecurityRequirement;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import org.springframework.data.domain.Page;
 import org.springframework.http.HttpStatus;
@@ -17,6 +19,7 @@ import org.springframework.web.bind.annotation.*;
 
 import java.util.UUID;
 
+@Tag(name = "Listings", description = "Item listings creation, retrieval, updates, status transitions, and images")
 @RestController
 @RequestMapping("/api/v1/listings")
 public class ListingController {
@@ -57,6 +60,7 @@ public class ListingController {
      * Get the authenticated user's own listings.
      * Must be declared before /{id} to ensure proper routing.
      */
+    @SecurityRequirement(name = "bearerAuth")
     @GetMapping("/mine")
     public ResponseEntity<Page<ListingSummaryResponse>> getMyListings(
             @RequestParam(required = false) ListingStatus status,
@@ -89,6 +93,7 @@ public class ListingController {
     /**
      * Create a new listing owned by the authenticated user.
      */
+    @SecurityRequirement(name = "bearerAuth")
     @PostMapping
     public ResponseEntity<ListingResponse> createListing(
             @Valid @RequestBody CreateListingRequest request,
@@ -101,6 +106,7 @@ public class ListingController {
     /**
      * Update an existing listing. Only the owner (or ADMIN) may edit.
      */
+    @SecurityRequirement(name = "bearerAuth")
     @PutMapping("/{id}")
     public ResponseEntity<ListingResponse> updateListing(
             @PathVariable UUID id,
@@ -115,6 +121,7 @@ public class ListingController {
      * Delete an existing listing. Only the owner (or ADMIN) may delete.
      * Uses status-based safe removal (REMOVED) if transactions exist to preserve referential integrity.
      */
+    @SecurityRequirement(name = "bearerAuth")
     @DeleteMapping("/{id}")
     public ResponseEntity<Void> deleteListing(
             @PathVariable UUID id,

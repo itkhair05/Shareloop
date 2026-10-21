@@ -5,6 +5,8 @@ import com.shareloop.dto.transaction.TransactionResponse;
 import com.shareloop.entity.enums.TransactionStatus;
 import com.shareloop.security.UserPrincipal;
 import com.shareloop.service.TransactionService;
+import io.swagger.v3.oas.annotations.security.SecurityRequirement;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import org.springframework.data.domain.Page;
 import org.springframework.http.ResponseEntity;
@@ -13,6 +15,8 @@ import org.springframework.web.bind.annotation.*;
 
 import java.util.UUID;
 
+@Tag(name = "Transactions", description = "Escrow/handoff dual confirmation lifecycle and status management")
+@SecurityRequirement(name = "bearerAuth")
 @RestController
 public class TransactionController {
 

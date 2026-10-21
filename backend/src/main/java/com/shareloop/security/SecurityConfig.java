@@ -87,6 +87,13 @@ public class SecurityConfig {
                         .requestMatchers(HttpMethod.POST, "/api/v1/auth/register", "/api/v1/auth/login").permitAll()
                         // Public health and monitoring endpoints
                         .requestMatchers("/api/health", "/actuator/health", "/actuator/info").permitAll()
+                        // OpenAPI 3 documentation and Swagger UI
+                        .requestMatchers(
+                                "/v3/api-docs",
+                                "/v3/api-docs/**",
+                                "/swagger-ui.html",
+                                "/swagger-ui/**"
+                        ).permitAll()
                         // Error handling endpoint
                         .requestMatchers("/error").permitAll()
                         // Listing requests require authentication
