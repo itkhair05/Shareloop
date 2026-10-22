@@ -1,6 +1,6 @@
 import { apiClient } from '@/lib/api-client';
 import type { PageResponse } from '@/types/api';
-import type { ListingQueryParams, ListingSummaryResponse } from '@/types/listing';
+import type { ListingQueryParams, ListingResponse, ListingSummaryResponse } from '@/types/listing';
 
 /**
  * Listing API Service
@@ -12,6 +12,13 @@ export const listingApi = {
    */
   async getListings(params?: ListingQueryParams): Promise<PageResponse<ListingSummaryResponse>> {
     return apiClient.get<PageResponse<ListingSummaryResponse>>('/api/v1/listings', { params });
+  },
+
+  /**
+   * Public: Retrieve details of a single listing by its UUID
+   */
+  async getListingById(id: string): Promise<ListingResponse> {
+    return apiClient.get<ListingResponse>(`/api/v1/listings/${id}`);
   },
 };
 

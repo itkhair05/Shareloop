@@ -4,6 +4,7 @@ import { AdminLayout } from '@/components/layout/AdminLayout';
 import { HomePage } from '@/features/home/HomePage';
 import { ExplorePlaceholderPage } from '@/features/explore/ExplorePlaceholderPage';
 import { AboutPage } from '@/features/about/AboutPage';
+import { ListingDetailPage } from '@/features/listings/pages/ListingDetailPage';
 import { LoginPage } from '@/features/auth/pages/LoginPage';
 import { RegisterPage } from '@/features/auth/pages/RegisterPage';
 import { ProtectedRoute } from '@/features/auth/components/ProtectedRoute';
@@ -25,6 +26,10 @@ export const router = createBrowserRouter([
       {
         path: 'explore',
         element: <ExplorePlaceholderPage />,
+      },
+      {
+        path: 'listings/:id',
+        element: <ListingDetailPage />,
       },
       {
         path: 'about',

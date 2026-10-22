@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { Link } from 'react-router-dom';
 import { MapPin, Package, User } from 'lucide-react';
 import { Badge } from '@/components/ui/Badge';
 import { formatDateTime, formatPrice, resolveImageUrl } from '@/lib/utils';
@@ -30,7 +31,12 @@ export function ListingCard({ listing }: ListingCardProps) {
 
   return (
     <article className="bg-white border border-slate-200 rounded-xl shadow-xs hover:shadow-md hover:border-slate-300 transition-all duration-200 flex flex-col overflow-hidden group">
-      {/* Primary Image Container */}
+      <Link
+        to={`/listings/${listing.id}`}
+        className="flex flex-col h-full focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 rounded-xl"
+        aria-label={`Xem chi tiết bài đăng: ${listing.title}`}
+      >
+        {/* Primary Image Container */}
       <div className="relative aspect-4/3 w-full bg-slate-100 overflow-hidden">
         {resolvedImageUrl && !imageError ? (
           <img
@@ -117,6 +123,7 @@ export function ListingCard({ listing }: ListingCardProps) {
           </div>
         </div>
       </div>
+      </Link>
     </article>
   );
 }

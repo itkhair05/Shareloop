@@ -498,14 +498,16 @@ export function ExplorePlaceholderPage() {
       {/* Listing Feed Section */}
       <section aria-labelledby="listings-heading" className="space-y-4">
         {/* Feed Header */}
-        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 pb-2 border-b border-slate-100">
-          <div className="flex items-center gap-2">
-            <LayoutGrid className="w-5 h-5 text-emerald-600" aria-hidden="true" />
-            <h2 id="listings-heading" className="text-lg font-semibold text-slate-900">
-              Bảng tin đồ dùng cộng đồng
-            </h2>
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-6 pb-2 border-b border-slate-100">
+          <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-3">
+            <div className="flex items-center gap-2">
+              <LayoutGrid className="w-5 h-5 text-emerald-600 shrink-0" aria-hidden="true" />
+              <h2 id="listings-heading" className="text-lg font-semibold text-slate-900">
+                Bảng tin đồ dùng cộng đồng
+              </h2>
+            </div>
             {!isListingsLoading && listingsData && (
-              <Badge variant="neutral" className="text-xs">
+              <Badge variant="neutral" className="text-xs self-start sm:self-auto shrink-0">
                 {listingsData.totalElements} bài đăng
               </Badge>
             )}
@@ -513,7 +515,7 @@ export function ExplorePlaceholderPage() {
 
           {/* Top Pagination Summary */}
           {!isListingsLoading && listingsData && listingsData.totalElements > 0 && (
-            <span className="text-xs text-slate-500">
+            <span className="text-xs sm:text-sm text-slate-500 mt-1 sm:mt-0">
               Hiển thị {currentPage * PAGE_SIZE + 1} -{' '}
               {Math.min((currentPage + 1) * PAGE_SIZE, listingsData.totalElements)} trên{' '}
               {listingsData.totalElements} bài đăng
