@@ -5,10 +5,11 @@ export interface InputProps extends React.InputHTMLAttributes<HTMLInputElement> 
   label?: string;
   error?: string;
   helperText?: string;
+  rightElement?: React.ReactNode;
 }
 
 export const Input = forwardRef<HTMLInputElement, InputProps>(
-  ({ className, label, error, helperText, id, ...props }, ref) => {
+  ({ className, label, error, helperText, rightElement, id, ...props }, ref) => {
     const generatedId = useId();
     const inputId = id || generatedId;
     const errorId = `${inputId}-error`;
@@ -24,22 +25,30 @@ export const Input = forwardRef<HTMLInputElement, InputProps>(
             {label}
           </label>
         )}
-        <input
-          id={inputId}
-          ref={ref}
-          aria-invalid={Boolean(error)}
-          aria-describedby={
-            error ? errorId : helperText ? helperId : undefined
-          }
-          className={cn(
-            'w-full px-3.5 py-2 text-sm bg-white border rounded-lg transition-colors placeholder:text-slate-400 focus:outline-none focus:ring-2',
-            error
-              ? 'border-red-500 focus:ring-red-400 text-red-900'
-              : 'border-slate-300 focus:border-emerald-500 focus:ring-emerald-400 text-slate-900',
-            className
+        <div className="relative">
+          <input
+            id={inputId}
+            ref={ref}
+            aria-invalid={Boolean(error)}
+            aria-describedby={
+              error ? errorId : helperText ? helperId : undefined
+            }
+            className={cn(
+              'w-full px-3.5 py-2 text-sm bg-white border rounded-lg transition-colors placeholder:text-slate-400 focus:outline-none focus:ring-2',
+              rightElement ? 'pr-10' : '',
+              error
+                ? 'border-red-500 focus:ring-red-400 text-red-900'
+                : 'border-slate-300 focus:border-emerald-500 focus:ring-emerald-400 text-slate-900',
+              className
+            )}
+            {...props}
+          />
+          {rightElement && (
+            <div className="absolute inset-y-0 right-0 flex items-center pr-3">
+              {rightElement}
+            </div>
           )}
-          {...props}
-        />
+        </div>
         {error && (
           <p id={errorId} className="text-xs text-red-600 font-medium">
             {error}

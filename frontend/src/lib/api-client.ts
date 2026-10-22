@@ -16,6 +16,13 @@ export const rawAxiosClient: AxiosInstance = axios.create({
   },
 });
 
+type UnauthorizedHandler = () => void;
+let unauthorizedHandler: UnauthorizedHandler | null = null;
+
+export function setUnauthorizedHandler(handler: UnauthorizedHandler | null): void {
+  unauthorizedHandler = handler;
+}
+
 // Request Interceptor: Attach JWT Bearer Token if present
 rawAxiosClient.interceptors.request.use(
   (config) => {
@@ -28,10 +35,22 @@ rawAxiosClient.interceptors.request.use(
   (error) => Promise.reject(normalizeApiError(error))
 );
 
-// Response Interceptor: Normalize Errors into ApiError instances
+// Response Interceptor: Normalize Errors into ApiError instances and notify on session expiry
 rawAxiosClient.interceptors.response.use(
   (response) => response,
-  (error) => Promise.reject(normalizeApiError(error))
+  (error) => {
+    const apiError = normalizeApiError(error);
+    const requestUrl = error?.config?.url || '';
+    const isAuthAttempt =
+      requestUrl.includes('/api/v1/auth/login') ||
+      requestUrl.includes('/api/v1/auth/register');
+
+    if (apiError.isUnauthorized && !isAuthAttempt && unauthorizedHandler) {
+      unauthorizedHandler();
+    }
+
+    return Promise.reject(apiError);
+  }
 );
 
 /**

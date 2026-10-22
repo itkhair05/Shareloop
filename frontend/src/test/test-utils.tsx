@@ -2,6 +2,7 @@ import React from 'react';
 import { render, type RenderOptions } from '@testing-library/react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { MemoryRouter } from 'react-router-dom';
+import { AuthProvider } from '@/features/auth/context/auth-context';
 
 export function createTestQueryClient() {
   return new QueryClient({
@@ -35,16 +36,20 @@ export function renderWithProviders(
     if (!withRouter) {
       return (
         <QueryClientProvider client={queryClient}>
-          {children}
+          <AuthProvider>
+            {children}
+          </AuthProvider>
         </QueryClientProvider>
       );
     }
 
     return (
       <QueryClientProvider client={queryClient}>
-        <MemoryRouter initialEntries={initialEntries}>
-          {children}
-        </MemoryRouter>
+        <AuthProvider>
+          <MemoryRouter initialEntries={initialEntries}>
+            {children}
+          </MemoryRouter>
+        </AuthProvider>
       </QueryClientProvider>
     );
   }

@@ -31,3 +31,14 @@ export interface AuthResponse {
 export interface AuthTokens {
   accessToken: string | null;
 }
+
+export interface LoginRequest {
+  email: string;
+  password: string;
+}
+
+export interface RegisterRequest {
+  displayName: string;
+  email: string;
+  password: string;
+}

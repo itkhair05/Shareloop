@@ -4,6 +4,9 @@ import { AdminLayout } from '@/components/layout/AdminLayout';
 import { HomePage } from '@/features/home/HomePage';
 import { ExplorePlaceholderPage } from '@/features/explore/ExplorePlaceholderPage';
 import { AboutPage } from '@/features/about/AboutPage';
+import { LoginPage } from '@/features/auth/pages/LoginPage';
+import { RegisterPage } from '@/features/auth/pages/RegisterPage';
+import { ProtectedRoute } from '@/features/auth/components/ProtectedRoute';
 import { AdminOverviewPage } from '@/features/admin/AdminOverviewPage';
 import { AdminCategoriesPage } from '@/features/admin/AdminCategoriesPage';
 import { AdminReviewsPage } from '@/features/admin/AdminReviewsPage';
@@ -28,6 +31,14 @@ export const router = createBrowserRouter([
         element: <AboutPage />,
       },
       {
+        path: 'login',
+        element: <LoginPage />,
+      },
+      {
+        path: 'register',
+        element: <RegisterPage />,
+      },
+      {
         path: '404',
         element: <NotFoundPage />,
       },
@@ -38,10 +49,14 @@ export const router = createBrowserRouter([
     ],
   },
 
-  // Separate Admin Dashboard Layout & Routes
+  // Protected Admin Dashboard Layout & Routes
   {
     path: '/admin',
-    element: <AdminLayout />,
+    element: (
+      <ProtectedRoute requiredRole="ADMIN">
+        <AdminLayout />
+      </ProtectedRoute>
+    ),
     children: [
       {
         index: true,

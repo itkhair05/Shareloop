@@ -1,11 +1,14 @@
 import { useState } from 'react';
 import { Link, NavLink } from 'react-router-dom';
-import { Menu, X, Shield, Activity } from 'lucide-react';
+import { Menu, X, Shield, LogIn, LogOut, User as UserIcon } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Badge } from '@/components/ui/Badge';
+import { Button } from '@/components/ui/Button';
+import { useAuth } from '@/features/auth';
 
 export function Navbar() {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const { user, isAuthenticated, logout } = useAuth();
 
   const navLinkClass = ({ isActive }: { isActive: boolean }) =>
     cn(
@@ -15,12 +18,22 @@ export function Navbar() {
         : 'text-slate-600 hover:text-slate-900 hover:bg-slate-50'
     );
 
+  const handleLogout = () => {
+    logout();
+    setIsMobileMenuOpen(false);
+  };
+
+  const isAdmin = user?.role === 'ADMIN';
+
   return (
     <header className="sticky top-0 z-40 bg-white/95 backdrop-blur-xs border-b border-slate-200">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex items-center justify-between h-16">
           {/* Brand Logo & Title */}
-          <Link to="/" className="flex items-center gap-2.5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 rounded-lg p-1">
+          <Link
+            to="/"
+            className="flex items-center gap-2.5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 rounded-lg p-1"
+          >
             <div className="w-9 h-9 rounded-lg bg-emerald-600 flex items-center justify-center text-white shadow-xs">
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" className="w-5 h-5">
                 <circle cx="12" cy="12" r="9" strokeDasharray="4 3" />
@@ -50,19 +63,61 @@ export function Navbar() {
             </NavLink>
           </nav>
 
-          {/* Right Action / Admin Navigation */}
+          {/* Desktop Right Action / Auth Navigation */}
           <div className="hidden md:flex items-center gap-3">
-            <Link
-              to="/admin"
-              className="inline-flex items-center gap-1.5 text-xs font-semibold px-2.5 py-1.5 rounded-lg border border-slate-200 bg-slate-50 hover:bg-slate-100 text-slate-700 transition-colors"
-            >
-              <Shield className="w-3.5 h-3.5 text-slate-500" />
-              <span>Admin Console</span>
-            </Link>
-            <Badge variant="neutral" withDot className="text-xs">
-              <Activity className="w-3 h-3 text-emerald-600 mr-1" />
-              Phase 1 Core
-            </Badge>
+            {isAuthenticated ? (
+              <div className="flex items-center gap-3">
+                {isAdmin && (
+                  <Link
+                    to="/admin"
+                    className="inline-flex items-center gap-1.5 text-xs font-semibold px-2.5 py-1.5 rounded-lg border border-slate-200 bg-slate-50 hover:bg-slate-100 text-slate-700 transition-colors"
+                  >
+                    <Shield className="w-3.5 h-3.5 text-slate-500" />
+                    <span>Admin Console</span>
+                  </Link>
+                )}
+
+                <div className="flex items-center gap-2 px-2.5 py-1 bg-slate-50 rounded-lg border border-slate-200">
+                  <div className="w-6 h-6 rounded-full bg-emerald-100 text-emerald-700 flex items-center justify-center font-bold text-xs">
+                    <UserIcon className="w-3.5 h-3.5" />
+                  </div>
+                  <span className="text-xs font-semibold text-slate-800 max-w-[120px] truncate">
+                    {user?.displayName}
+                  </span>
+                  {isAdmin && (
+                    <Badge variant="warning" className="text-[10px] px-1.5 py-0">
+                      Admin
+                    </Badge>
+                  )}
+                </div>
+
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={handleLogout}
+                  leftIcon={<LogOut className="w-3.5 h-3.5 text-slate-500" />}
+                  className="text-xs text-slate-600 hover:text-slate-900"
+                >
+                  Log Out
+                </Button>
+              </div>
+            ) : (
+              <div className="flex items-center gap-2">
+                <Link
+                  to="/login"
+                  className="inline-flex items-center gap-1.5 text-xs font-medium px-3 py-1.5 rounded-lg text-slate-700 hover:text-slate-900 hover:bg-slate-100 transition-colors"
+                >
+                  <LogIn className="w-3.5 h-3.5 text-slate-500" />
+                  <span>Log In</span>
+                </Link>
+                <Link
+                  to="/register"
+                  className="inline-flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white shadow-xs transition-colors"
+                >
+                  <span>Sign Up</span>
+                </Link>
+              </div>
+            )}
           </div>
 
           {/* Mobile Hamburger Button */}
@@ -130,15 +185,60 @@ export function Navbar() {
           >
             About
           </NavLink>
-          <div className="pt-2 border-t border-slate-100">
-            <Link
-              to="/admin"
-              onClick={() => setIsMobileMenuOpen(false)}
-              className="flex items-center gap-2 px-3 py-2 rounded-md text-base font-medium text-slate-700 hover:bg-slate-50"
-            >
-              <Shield className="w-4 h-4 text-slate-500" />
-              <span>Admin Console</span>
-            </Link>
+
+          <div className="pt-3 mt-2 border-t border-slate-100 space-y-2">
+            {isAuthenticated ? (
+              <>
+                <div className="px-3 py-1 flex items-center justify-between">
+                  <span className="text-sm font-semibold text-slate-800">
+                    {user?.displayName}
+                  </span>
+                  {isAdmin && (
+                    <Badge variant="warning" className="text-xs">
+                      Admin
+                    </Badge>
+                  )}
+                </div>
+
+                {isAdmin && (
+                  <Link
+                    to="/admin"
+                    onClick={() => setIsMobileMenuOpen(false)}
+                    className="flex items-center gap-2 px-3 py-2 rounded-md text-base font-medium text-slate-700 hover:bg-slate-50"
+                  >
+                    <Shield className="w-4 h-4 text-slate-500" />
+                    <span>Admin Console</span>
+                  </Link>
+                )}
+
+                <button
+                  type="button"
+                  onClick={handleLogout}
+                  className="w-full flex items-center gap-2 px-3 py-2 rounded-md text-base font-medium text-red-600 hover:bg-red-50 text-left"
+                >
+                  <LogOut className="w-4 h-4 text-red-500" />
+                  <span>Log Out</span>
+                </button>
+              </>
+            ) : (
+              <div className="flex flex-col gap-2 pt-1">
+                <Link
+                  to="/login"
+                  onClick={() => setIsMobileMenuOpen(false)}
+                  className="flex items-center justify-center gap-2 px-3 py-2 rounded-lg border border-slate-200 text-sm font-medium text-slate-700 hover:bg-slate-50"
+                >
+                  <LogIn className="w-4 h-4 text-slate-500" />
+                  <span>Log In</span>
+                </Link>
+                <Link
+                  to="/register"
+                  onClick={() => setIsMobileMenuOpen(false)}
+                  className="flex items-center justify-center gap-2 px-3 py-2 rounded-lg bg-emerald-600 text-sm font-semibold text-white hover:bg-emerald-700 shadow-xs"
+                >
+                  <span>Sign Up</span>
+                </Link>
+              </div>
+            )}
           </div>
         </div>
       )}
