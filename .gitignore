@@ -41,3 +41,7 @@ media/
 **/*.dump
 **/*.dumpstream
 **/surefire-reports/
+
+# Local AI agent skills
+.agent/
+.agents/
