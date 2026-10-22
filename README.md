@@ -80,6 +80,21 @@ API health status is available at:
 - Service Health: `http://localhost:8080/api/health`
 - Actuator Health: `http://localhost:8080/actuator/health`
 
+#### Development Marketplace Seed Data (Optional)
+To populate realistic, fictional Vietnamese listings for local Explore page and UI testing, explicitly opt in via the `dev` profile and `APP_SEED_ENABLED=true`:
+
+- **Windows (PowerShell)**:
+  ```powershell
+  $env:APP_SEED_ENABLED="true"
+  .\mvnw.cmd spring-boot:run -Dspring-boot.run.profiles=dev
+  ```
+- **macOS / Linux**:
+  ```bash
+  APP_SEED_ENABLED=true ./mvnw spring-boot:run -Dspring-boot.run.profiles=dev
+  ```
+
+> **Security Note**: Demo seeding is disabled by default across all environments and is strictly refused by the application under `prod`, `production`, and `staging` profiles, even if `APP_SEED_ENABLED` is accidentally set.
+
 ### 4. Run the Frontend Client
 In a separate terminal, navigate to the `frontend/` directory, install dependencies, and launch the dev server:
 ```bash

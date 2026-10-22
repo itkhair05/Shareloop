@@ -1,0 +1,5 @@
+# Development-specific configuration profile
+# Demo seeding requires explicit opt-in (APP_SEED_ENABLED=true) to prevent accidental execution.
+app:
+  seed:
+    enabled: ${APP_SEED_ENABLED:false}

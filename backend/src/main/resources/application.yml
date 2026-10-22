@@ -39,6 +39,8 @@ jwt:
   expiration-ms: ${JWT_EXPIRATION_MS:86400000}
 
 app:
+  seed:
+    enabled: ${APP_SEED_ENABLED:false}
   cors:
     allowed-origins: ${CORS_ALLOWED_ORIGINS:http://localhost:5173,http://localhost:3000}
   storage:

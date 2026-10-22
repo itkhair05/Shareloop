@@ -37,7 +37,7 @@ vi.mock('@/features/listings/api/listing-api', () => ({
 const mockCategories: CategoryResponse[] = [
   {
     id: 'a0000000-0000-0000-0000-000000000001',
-    name: 'Tools & DIY',
+    name: 'Dụng cụ & Đồ sửa chữa',
     slug: 'tools-diy',
     description: 'Dụng cụ sửa chữa và làm vườn gia đình',
     isActive: true,
@@ -46,7 +46,7 @@ const mockCategories: CategoryResponse[] = [
   },
   {
     id: 'a0000000-0000-0000-0000-000000000002',
-    name: 'Electronics & Appliances',
+    name: 'Điện tử & Đồ gia dụng',
     slug: 'electronics-appliances',
     description: 'Đồ điện tử và thiết bị gia dụng',
     isActive: true,
@@ -60,7 +60,7 @@ const mockListingsPage: PageResponse<ListingSummaryResponse> = {
     {
       id: 'l0000000-0000-0000-0000-000000000001',
       owner: { id: 'u1', displayName: 'Nguyễn Văn A' },
-      category: { id: 'a0000000-0000-0000-0000-000000000001', name: 'Tools & DIY', slug: 'tools-diy' },
+      category: { id: 'a0000000-0000-0000-0000-000000000001', name: 'Dụng cụ & Đồ sửa chữa', slug: 'tools-diy' },
       listingType: 'GIVEAWAY',
       title: 'Máy khoan pin cầm tay Bosch',
       price: null,
@@ -145,7 +145,7 @@ describe('ExplorePlaceholderPage - Search, Filter & Pagination', () => {
       expect(screen.getByRole('button', { name: /tất cả danh mục/i })).toBeInTheDocument();
     });
 
-    expect(screen.getByRole('button', { name: 'Tools & DIY' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Dụng cụ & Đồ sửa chữa' })).toBeInTheDocument();
 
     // Verify initial query sends default page 0 and size 20
     expect(listingApi.getListings).toHaveBeenCalledWith(
@@ -245,11 +245,11 @@ describe('ExplorePlaceholderPage - Search, Filter & Pagination', () => {
     renderWithProviders(<ExplorePlaceholderPage />, { initialEntries: ['/explore?page=2'] });
 
     await waitFor(() => {
-      expect(screen.getByRole('button', { name: 'Tools & DIY' })).toBeInTheDocument();
+      expect(screen.getByRole('button', { name: 'Dụng cụ & Đồ sửa chữa' })).toBeInTheDocument();
     });
 
     // 1. Select Category -> should reset page to 0
-    await user.click(screen.getByRole('button', { name: 'Tools & DIY' }));
+    await user.click(screen.getByRole('button', { name: 'Dụng cụ & Đồ sửa chữa' }));
 
     await waitFor(() => {
       expect(listingApi.getListings).toHaveBeenCalledWith(
@@ -279,7 +279,7 @@ describe('ExplorePlaceholderPage - Search, Filter & Pagination', () => {
 
     // Verify all active chips are visible
     expect(screen.getByText(/danh mục:/i)).toBeInTheDocument();
-    expect(screen.getAllByText('Tools & DIY').length).toBeGreaterThanOrEqual(2);
+    expect(screen.getAllByText('Dụng cụ & Đồ sửa chữa').length).toBeGreaterThanOrEqual(2);
     expect(screen.getByText('Hình thức:')).toBeInTheDocument();
     expect(screen.getByText(/khu vực:/i)).toBeInTheDocument();
 

@@ -131,6 +131,7 @@ class CategoryControllerIntegrationTest {
         @DisplayName("GET /api/v1/categories/{slug} - Returns category details and active listing count")
         void getCategoryBySlugWithListingCount() throws Exception {
             Category cat = categoryRepository.findBySlug("tools-diy").orElseThrow();
+            long initialCount = listingRepository.countByCategoryIdAndStatus(cat.getId(), ListingStatus.ACTIVE);
 
             // Create 2 ACTIVE listings and 1 COMPLETED listing under this category
             createListing(cat, ListingStatus.ACTIVE, "Drill Machine");
@@ -141,9 +142,9 @@ class CategoryControllerIntegrationTest {
                             .accept(MediaType.APPLICATION_JSON))
                     .andExpect(status().isOk())
                     .andExpect(jsonPath("$.slug").value("tools-diy"))
-                    .andExpect(jsonPath("$.name").value("Tools & DIY"))
+                    .andExpect(jsonPath("$.name").value("Dụng cụ & Đồ sửa chữa"))
                     .andExpect(jsonPath("$.isActive").value(true))
-                    .andExpect(jsonPath("$.activeListingCount").value(2));
+                    .andExpect(jsonPath("$.activeListingCount").value((int) initialCount + 2));
         }
 
         @Test

@@ -1,0 +1,4 @@
+# Production environment configuration
+app:
+  seed:
+    enabled: false
