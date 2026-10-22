@@ -41,8 +41,8 @@ describe('Application Routing', () => {
     });
 
     renderWithProviders(<RouterProvider router={memoryRouter} />, { withRouter: false });
-    expect(screen.getByRole('heading', { name: /explore community listings/i })).toBeInTheDocument();
-    expect(screen.getByText(/phase 3 planned/i)).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: /khám phá đồ dùng cộng đồng/i })).toBeInTheDocument();
+    expect(screen.getByText(/kế hoạch giai đoạn 3/i)).toBeInTheDocument();
   });
 
   it('navigates to About page', () => {
@@ -51,8 +51,8 @@ describe('Application Routing', () => {
     });
 
     renderWithProviders(<RouterProvider router={memoryRouter} />, { withRouter: false });
-    expect(screen.getByRole('heading', { level: 1, name: /about shareloop/i })).toBeInTheDocument();
-    expect(screen.getByText(/authentication & security/i)).toBeInTheDocument();
+    expect(screen.getByRole('heading', { level: 1, name: /về shareloop/i })).toBeInTheDocument();
+    expect(screen.getByText(/xác thực & bảo mật/i)).toBeInTheDocument();
   });
 
   it('renders 404 NotFoundPage for unknown routes', () => {
@@ -61,9 +61,9 @@ describe('Application Routing', () => {
     });
 
     renderWithProviders(<RouterProvider router={memoryRouter} />, { withRouter: false });
-    expect(screen.getByText('404 Not Found')).toBeInTheDocument();
-    expect(screen.getByRole('heading', { name: 'Page Not Found' })).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: /return to home/i })).toBeInTheDocument();
+    expect(screen.getByText('404 - Không tìm thấy trang')).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: 'Trang không tồn tại' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /quay về trang chủ/i })).toBeInTheDocument();
   });
 
   it('renders Admin layout and navigation at /admin', () => {
@@ -72,10 +72,10 @@ describe('Application Routing', () => {
     });
 
     renderWithProviders(<RouterProvider router={memoryRouter} />, { withRouter: false });
-    expect(screen.getByRole('heading', { name: 'Administration Console' })).toBeInTheDocument();
-    expect(screen.getByText('Category Hierarchy Management')).toBeInTheDocument();
-    expect(screen.getByText('Review Soft Moderation')).toBeInTheDocument();
-    expect(screen.getByText(/return to public app/i)).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: 'Bảng điều khiển quản trị' })).toBeInTheDocument();
+    expect(screen.getByText('Quản lý phân cấp danh mục')).toBeInTheDocument();
+    expect(screen.getByText('Kiểm duyệt đánh giá')).toBeInTheDocument();
+    expect(screen.getByText(/quay lại ứng dụng chính/i)).toBeInTheDocument();
   });
 
   it('renders Admin Category Catalog placeholder at /admin/categories', () => {
@@ -84,7 +84,7 @@ describe('Application Routing', () => {
     });
 
     renderWithProviders(<RouterProvider router={memoryRouter} />, { withRouter: false });
-    expect(screen.getByRole('heading', { name: 'Category Catalog Administration' })).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: 'Quản trị danh mục ngành hàng' })).toBeInTheDocument();
     expect(screen.getByText(/POST\/PUT\/PATCH \/api\/v1\/admin\/categories/i)).toBeInTheDocument();
   });
 
@@ -94,7 +94,7 @@ describe('Application Routing', () => {
     });
 
     renderWithProviders(<RouterProvider router={memoryRouter} />, { withRouter: false });
-    expect(screen.getByRole('heading', { name: 'Review Moderation' })).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: 'Kiểm duyệt đánh giá' })).toBeInTheDocument();
     expect(screen.getByText(/DELETE \/api\/v1\/admin\/reviews\/\{reviewId\}/i)).toBeInTheDocument();
   });
 });

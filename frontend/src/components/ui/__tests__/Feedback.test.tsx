@@ -5,27 +5,27 @@ import { ErrorAlert, EmptyState, LoadingSpinner, StatusBanner } from '../Feedbac
 
 describe('Feedback components', () => {
   it('renders LoadingSpinner with accessible status role', () => {
-    render(<LoadingSpinner label="Fetching data..." />);
+    render(<LoadingSpinner label="Đang tải dữ liệu..." />);
     const spinner = screen.getByRole('status');
     expect(spinner).toBeInTheDocument();
-    expect(screen.getAllByText('Fetching data...')[0]).toBeInTheDocument();
+    expect(screen.getAllByText('Đang tải dữ liệu...')[0]).toBeInTheDocument();
   });
 
   it('renders EmptyState with title, description, and action button', async () => {
     const handleAction = vi.fn();
     render(
       <EmptyState
-        title="No items found"
-        description="Try adjusting your search criteria."
-        actionLabel="Reset Search"
+        title="Không tìm thấy mục nào"
+        description="Vui lòng thử điều chỉnh lại tiêu chí tìm kiếm của bạn."
+        actionLabel="Đặt lại tìm kiếm"
         onAction={handleAction}
       />
     );
 
-    expect(screen.getByText('No items found')).toBeInTheDocument();
-    expect(screen.getByText('Try adjusting your search criteria.')).toBeInTheDocument();
+    expect(screen.getByText('Không tìm thấy mục nào')).toBeInTheDocument();
+    expect(screen.getByText('Vui lòng thử điều chỉnh lại tiêu chí tìm kiếm của bạn.')).toBeInTheDocument();
 
-    const button = screen.getByRole('button', { name: /reset search/i });
+    const button = screen.getByRole('button', { name: /đặt lại tìm kiếm/i });
     await userEvent.click(button);
     expect(handleAction).toHaveBeenCalledTimes(1);
   });
@@ -34,23 +34,23 @@ describe('Feedback components', () => {
     const handleRetry = vi.fn();
     render(
       <ErrorAlert
-        title="Connection Failed"
-        message="Backend server did not respond"
+        title="Kết nối thất bại"
+        message="Máy chủ dịch vụ không phản hồi"
         onRetry={handleRetry}
       />
     );
 
     expect(screen.getByRole('alert')).toBeInTheDocument();
-    expect(screen.getByText('Connection Failed')).toBeInTheDocument();
-    expect(screen.getByText('Backend server did not respond')).toBeInTheDocument();
+    expect(screen.getByText('Kết nối thất bại')).toBeInTheDocument();
+    expect(screen.getByText('Máy chủ dịch vụ không phản hồi')).toBeInTheDocument();
 
-    const retryBtn = screen.getByRole('button', { name: /try again/i });
+    const retryBtn = screen.getByRole('button', { name: /thử lại/i });
     await userEvent.click(retryBtn);
     expect(handleRetry).toHaveBeenCalledTimes(1);
   });
 
   it('renders StatusBanner with message', () => {
-    render(<StatusBanner type="warning" message="Maintenance scheduled tonight" />);
-    expect(screen.getByText('Maintenance scheduled tonight')).toBeInTheDocument();
+    render(<StatusBanner type="warning" message="Bảo trì theo lịch trình tối nay" />);
+    expect(screen.getByText('Bảo trì theo lịch trình tối nay')).toBeInTheDocument();
   });
 });

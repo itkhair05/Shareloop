@@ -8,23 +8,23 @@ export function ExplorePlaceholderPage() {
     <div className="space-y-6">
       <div>
         <div className="flex items-center gap-2">
-          <h1 className="text-2xl font-bold text-slate-900">Explore Community Listings</h1>
-          <Badge variant="neutral">Phase 3 Planned</Badge>
+          <h1 className="text-2xl font-bold text-slate-900">Khám phá đồ dùng cộng đồng</h1>
+          <Badge variant="neutral">Kế hoạch Giai đoạn 3</Badge>
         </div>
         <p className="text-sm text-slate-500 mt-1">
-          Browse local items for gifting, trading, or requested items across active neighborhoods.
+          Duyệt tìm đồ dùng cho tặng, trao đổi hoặc các món đồ đang cần tìm trong khu dân cư.
         </p>
       </div>
 
       <Card>
         <CardHeader>
-          <CardTitle className="text-base">Marketplace Exploration Feed</CardTitle>
+          <CardTitle className="text-base">Bảng tin khám phá cộng đồng</CardTitle>
         </CardHeader>
         <CardContent>
           <EmptyState
             icon={Search}
-            title="Listings Module Scheduled for Phase 3"
-            description="The frontend foundation is established in Phase 1. Real marketplace catalog browsing connecting to GET /api/v1/listings will be activated in Phase 3 following Authentication in Phase 2."
+            title="Tính năng Khám phá sẽ kích hoạt trong Giai đoạn 3"
+            description="Nền tảng giao diện đã được thiết lập. Tính năng duyệt bảng tin thực tế kết nối trực tiếp với GET /api/v1/listings sẽ được hoàn thiện trong Giai đoạn 3 sau khi hoàn tất xác thực ở Giai đoạn 2."
           />
         </CardContent>
       </Card>

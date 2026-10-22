@@ -18,7 +18,7 @@ export function ProtectedRoute({ requiredRole, children }: ProtectedRouteProps) 
   if (isLoading) {
     return (
       <div className="min-h-[50vh] flex items-center justify-center p-8">
-        <LoadingSpinner size="lg" label="Verifying authentication..." />
+        <LoadingSpinner size="lg" label="Đang xác thực tài khoản..." />
       </div>
     );
   }
@@ -39,10 +39,10 @@ export function ProtectedRoute({ requiredRole, children }: ProtectedRouteProps) 
             <ShieldX className="w-7 h-7" aria-hidden="true" />
           </div>
           <div className="space-y-1">
-            <h2 className="text-xl font-bold text-slate-900 tracking-tight">Access Denied</h2>
+            <h2 className="text-xl font-bold text-slate-900 tracking-tight">Truy cập bị từ chối</h2>
             <p className="text-sm text-slate-600 leading-relaxed">
-              Your account ({user?.email}) with role <span className="font-semibold">{user?.role}</span> does
-              not have permission to access this restricted area.
+              Tài khoản của bạn ({user?.email}) với vai trò <span className="font-semibold">{user?.role}</span> không
+              có quyền truy cập khu vực giới hạn này.
             </p>
           </div>
           <div className="pt-2 flex flex-col sm:flex-row gap-2 justify-center">
@@ -51,7 +51,7 @@ export function ProtectedRoute({ requiredRole, children }: ProtectedRouteProps) 
               size="md"
               onClick={() => window.location.assign('/')}
             >
-              Return to Marketplace
+              Quay về trang chủ
             </Button>
           </div>
         </div>

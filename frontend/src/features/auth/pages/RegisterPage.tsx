@@ -56,9 +56,9 @@ export function RegisterPage() {
         if (err.status === 409) {
           setError('email', {
             type: 'manual',
-            message: 'An account with this email already exists.',
+            message: 'Địa chỉ email này đã được sử dụng.',
           });
-          setGeneralError('Email is already registered. Please sign in or use a different email.');
+          setGeneralError('Email này đã được đăng ký. Vui lòng đăng nhập hoặc sử dụng email khác.');
         } else if (err.isValidationError && err.fieldErrors) {
           Object.entries(err.fieldErrors).forEach(([field, msg]) => {
             if (field === 'displayName' || field === 'email' || field === 'password') {
@@ -68,14 +68,14 @@ export function RegisterPage() {
               });
             }
           });
-          setGeneralError(err.message || 'Please correct the highlighted fields.');
+          setGeneralError(err.message || 'Vui lòng kiểm tra lại các trường được đánh dấu.');
         } else if (err.isNetworkError) {
-          setGeneralError('Unable to reach the server. Please check your internet connection.');
+          setGeneralError('Không thể kết nối đến máy chủ. Vui lòng kiểm tra kết nối mạng của bạn.');
         } else {
-          setGeneralError(err.message || 'Registration failed. Please try again.');
+          setGeneralError(err.message || 'Đăng ký không thành công. Vui lòng thử lại.');
         }
       } else {
-        setGeneralError('An unexpected error occurred during registration. Please try again.');
+        setGeneralError('Đã xảy ra lỗi ngoài ý muốn khi đăng ký. Vui lòng thử lại.');
       }
     }
   };
@@ -97,17 +97,17 @@ export function RegisterPage() {
             </div>
             <span className="text-2xl font-bold text-slate-950 tracking-tight">ShareLoop</span>
           </Link>
-          <h1 className="text-2xl font-bold text-slate-900 tracking-tight">Create your account</h1>
+          <h1 className="text-2xl font-bold text-slate-900 tracking-tight">Tạo tài khoản mới</h1>
           <p className="text-sm text-slate-600">
-            Join ShareLoop to share, borrow, and exchange tools, books, and household goods.
+            Tham gia ShareLoop để chia sẻ, cho tặng và trao đổi đồ dùng gia đình cùng hàng xóm.
           </p>
         </div>
 
         {/* Register Form Card */}
         <Card className="border border-slate-200 shadow-sm bg-white">
           <CardHeader className="pb-4">
-            <h2 className="text-base font-semibold text-slate-900">Sign Up</h2>
-            <p className="text-xs text-slate-500">All fields are required</p>
+            <h2 className="text-base font-semibold text-slate-900">Đăng ký</h2>
+            <p className="text-xs text-slate-500">Vui lòng điền đầy đủ các thông tin bên dưới</p>
           </CardHeader>
           <CardContent>
             <form onSubmit={handleSubmit(onSubmit)} noValidate className="space-y-4">
@@ -124,11 +124,11 @@ export function RegisterPage() {
 
               {/* Display Name Field */}
               <Input
-                label="Full Name or Display Name"
+                label="Họ và tên hoặc tên hiển thị"
                 id="register-displayName"
                 type="text"
                 autoComplete="name"
-                placeholder="Jane Doe"
+                placeholder="Nguyễn Văn A"
                 disabled={isSubmitting}
                 error={errors.displayName?.message}
                 {...register('displayName')}
@@ -136,11 +136,11 @@ export function RegisterPage() {
 
               {/* Email Field */}
               <Input
-                label="Email address"
+                label="Địa chỉ email"
                 id="register-email"
                 type="email"
                 autoComplete="email"
-                placeholder="jane@example.com"
+                placeholder="name@example.com"
                 disabled={isSubmitting}
                 error={errors.email?.message}
                 {...register('email')}
@@ -148,7 +148,7 @@ export function RegisterPage() {
 
               {/* Password Field */}
               <Input
-                label="Password (min. 8 characters)"
+                label="Mật khẩu (tối thiểu 8 ký tự)"
                 id="register-password"
                 type={showPassword ? 'text' : 'password'}
                 autoComplete="new-password"
@@ -159,8 +159,8 @@ export function RegisterPage() {
                   <button
                     type="button"
                     onClick={() => setShowPassword(!showPassword)}
-                    className="text-slate-400 hover:text-slate-600 focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 rounded p-1"
-                    aria-label={showPassword ? 'Hide password' : 'Show password'}
+                    className="text-slate-400 hover:text-slate-600 focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 rounded p-1 cursor-pointer"
+                    aria-label={showPassword ? 'Ẩn mật khẩu' : 'Hiện mật khẩu'}
                   >
                     {showPassword ? (
                       <EyeOff className="w-4 h-4" aria-hidden="true" />
@@ -174,7 +174,7 @@ export function RegisterPage() {
 
               {/* Confirm Password Field */}
               <Input
-                label="Confirm Password"
+                label="Xác nhận mật khẩu"
                 id="register-confirmPassword"
                 type={showConfirmPassword ? 'text' : 'password'}
                 autoComplete="new-password"
@@ -185,8 +185,8 @@ export function RegisterPage() {
                   <button
                     type="button"
                     onClick={() => setShowConfirmPassword(!showConfirmPassword)}
-                    className="text-slate-400 hover:text-slate-600 focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 rounded p-1"
-                    aria-label={showConfirmPassword ? 'Hide confirm password' : 'Show confirm password'}
+                    className="text-slate-400 hover:text-slate-600 focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 rounded p-1 cursor-pointer"
+                    aria-label={showConfirmPassword ? 'Ẩn xác nhận mật khẩu' : 'Hiện xác nhận mật khẩu'}
                   >
                     {showConfirmPassword ? (
                       <EyeOff className="w-4 h-4" aria-hidden="true" />
@@ -207,7 +207,7 @@ export function RegisterPage() {
                 leftIcon={<UserPlus className="w-4 h-4" />}
                 className="w-full mt-2"
               >
-                Create Account
+                Tạo tài khoản
               </Button>
             </form>
           </CardContent>
@@ -215,12 +215,12 @@ export function RegisterPage() {
 
         {/* Footer Navigation */}
         <p className="text-center text-sm text-slate-600">
-          Already have an account?{' '}
+          Đã có tài khoản?{' '}
           <Link
             to="/login"
             className="font-semibold text-emerald-600 hover:text-emerald-700 underline underline-offset-4 focus:outline-none focus:ring-2 focus:ring-emerald-500 rounded"
           >
-            Sign in
+            Đăng nhập ngay
           </Link>
         </p>
       </div>

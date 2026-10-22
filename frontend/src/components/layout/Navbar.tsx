@@ -45,7 +45,7 @@ export function Navbar() {
                 ShareLoop
               </span>
               <span className="text-[10px] font-medium text-emerald-600 uppercase tracking-wider mt-0.5">
-                Community Exchange
+                Sẻ chia cộng đồng
               </span>
             </div>
           </Link>
@@ -53,13 +53,13 @@ export function Navbar() {
           {/* Desktop Navigation */}
           <nav className="hidden md:flex items-center gap-1">
             <NavLink to="/" end className={navLinkClass}>
-              Home
+              Trang chủ
             </NavLink>
             <NavLink to="/explore" className={navLinkClass}>
-              Explore
+              Khám phá
             </NavLink>
             <NavLink to="/about" className={navLinkClass}>
-              About
+              Giới thiệu
             </NavLink>
           </nav>
 
@@ -73,7 +73,7 @@ export function Navbar() {
                     className="inline-flex items-center gap-1.5 text-xs font-semibold px-2.5 py-1.5 rounded-lg border border-slate-200 bg-slate-50 hover:bg-slate-100 text-slate-700 transition-colors"
                   >
                     <Shield className="w-3.5 h-3.5 text-slate-500" />
-                    <span>Admin Console</span>
+                    <span>Bảng quản trị</span>
                   </Link>
                 )}
 
@@ -86,7 +86,7 @@ export function Navbar() {
                   </span>
                   {isAdmin && (
                     <Badge variant="warning" className="text-[10px] px-1.5 py-0">
-                      Admin
+                      Quản trị viên
                     </Badge>
                   )}
                 </div>
@@ -98,7 +98,7 @@ export function Navbar() {
                   leftIcon={<LogOut className="w-3.5 h-3.5 text-slate-500" />}
                   className="text-xs text-slate-600 hover:text-slate-900"
                 >
-                  Log Out
+                  Đăng xuất
                 </Button>
               </div>
             ) : (
@@ -108,13 +108,13 @@ export function Navbar() {
                   className="inline-flex items-center gap-1.5 text-xs font-medium px-3 py-1.5 rounded-lg text-slate-700 hover:text-slate-900 hover:bg-slate-100 transition-colors"
                 >
                   <LogIn className="w-3.5 h-3.5 text-slate-500" />
-                  <span>Log In</span>
+                  <span>Đăng nhập</span>
                 </Link>
                 <Link
                   to="/register"
                   className="inline-flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white shadow-xs transition-colors"
                 >
-                  <span>Sign Up</span>
+                  <span>Đăng ký</span>
                 </Link>
               </div>
             )}
@@ -127,7 +127,7 @@ export function Navbar() {
               onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
               className="p-2 rounded-lg text-slate-600 hover:text-slate-900 hover:bg-slate-100 focus:outline-none focus:ring-2 focus:ring-emerald-500"
               aria-expanded={isMobileMenuOpen}
-              aria-label="Toggle navigation menu"
+              aria-label={isMobileMenuOpen ? 'Đóng menu điều hướng' : 'Mở menu điều hướng'}
             >
               {isMobileMenuOpen ? (
                 <X className="w-6 h-6" aria-hidden="true" />
@@ -155,7 +155,7 @@ export function Navbar() {
               )
             }
           >
-            Home
+            Trang chủ
           </NavLink>
           <NavLink
             to="/explore"
@@ -169,7 +169,7 @@ export function Navbar() {
               )
             }
           >
-            Explore
+            Khám phá
           </NavLink>
           <NavLink
             to="/about"
@@ -183,7 +183,7 @@ export function Navbar() {
               )
             }
           >
-            About
+            Giới thiệu
           </NavLink>
 
           <div className="pt-3 mt-2 border-t border-slate-100 space-y-2">
@@ -195,7 +195,7 @@ export function Navbar() {
                   </span>
                   {isAdmin && (
                     <Badge variant="warning" className="text-xs">
-                      Admin
+                      Quản trị viên
                     </Badge>
                   )}
                 </div>
@@ -207,17 +207,17 @@ export function Navbar() {
                     className="flex items-center gap-2 px-3 py-2 rounded-md text-base font-medium text-slate-700 hover:bg-slate-50"
                   >
                     <Shield className="w-4 h-4 text-slate-500" />
-                    <span>Admin Console</span>
+                    <span>Bảng quản trị</span>
                   </Link>
                 )}
 
                 <button
                   type="button"
                   onClick={handleLogout}
-                  className="w-full flex items-center gap-2 px-3 py-2 rounded-md text-base font-medium text-red-600 hover:bg-red-50 text-left"
+                  className="w-full flex items-center gap-2 px-3 py-2 rounded-md text-base font-medium text-red-600 hover:bg-red-50 text-left cursor-pointer"
                 >
                   <LogOut className="w-4 h-4 text-red-500" />
-                  <span>Log Out</span>
+                  <span>Đăng xuất</span>
                 </button>
               </>
             ) : (
@@ -228,14 +228,14 @@ export function Navbar() {
                   className="flex items-center justify-center gap-2 px-3 py-2 rounded-lg border border-slate-200 text-sm font-medium text-slate-700 hover:bg-slate-50"
                 >
                   <LogIn className="w-4 h-4 text-slate-500" />
-                  <span>Log In</span>
+                  <span>Đăng nhập</span>
                 </Link>
                 <Link
                   to="/register"
                   onClick={() => setIsMobileMenuOpen(false)}
                   className="flex items-center justify-center gap-2 px-3 py-2 rounded-lg bg-emerald-600 text-sm font-semibold text-white hover:bg-emerald-700 shadow-xs"
                 >
-                  <span>Sign Up</span>
+                  <span>Đăng ký</span>
                 </Link>
               </div>
             )}

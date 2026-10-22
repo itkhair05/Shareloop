@@ -3,12 +3,12 @@ import { z } from 'zod';
 export const loginSchema = z.object({
   email: z
     .string()
-    .min(1, 'Email is required')
-    .email('Please enter a valid email address')
-    .max(255, 'Email must not exceed 255 characters'),
+    .min(1, 'Vui lòng nhập địa chỉ email')
+    .email('Vui lòng nhập địa chỉ email hợp lệ')
+    .max(255, 'Email không được vượt quá 255 ký tự'),
   password: z
     .string()
-    .min(1, 'Password is required'),
+    .min(1, 'Vui lòng nhập mật khẩu'),
 });
 
 export type LoginFormData = z.infer<typeof loginSchema>;
@@ -17,25 +17,25 @@ export const registerSchema = z
   .object({
     displayName: z
       .string()
-      .min(1, 'Display name is required')
-      .min(2, 'Display name must be at least 2 characters')
-      .max(100, 'Display name must not exceed 100 characters'),
+      .min(1, 'Vui lòng nhập tên hiển thị')
+      .min(2, 'Tên hiển thị phải có ít nhất 2 ký tự')
+      .max(100, 'Tên hiển thị không được vượt quá 100 ký tự'),
     email: z
       .string()
-      .min(1, 'Email is required')
-      .email('Please enter a valid email address')
-      .max(255, 'Email must not exceed 255 characters'),
+      .min(1, 'Vui lòng nhập địa chỉ email')
+      .email('Vui lòng nhập địa chỉ email hợp lệ')
+      .max(255, 'Email không được vượt quá 255 ký tự'),
     password: z
       .string()
-      .min(1, 'Password is required')
-      .min(8, 'Password must be at least 8 characters')
-      .max(100, 'Password must not exceed 100 characters'),
+      .min(1, 'Vui lòng nhập mật khẩu')
+      .min(8, 'Mật khẩu phải có ít nhất 8 ký tự')
+      .max(100, 'Mật khẩu không được vượt quá 100 ký tự'),
     confirmPassword: z
       .string()
-      .min(1, 'Please confirm your password'),
+      .min(1, 'Vui lòng xác nhận mật khẩu'),
   })
   .refine((data) => data.password === data.confirmPassword, {
-    message: 'Passwords do not match',
+    message: 'Mật khẩu xác nhận không khớp',
     path: ['confirmPassword'],
   });
 

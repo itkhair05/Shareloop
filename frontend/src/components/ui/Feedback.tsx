@@ -8,7 +8,7 @@ import { Button } from './Button';
  */
 export function LoadingSpinner({
   size = 'md',
-  label = 'Loading...',
+  label = 'Đang tải...',
   className,
 }: {
   size?: 'sm' | 'md' | 'lg';
@@ -81,15 +81,17 @@ export function EmptyState({
  * Recoverable Error Alert with Retry Action
  */
 export function ErrorAlert({
-  title = 'Something went wrong',
+  title = 'Đã xảy ra lỗi',
   message,
   onRetry,
+  retryLabel = 'Thử lại',
   isRetrying = false,
   className,
 }: {
   title?: string;
   message: string;
   onRetry?: () => void;
+  retryLabel?: string;
   isRetrying?: boolean;
   className?: string;
 }) {
@@ -115,7 +117,7 @@ export function ErrorAlert({
               leftIcon={<RotateCw className="w-3.5 h-3.5" />}
               className="bg-white border-red-200 text-red-800 hover:bg-red-100"
             >
-              Try again
+              {retryLabel}
             </Button>
           </div>
         )}

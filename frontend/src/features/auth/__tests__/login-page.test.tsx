@@ -25,28 +25,28 @@ describe('LoginPage', () => {
   it('renders login form elements with accessible labels and show/hide password toggle', () => {
     renderWithProviders(<LoginPage />, { initialEntries: ['/login'] });
 
-    expect(screen.getByRole('heading', { name: /welcome back/i })).toBeInTheDocument();
-    expect(screen.getByLabelText(/email address/i)).toBeInTheDocument();
-    expect(screen.getByLabelText(/^password$/i)).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: /sign in/i })).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: /show password/i })).toBeInTheDocument();
-    expect(screen.getByRole('link', { name: /create an account/i })).toHaveAttribute('href', '/register');
+    expect(screen.getByRole('heading', { name: /chào mừng trở lại/i })).toBeInTheDocument();
+    expect(screen.getByLabelText(/địa chỉ email/i)).toBeInTheDocument();
+    expect(screen.getByLabelText(/^mật khẩu$/i)).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /đăng nhập/i })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /hiện mật khẩu/i })).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: /đăng ký tài khoản mới/i })).toHaveAttribute('href', '/register');
   });
 
   it('toggles password visibility when clicking toggle button', async () => {
     const user = userEvent.setup();
     renderWithProviders(<LoginPage />, { initialEntries: ['/login'] });
 
-    const passwordInput = screen.getByLabelText(/^password$/i);
+    const passwordInput = screen.getByLabelText(/^mật khẩu$/i);
     expect(passwordInput).toHaveAttribute('type', 'password');
 
-    const toggleButton = screen.getByRole('button', { name: /show password/i });
+    const toggleButton = screen.getByRole('button', { name: /hiện mật khẩu/i });
     await user.click(toggleButton);
 
     expect(passwordInput).toHaveAttribute('type', 'text');
-    expect(screen.getByRole('button', { name: /hide password/i })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /ẩn mật khẩu/i })).toBeInTheDocument();
 
-    await user.click(screen.getByRole('button', { name: /hide password/i }));
+    await user.click(screen.getByRole('button', { name: /ẩn mật khẩu/i }));
     expect(passwordInput).toHaveAttribute('type', 'password');
   });
 
@@ -54,19 +54,19 @@ describe('LoginPage', () => {
     const user = userEvent.setup();
     renderWithProviders(<LoginPage />, { initialEntries: ['/login'] });
 
-    const submitBtn = screen.getByRole('button', { name: /sign in/i });
+    const submitBtn = screen.getByRole('button', { name: /đăng nhập/i });
     await user.click(submitBtn);
 
-    expect(await screen.findByText(/email is required/i)).toBeInTheDocument();
-    expect(await screen.findByText(/password is required/i)).toBeInTheDocument();
+    expect(await screen.findByText(/vui lòng nhập địa chỉ email/i)).toBeInTheDocument();
+    expect(await screen.findByText(/vui lòng nhập mật khẩu/i)).toBeInTheDocument();
     expect(authApi.login).not.toHaveBeenCalled();
 
     // Invalid email format
-    const emailInput = screen.getByLabelText(/email address/i);
+    const emailInput = screen.getByLabelText(/địa chỉ email/i);
     await user.type(emailInput, 'invalid-email');
     await user.click(submitBtn);
 
-    expect(await screen.findByText(/please enter a valid email address/i)).toBeInTheDocument();
+    expect(await screen.findByText(/vui lòng nhập địa chỉ email hợp lệ/i)).toBeInTheDocument();
     expect(authApi.login).not.toHaveBeenCalled();
   });
 
@@ -98,10 +98,10 @@ describe('LoginPage', () => {
 
     renderWithProviders(<LoginPage />, { initialEntries: ['/login'] });
 
-    await user.type(screen.getByLabelText(/email address/i), 'alice@shareloop.org');
-    await user.type(screen.getByLabelText(/^password$/i), 'password123');
+    await user.type(screen.getByLabelText(/địa chỉ email/i), 'alice@shareloop.org');
+    await user.type(screen.getByLabelText(/^mật khẩu$/i), 'password123');
 
-    const submitBtn = screen.getByRole('button', { name: /sign in/i });
+    const submitBtn = screen.getByRole('button', { name: /đăng nhập/i });
     await user.click(submitBtn);
 
     await waitFor(() => {
@@ -116,7 +116,7 @@ describe('LoginPage', () => {
   it('displays user-friendly error message on 401 Unauthorized invalid credentials', async () => {
     const user = userEvent.setup();
     const unauthorizedError = new ApiError({
-      message: 'Invalid email or password',
+      message: 'Email hoặc mật khẩu không chính xác',
       status: 401,
       error: 'Unauthorized',
     });
@@ -125,19 +125,19 @@ describe('LoginPage', () => {
 
     renderWithProviders(<LoginPage />, { initialEntries: ['/login'] });
 
-    await user.type(screen.getByLabelText(/email address/i), 'wrong@shareloop.org');
-    await user.type(screen.getByLabelText(/^password$/i), 'wrongpassword');
-    await user.click(screen.getByRole('button', { name: /sign in/i }));
+    await user.type(screen.getByLabelText(/địa chỉ email/i), 'wrong@shareloop.org');
+    await user.type(screen.getByLabelText(/^mật khẩu$/i), 'wrongpassword');
+    await user.click(screen.getByRole('button', { name: /đăng nhập/i }));
 
     const alert = await screen.findByRole('alert');
-    expect(alert).toHaveTextContent(/invalid email or password/i);
+    expect(alert).toHaveTextContent(/email hoặc mật khẩu không chính xác/i);
     expect(tokenStorage.hasToken()).toBe(false);
   });
 
   it('displays error message when account is suspended or deactivated (403 Forbidden)', async () => {
     const user = userEvent.setup();
     const forbiddenError = new ApiError({
-      message: 'Account is suspended',
+      message: 'Tài khoản của bạn đã bị tạm khóa',
       status: 403,
       error: 'Forbidden',
     });
@@ -146,18 +146,18 @@ describe('LoginPage', () => {
 
     renderWithProviders(<LoginPage />, { initialEntries: ['/login'] });
 
-    await user.type(screen.getByLabelText(/email address/i), 'suspended@shareloop.org');
-    await user.type(screen.getByLabelText(/^password$/i), 'secret123');
-    await user.click(screen.getByRole('button', { name: /sign in/i }));
+    await user.type(screen.getByLabelText(/địa chỉ email/i), 'suspended@shareloop.org');
+    await user.type(screen.getByLabelText(/^mật khẩu$/i), 'secret123');
+    await user.click(screen.getByRole('button', { name: /đăng nhập/i }));
 
     const alert = await screen.findByRole('alert');
-    expect(alert).toHaveTextContent(/account is suspended/i);
+    expect(alert).toHaveTextContent(/tài khoản của bạn đã bị tạm khóa/i);
   });
 
   it('displays clear message on network error without crashing', async () => {
     const user = userEvent.setup();
     const networkError = new ApiError({
-      message: 'Unable to connect to the ShareLoop server',
+      message: 'Không thể kết nối đến máy chủ',
       status: 0,
       error: 'Network Error',
       isNetworkError: true,
@@ -167,11 +167,11 @@ describe('LoginPage', () => {
 
     renderWithProviders(<LoginPage />, { initialEntries: ['/login'] });
 
-    await user.type(screen.getByLabelText(/email address/i), 'alice@shareloop.org');
-    await user.type(screen.getByLabelText(/^password$/i), 'password123');
-    await user.click(screen.getByRole('button', { name: /sign in/i }));
+    await user.type(screen.getByLabelText(/địa chỉ email/i), 'alice@shareloop.org');
+    await user.type(screen.getByLabelText(/^mật khẩu$/i), 'password123');
+    await user.click(screen.getByRole('button', { name: /đăng nhập/i }));
 
     const alert = await screen.findByRole('alert');
-    expect(alert).toHaveTextContent(/unable to reach the server/i);
+    expect(alert).toHaveTextContent(/không thể kết nối đến máy chủ/i);
   });
 });

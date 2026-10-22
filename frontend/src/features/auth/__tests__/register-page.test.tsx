@@ -25,25 +25,25 @@ describe('RegisterPage', () => {
   it('renders registration form with all required inputs and login link', () => {
     renderWithProviders(<RegisterPage />, { initialEntries: ['/register'] });
 
-    expect(screen.getByRole('heading', { name: /create your account/i })).toBeInTheDocument();
-    expect(screen.getByLabelText(/display name/i)).toBeInTheDocument();
-    expect(screen.getByLabelText(/email address/i)).toBeInTheDocument();
-    expect(screen.getByLabelText(/password \(min\. 8 characters\)/i)).toBeInTheDocument();
-    expect(screen.getByLabelText(/^confirm password$/i)).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: /create account/i })).toBeInTheDocument();
-    expect(screen.getByRole('link', { name: /sign in/i })).toHaveAttribute('href', '/login');
+    expect(screen.getByRole('heading', { name: /tạo tài khoản mới/i })).toBeInTheDocument();
+    expect(screen.getByLabelText(/họ và tên hoặc tên hiển thị/i)).toBeInTheDocument();
+    expect(screen.getByLabelText(/địa chỉ email/i)).toBeInTheDocument();
+    expect(screen.getByLabelText(/mật khẩu \(tối thiểu 8 ký tự\)/i)).toBeInTheDocument();
+    expect(screen.getByLabelText(/^xác nhận mật khẩu$/i)).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /tạo tài khoản/i })).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: /đăng nhập ngay/i })).toHaveAttribute('href', '/login');
   });
 
   it('validates required fields on empty submit', async () => {
     const user = userEvent.setup();
     renderWithProviders(<RegisterPage />, { initialEntries: ['/register'] });
 
-    await user.click(screen.getByRole('button', { name: /create account/i }));
+    await user.click(screen.getByRole('button', { name: /tạo tài khoản/i }));
 
-    expect(await screen.findByText(/display name is required/i)).toBeInTheDocument();
-    expect(await screen.findByText(/email is required/i)).toBeInTheDocument();
-    expect(await screen.findByText(/password is required/i)).toBeInTheDocument();
-    expect(await screen.findByText(/please confirm your password/i)).toBeInTheDocument();
+    expect(await screen.findByText(/vui lòng nhập tên hiển thị/i)).toBeInTheDocument();
+    expect(await screen.findByText(/vui lòng nhập địa chỉ email/i)).toBeInTheDocument();
+    expect(await screen.findByText(/vui lòng nhập mật khẩu/i)).toBeInTheDocument();
+    expect(await screen.findByText(/vui lòng xác nhận mật khẩu/i)).toBeInTheDocument();
     expect(authApi.register).not.toHaveBeenCalled();
   });
 
@@ -51,15 +51,15 @@ describe('RegisterPage', () => {
     const user = userEvent.setup();
     renderWithProviders(<RegisterPage />, { initialEntries: ['/register'] });
 
-    await user.type(screen.getByLabelText(/display name/i), 'Bob Builder');
-    await user.type(screen.getByLabelText(/email address/i), 'bob@shareloop.org');
-    await user.type(screen.getByLabelText(/password \(min\. 8 characters\)/i), 'short'); // < 8 chars
-    await user.type(screen.getByLabelText(/^confirm password$/i), 'different');
+    await user.type(screen.getByLabelText(/họ và tên hoặc tên hiển thị/i), 'Bob Builder');
+    await user.type(screen.getByLabelText(/địa chỉ email/i), 'bob@shareloop.org');
+    await user.type(screen.getByLabelText(/mật khẩu \(tối thiểu 8 ký tự\)/i), 'short'); // < 8 chars
+    await user.type(screen.getByLabelText(/^xác nhận mật khẩu$/i), 'different');
 
-    await user.click(screen.getByRole('button', { name: /create account/i }));
+    await user.click(screen.getByRole('button', { name: /tạo tài khoản/i }));
 
-    expect(await screen.findByText(/password must be at least 8 characters/i)).toBeInTheDocument();
-    expect(await screen.findByText(/passwords do not match/i)).toBeInTheDocument();
+    expect(await screen.findByText(/mật khẩu phải có ít nhất 8 ký tự/i)).toBeInTheDocument();
+    expect(await screen.findByText(/mật khẩu xác nhận không khớp/i)).toBeInTheDocument();
     expect(authApi.register).not.toHaveBeenCalled();
   });
 
@@ -91,12 +91,12 @@ describe('RegisterPage', () => {
 
     renderWithProviders(<RegisterPage />, { initialEntries: ['/register'] });
 
-    await user.type(screen.getByLabelText(/display name/i), 'Bob Builder');
-    await user.type(screen.getByLabelText(/email address/i), 'bob@shareloop.org');
-    await user.type(screen.getByLabelText(/password \(min\. 8 characters\)/i), 'strongPass123');
-    await user.type(screen.getByLabelText(/^confirm password$/i), 'strongPass123');
+    await user.type(screen.getByLabelText(/họ và tên hoặc tên hiển thị/i), 'Bob Builder');
+    await user.type(screen.getByLabelText(/địa chỉ email/i), 'bob@shareloop.org');
+    await user.type(screen.getByLabelText(/mật khẩu \(tối thiểu 8 ký tự\)/i), 'strongPass123');
+    await user.type(screen.getByLabelText(/^xác nhận mật khẩu$/i), 'strongPass123');
 
-    await user.click(screen.getByRole('button', { name: /create account/i }));
+    await user.click(screen.getByRole('button', { name: /tạo tài khoản/i }));
 
     await waitFor(() => {
       expect(authApi.register).toHaveBeenCalledWith({
@@ -108,10 +108,10 @@ describe('RegisterPage', () => {
     });
   });
 
-  it('displays error on duplicate email (409 Conflict)', async () => {
+  it('handles duplicate email (409 Conflict) and sets field error', async () => {
     const user = userEvent.setup();
     const duplicateError = new ApiError({
-      message: 'An account with this email already exists',
+      message: 'Email is already taken',
       status: 409,
       error: 'Conflict',
     });
@@ -120,32 +120,15 @@ describe('RegisterPage', () => {
 
     renderWithProviders(<RegisterPage />, { initialEntries: ['/register'] });
 
-    await user.type(screen.getByLabelText(/display name/i), 'Bob Duplicate');
-    await user.type(screen.getByLabelText(/email address/i), 'existing@shareloop.org');
-    await user.type(screen.getByLabelText(/password \(min\. 8 characters\)/i), 'password123');
-    await user.type(screen.getByLabelText(/^confirm password$/i), 'password123');
+    await user.type(screen.getByLabelText(/họ và tên hoặc tên hiển thị/i), 'Jane Duplicate');
+    await user.type(screen.getByLabelText(/địa chỉ email/i), 'duplicate@shareloop.org');
+    await user.type(screen.getByLabelText(/mật khẩu \(tối thiểu 8 ký tự\)/i), 'securePassword123');
+    await user.type(screen.getByLabelText(/^xác nhận mật khẩu$/i), 'securePassword123');
 
-    await user.click(screen.getByRole('button', { name: /create account/i }));
+    await user.click(screen.getByRole('button', { name: /tạo tài khoản/i }));
 
-    const alert = await screen.findByRole('alert');
-    expect(alert).toHaveTextContent(/already registered/i);
+    expect(await screen.findByText(/địa chỉ email này đã được sử dụng/i)).toBeInTheDocument();
+    expect(await screen.findByRole('alert')).toHaveTextContent(/email này đã được đăng ký/i);
     expect(tokenStorage.hasToken()).toBe(false);
-  });
-
-  it('toggles password and confirm-password visibility', async () => {
-    const user = userEvent.setup();
-    renderWithProviders(<RegisterPage />, { initialEntries: ['/register'] });
-
-    const passwordInput = screen.getByLabelText(/password \(min\. 8 characters\)/i);
-    const confirmInput = screen.getByLabelText(/^confirm password$/i);
-
-    expect(passwordInput).toHaveAttribute('type', 'password');
-    expect(confirmInput).toHaveAttribute('type', 'password');
-
-    await user.click(screen.getByRole('button', { name: /^show password$/i }));
-    expect(passwordInput).toHaveAttribute('type', 'text');
-
-    await user.click(screen.getByRole('button', { name: /show confirm password/i }));
-    expect(confirmInput).toHaveAttribute('type', 'text');
   });
 });

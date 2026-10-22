@@ -9,7 +9,7 @@ export function AdminOverviewPage() {
     <div className="space-y-6">
       <StatusBanner
         type="info"
-        message="Admin Dashboard Foundation: The endpoints documented below represent genuine administrative operations implemented in the backend."
+        message="Nền tảng trang quản trị: Các điểm cuối bên dưới đại diện cho các thao tác quản trị thực tế đã được xây dựng ở máy chủ."
       />
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -17,12 +17,12 @@ export function AdminOverviewPage() {
           <CardHeader>
             <div className="flex items-center gap-2">
               <FolderTree className="w-5 h-5 text-emerald-600" />
-              <CardTitle className="text-base">Category Hierarchy Management</CardTitle>
+              <CardTitle className="text-base">Quản lý phân cấp danh mục</CardTitle>
             </div>
           </CardHeader>
           <CardContent className="space-y-3">
             <p className="text-sm text-slate-600">
-              Manage item category taxonomy, ordering, active status, and slugs.
+              Quản lý phân loại danh mục sản phẩm, thứ tự hiển thị, trạng thái hoạt động và đường dẫn tĩnh.
             </p>
             <div className="text-xs font-mono bg-slate-50 p-2.5 rounded-md border border-slate-200 text-slate-700 space-y-1">
               <div>POST /api/v1/admin/categories</div>
@@ -31,7 +31,7 @@ export function AdminOverviewPage() {
             </div>
             <Link to="/admin/categories">
               <Button variant="outline" size="sm" className="w-full mt-2">
-                Manage Categories
+                Quản lý danh mục
               </Button>
             </Link>
           </CardContent>
@@ -41,19 +41,19 @@ export function AdminOverviewPage() {
           <CardHeader>
             <div className="flex items-center gap-2">
               <MessageSquareWarning className="w-5 h-5 text-amber-600" />
-              <CardTitle className="text-base">Review Soft Moderation</CardTitle>
+              <CardTitle className="text-base">Kiểm duyệt phản hồi đánh giá</CardTitle>
             </div>
           </CardHeader>
           <CardContent className="space-y-3">
             <p className="text-sm text-slate-600">
-              Review reported participant ratings, apply soft-hide moderation, and audit logs.
+              Kiểm tra đánh giá thành viên bị báo cáo, áp dụng ẩn đánh giá nhẹ và kiểm tra nhật ký.
             </p>
             <div className="text-xs font-mono bg-slate-50 p-2.5 rounded-md border border-slate-200 text-slate-700 space-y-1">
               <div>DELETE /api/v1/admin/reviews/{'{reviewId}'}</div>
             </div>
             <Link to="/admin/reviews">
               <Button variant="outline" size="sm" className="w-full mt-2">
-                Inspect Moderation
+                Kiểm tra kiểm duyệt
               </Button>
             </Link>
           </CardContent>
@@ -64,14 +64,14 @@ export function AdminOverviewPage() {
         <CardHeader>
           <div className="flex items-center gap-2">
             <ShieldCheck className="w-5 h-5 text-slate-600" />
-            <CardTitle className="text-base">Backend Authorization Security Note</CardTitle>
+            <CardTitle className="text-base">Lưu ý bảo mật phân quyền máy chủ</CardTitle>
           </div>
         </CardHeader>
         <CardContent>
           <p className="text-sm text-slate-600 leading-relaxed">
-            All administrative routes are protected at the Spring Security filter layer with{' '}
-            <code>.hasRole('ADMIN')</code> and <code>@PreAuthorize(&quot;hasRole('ADMIN')&quot;)</code>. In Phase 2,
-            client-side route guards will verify the active user profile role, but backend enforcement remains authoritative.
+            Mọi tuyến đường quản trị đều được bảo vệ tại tầng bộ lọc Spring Security với{' '}
+            <code>.hasRole(&apos;ADMIN&apos;)</code> và <code>@PreAuthorize(&quot;hasRole(&apos;ADMIN&apos;)&quot;)</code>. Ở phía giao diện người dùng,
+            bộ định tuyến sẽ xác minh vai trò hồ sơ người dùng, nhưng máy chủ phụ trợ vẫn là nơi quyết định quyền hạn tuyệt đối.
           </p>
         </CardContent>
       </Card>

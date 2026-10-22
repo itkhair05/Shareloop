@@ -52,16 +52,16 @@ export function LoginPage() {
     } catch (err) {
       if (err instanceof ApiError) {
         if (err.isUnauthorized) {
-          setGeneralError('Invalid email or password. Please check your credentials.');
+          setGeneralError('Email hoặc mật khẩu không chính xác. Vui lòng kiểm tra lại thông tin.');
         } else if (err.isForbidden) {
-          setGeneralError(err.message || 'Your account is suspended or deactivated. Please contact support.');
+          setGeneralError(err.message || 'Tài khoản của bạn đã bị tạm khóa hoặc vô hiệu hóa. Vui lòng liên hệ hỗ trợ.');
         } else if (err.isNetworkError) {
-          setGeneralError('Unable to reach the server. Please check your internet connection.');
+          setGeneralError('Không thể kết nối đến máy chủ. Vui lòng kiểm tra kết nối mạng của bạn.');
         } else {
-          setGeneralError(err.message || 'An unexpected error occurred during login. Please try again.');
+          setGeneralError(err.message || 'Đã xảy ra lỗi ngoài ý muốn khi đăng nhập. Vui lòng thử lại.');
         }
       } else {
-        setGeneralError('An unexpected error occurred. Please try again.');
+        setGeneralError('Đã xảy ra lỗi ngoài ý muốn. Vui lòng thử lại.');
       }
     }
   };
@@ -83,17 +83,17 @@ export function LoginPage() {
             </div>
             <span className="text-2xl font-bold text-slate-950 tracking-tight">ShareLoop</span>
           </Link>
-          <h1 className="text-2xl font-bold text-slate-900 tracking-tight">Welcome back</h1>
+          <h1 className="text-2xl font-bold text-slate-900 tracking-tight">Chào mừng trở lại</h1>
           <p className="text-sm text-slate-600">
-            Sign in to your account to share items, chat, and connect with your local community.
+            Đăng nhập vào tài khoản của bạn để chia sẻ đồ dùng và kết nối cùng cộng đồng dân cư.
           </p>
         </div>
 
         {/* Login Form Card */}
         <Card className="border border-slate-200 shadow-sm bg-white">
           <CardHeader className="pb-4">
-            <h2 className="text-base font-semibold text-slate-900">Sign In</h2>
-            <p className="text-xs text-slate-500">Enter your email and password below</p>
+            <h2 className="text-base font-semibold text-slate-900">Đăng nhập</h2>
+            <p className="text-xs text-slate-500">Nhập địa chỉ email và mật khẩu của bạn bên dưới</p>
           </CardHeader>
           <CardContent>
             <form onSubmit={handleSubmit(onSubmit)} noValidate className="space-y-4">
@@ -110,7 +110,7 @@ export function LoginPage() {
 
               {/* Email Field */}
               <Input
-                label="Email address"
+                label="Địa chỉ email"
                 id="login-email"
                 type="email"
                 autoComplete="email"
@@ -122,7 +122,7 @@ export function LoginPage() {
 
               {/* Password Field with Show/Hide Toggle */}
               <Input
-                label="Password"
+                label="Mật khẩu"
                 id="login-password"
                 type={showPassword ? 'text' : 'password'}
                 autoComplete="current-password"
@@ -133,8 +133,8 @@ export function LoginPage() {
                   <button
                     type="button"
                     onClick={() => setShowPassword(!showPassword)}
-                    className="text-slate-400 hover:text-slate-600 focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 rounded p-1"
-                    aria-label={showPassword ? 'Hide password' : 'Show password'}
+                    className="text-slate-400 hover:text-slate-600 focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 rounded p-1 cursor-pointer"
+                    aria-label={showPassword ? 'Ẩn mật khẩu' : 'Hiện mật khẩu'}
                   >
                     {showPassword ? (
                       <EyeOff className="w-4 h-4" aria-hidden="true" />
@@ -155,7 +155,7 @@ export function LoginPage() {
                 leftIcon={<LogIn className="w-4 h-4" />}
                 className="w-full mt-2"
               >
-                Sign In
+                Đăng nhập
               </Button>
             </form>
           </CardContent>
@@ -163,12 +163,12 @@ export function LoginPage() {
 
         {/* Footer Navigation */}
         <p className="text-center text-sm text-slate-600">
-          Don&apos;t have an account yet?{' '}
+          Chưa có tài khoản?{' '}
           <Link
             to="/register"
             className="font-semibold text-emerald-600 hover:text-emerald-700 underline underline-offset-4 focus:outline-none focus:ring-2 focus:ring-emerald-500 rounded"
           >
-            Create an account
+            Đăng ký tài khoản mới
           </Link>
         </p>
       </div>

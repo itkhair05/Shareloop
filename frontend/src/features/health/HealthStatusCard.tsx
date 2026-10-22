@@ -22,10 +22,10 @@ export function HealthStatusCard() {
         <div>
           <div className="flex items-center gap-2">
             <Server className="w-5 h-5 text-emerald-600" />
-            <CardTitle>Backend Service Connectivity</CardTitle>
+            <CardTitle>Kết nối dịch vụ máy chủ</CardTitle>
           </div>
           <CardDescription>
-            Validates active HTTP communication with Spring Boot backend via <code>/api/health</code>
+            Kiểm tra trạng thái giao tiếp HTTP với máy chủ Spring Boot thông qua <code>/api/health</code>
           </CardDescription>
         </div>
         <Button
@@ -35,22 +35,23 @@ export function HealthStatusCard() {
           isLoading={isFetching}
           leftIcon={<RefreshCw className="w-3.5 h-3.5" />}
         >
-          Check Now
+          Kiểm tra ngay
         </Button>
       </CardHeader>
 
       <CardContent>
         {isLoading && (
           <div className="py-6 flex justify-center">
-            <LoadingSpinner size="md" label="Pinging ShareLoop backend..." />
+            <LoadingSpinner size="md" label="Đang kiểm tra kết nối máy chủ ShareLoop..." />
           </div>
         )}
 
         {error && (
           <ErrorAlert
-            title="Backend Unreachable"
-            message={`${error.message}. Ensure the Spring Boot backend service is running on port 8080.`}
+            title="Không thể kết nối máy chủ"
+            message={`${error.message}. Vui lòng đảm bảo dịch vụ Spring Boot đang chạy ở cổng 8080.`}
             onRetry={() => refetch()}
+            retryLabel="Thử lại"
             isRetrying={isFetching}
           />
         )}
@@ -64,20 +65,20 @@ export function HealthStatusCard() {
               <div>
                 <div className="flex items-center gap-2">
                   <span className="font-semibold text-emerald-950 text-sm">
-                    Status: {data.status}
+                    Trạng thái: {data.status}
                   </span>
                   <Badge variant="success" withDot>
-                    Online
+                    Trực tuyến
                   </Badge>
                 </div>
                 <p className="text-xs text-emerald-800 mt-0.5">
-                  Service: <strong>{data.service || 'shareloop-backend'}</strong>
+                  Dịch vụ: <strong>{data.service || 'shareloop-backend'}</strong>
                 </p>
               </div>
             </div>
 
             <div className="text-xs text-emerald-800/80 sm:text-right">
-              <div>Server Timestamp:</div>
+              <div>Thời gian máy chủ:</div>
               <div className="font-mono text-emerald-950 font-medium">
                 {formatDateTime(data.timestamp)}
               </div>
@@ -88,7 +89,7 @@ export function HealthStatusCard() {
         <div className="mt-4 pt-3 border-t border-slate-100 flex items-center justify-between text-xs text-slate-500">
           <span className="flex items-center gap-1.5">
             <Activity className="w-3.5 h-3.5 text-slate-400" />
-            Vite Proxy: <code>/api/*</code> &rarr; <code>http://localhost:8080</code>
+            Điều hướng Vite: <code>/api/*</code> &rarr; <code>http://localhost:8080</code>
           </span>
           <span className="font-mono">HTTP 200 OK</span>
         </div>

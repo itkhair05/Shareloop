@@ -8,23 +8,23 @@ export function AdminReviewsPage() {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h2 className="text-lg font-bold text-slate-900">Review Moderation</h2>
+          <h2 className="text-lg font-bold text-slate-900">Kiểm duyệt đánh giá</h2>
           <p className="text-xs text-slate-500 mt-0.5">
-            Backend endpoint: <code>DELETE /api/v1/admin/reviews/{'{reviewId}'}</code> (Soft-hide moderation)
+            Điểm cuối máy chủ: <code>DELETE /api/v1/admin/reviews/{'{reviewId}'}</code> (Kiểm duyệt ẩn nhẹ)
           </p>
         </div>
-        <Badge variant="neutral">Phase 8 Planned</Badge>
+        <Badge variant="neutral">Kế hoạch Giai đoạn 8</Badge>
       </div>
 
       <Card>
         <CardHeader>
-          <CardTitle className="text-base">Moderation Queue</CardTitle>
+          <CardTitle className="text-base">Hàng đợi kiểm duyệt</CardTitle>
         </CardHeader>
         <CardContent>
           <EmptyState
             icon={MessageSquareWarning}
-            title="Review Moderation Queue"
-            description="Moderation queue allowing administrators to soft-hide inappropriate ratings and review feedback will be connected in Phase 8."
+            title="Hàng đợi kiểm duyệt đánh giá"
+            description="Hàng đợi cho phép quản trị viên ẩn các đánh giá và phản hồi không phù hợp sẽ được kết nối trong Giai đoạn 8."
           />
         </CardContent>
       </Card>

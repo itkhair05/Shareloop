@@ -35,17 +35,17 @@ describe('Navbar Authentication and Role-Aware Navigation', () => {
     renderWithProviders(<Navbar />);
 
     expect(screen.getByText('ShareLoop')).toBeInTheDocument();
-    expect(screen.getByRole('link', { name: /^home$/i })).toBeInTheDocument();
-    expect(screen.getByRole('link', { name: /^explore$/i })).toBeInTheDocument();
-    expect(screen.getByRole('link', { name: /^about$/i })).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: /^trang chủ$/i })).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: /^khám phá$/i })).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: /^giới thiệu$/i })).toBeInTheDocument();
 
     // Log In and Sign Up buttons present
-    expect(screen.getByRole('link', { name: /log in/i })).toHaveAttribute('href', '/login');
-    expect(screen.getByRole('link', { name: /sign up/i })).toHaveAttribute('href', '/register');
+    expect(screen.getByRole('link', { name: /đăng nhập/i })).toHaveAttribute('href', '/login');
+    expect(screen.getByRole('link', { name: /đăng ký/i })).toHaveAttribute('href', '/register');
 
     // Admin Console must NOT be shown to unauthenticated users
-    expect(screen.queryByRole('link', { name: /admin console/i })).not.toBeInTheDocument();
-    expect(screen.queryByRole('button', { name: /log out/i })).not.toBeInTheDocument();
+    expect(screen.queryByRole('link', { name: /bảng quản trị/i })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /đăng xuất/i })).not.toBeInTheDocument();
   });
 
   it('renders user identity and logout, but hides admin console for standard USER role', async () => {
@@ -76,14 +76,13 @@ describe('Navbar Authentication and Role-Aware Navigation', () => {
     renderWithProviders(<Navbar />);
 
     expect(screen.getByText('Sarah Neighbor')).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: /log out/i })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /đăng xuất/i })).toBeInTheDocument();
 
     // Standard user must NOT see Admin Console
-    expect(screen.queryByRole('link', { name: /admin console/i })).not.toBeInTheDocument();
-    expect(screen.queryByText(/sign in/i)).not.toBeInTheDocument();
-    expect(screen.queryByText(/sign up/i)).not.toBeInTheDocument();
+    expect(screen.queryByRole('link', { name: /bảng quản trị/i })).not.toBeInTheDocument();
+    expect(screen.queryByText(/đăng ký/i)).not.toBeInTheDocument();
 
-    await user.click(screen.getByRole('button', { name: /log out/i }));
+    await user.click(screen.getByRole('button', { name: /đăng xuất/i }));
     expect(mockLogout).toHaveBeenCalledTimes(1);
   });
 
@@ -113,8 +112,8 @@ describe('Navbar Authentication and Role-Aware Navigation', () => {
     renderWithProviders(<Navbar />);
 
     expect(screen.getByText('System Admin')).toBeInTheDocument();
-    expect(screen.getByRole('link', { name: /admin console/i })).toHaveAttribute('href', '/admin');
-    expect(screen.getByText('Admin')).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: /log out/i })).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: /bảng quản trị/i })).toHaveAttribute('href', '/admin');
+    expect(screen.getByText('Quản trị viên')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /đăng xuất/i })).toBeInTheDocument();
   });
 });

@@ -10,30 +10,30 @@ export function NotFoundPage() {
       </div>
 
       <span className="text-xs font-bold text-emerald-600 uppercase tracking-widest">
-        404 Not Found
+        404 - Không tìm thấy trang
       </span>
 
       <h1 className="text-3xl sm:text-4xl font-extrabold text-slate-900 tracking-tight mt-2">
-        Page Not Found
+        Trang không tồn tại
       </h1>
 
       <p className="text-sm sm:text-base text-slate-500 max-w-md mt-2 leading-relaxed">
-        The route you are looking for does not exist or may have been moved within the community platform.
+        Đường dẫn bạn đang tìm kiếm không tồn tại hoặc đã được di chuyển trong nền tảng cộng đồng.
       </p>
 
       <div className="flex flex-wrap items-center justify-center gap-3 mt-6">
         <Link to="/">
           <Button leftIcon={<Home className="w-4 h-4" />}>
-            Return to Home
+            Quay về trang chủ
           </Button>
         </Link>
         <button
           type="button"
           onClick={() => window.history.back()}
-          className="inline-flex items-center gap-1.5 text-sm font-medium text-slate-600 hover:text-slate-900 px-4 py-2 rounded-lg border border-slate-300 hover:bg-slate-50 transition-colors"
+          className="inline-flex items-center gap-1.5 text-sm font-medium text-slate-600 hover:text-slate-900 px-4 py-2 rounded-lg border border-slate-300 hover:bg-slate-50 transition-colors cursor-pointer"
         >
           <ArrowLeft className="w-4 h-4" />
-          <span>Go Back</span>
+          <span>Quay lại</span>
         </button>
       </div>
     </div>

@@ -18,19 +18,19 @@ export function AdminLayout() {
   const adminNavItems = [
     {
       to: '/admin',
-      label: 'Admin Overview',
+      label: 'Tổng quan quản trị',
       icon: LayoutDashboard,
       end: true,
     },
     {
       to: '/admin/categories',
-      label: 'Category Catalog',
+      label: 'Danh mục ngành hàng',
       icon: FolderTree,
       end: false,
     },
     {
       to: '/admin/reviews',
-      label: 'Review Moderation',
+      label: 'Kiểm duyệt đánh giá',
       icon: MessageSquareWarning,
       end: false,
     },
@@ -42,13 +42,13 @@ export function AdminLayout() {
       <div className="md:hidden bg-slate-900 text-white px-4 py-3 flex items-center justify-between border-b border-slate-800">
         <div className="flex items-center gap-2">
           <ShieldAlert className="w-5 h-5 text-amber-400" />
-          <span className="font-bold text-sm tracking-wide">ShareLoop Admin</span>
+          <span className="font-bold text-sm tracking-wide">Quản trị ShareLoop</span>
         </div>
         <button
           type="button"
           onClick={() => setIsSidebarOpen(!isSidebarOpen)}
-          className="p-1.5 rounded-md hover:bg-slate-800 text-slate-300"
-          aria-label="Toggle admin sidebar"
+          className="p-1.5 rounded-md hover:bg-slate-800 text-slate-300 cursor-pointer"
+          aria-label={isSidebarOpen ? 'Đóng thanh điều hướng quản trị' : 'Mở thanh điều hướng quản trị'}
         >
           {isSidebarOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
         </button>
@@ -69,10 +69,10 @@ export function AdminLayout() {
             </div>
             <div>
               <h2 className="text-sm font-bold text-white tracking-tight">
-                Admin Console
+                Bảng quản trị
               </h2>
               <span className="text-[10px] text-slate-400 uppercase font-semibold">
-                ShareLoop Internal
+                Nội bộ ShareLoop
               </span>
             </div>
           </div>
@@ -104,14 +104,14 @@ export function AdminLayout() {
         {/* Sidebar Footer — Return to Public Application */}
         <div className="p-4 border-t border-slate-800 space-y-3">
           <Badge variant="warning" className="w-full justify-center">
-            Role: System Admin
+            Vai trò: Quản trị viên
           </Badge>
           <Link
             to="/"
             className="flex items-center gap-2 text-xs text-slate-400 hover:text-white transition-colors p-1 rounded-md"
           >
             <ArrowLeft className="w-3.5 h-3.5" />
-            <span>Return to Public App</span>
+            <span>Quay lại ứng dụng chính</span>
           </Link>
         </div>
       </aside>
@@ -120,13 +120,13 @@ export function AdminLayout() {
       <div className="flex-1 flex flex-col min-w-0 overflow-y-auto">
         <header className="bg-white border-b border-slate-200 px-6 py-4 flex items-center justify-between">
           <div>
-            <h1 className="text-xl font-bold text-slate-900">Administration Console</h1>
+            <h1 className="text-xl font-bold text-slate-900">Bảng điều khiển quản trị</h1>
             <p className="text-xs text-slate-500 mt-0.5">
-              Restricted management area for catalog moderation and review compliance
+              Khu vực quản lý dành riêng cho kiểm duyệt danh mục và đánh giá cộng đồng
             </p>
           </div>
           <div className="hidden sm:flex items-center gap-2">
-            <span className="text-xs text-slate-500 font-mono">Backend: Spring Boot 3</span>
+            <span className="text-xs text-slate-500 font-mono">Hệ thống: Spring Boot 3</span>
           </div>
         </header>
 

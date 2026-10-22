@@ -5,36 +5,36 @@ export function AboutPage() {
   const architectures = [
     {
       icon: Lock,
-      title: 'Authentication & Security',
+      title: 'Xác thực & Bảo mật',
       description:
-        'Stateless JWT Bearer token authentication validated on every request. Passwords securely hashed with BCrypt. Role-based access control protecting admin endpoints.',
+        'Xác thực mã thông báo Bearer JWT không lưu phiên trạng thái trên từng yêu cầu. Mật khẩu được mã hóa an toàn với BCrypt. Phân quyền vai trò nghiêm ngặt bảo vệ các khu vực quản trị.',
     },
     {
       icon: Database,
-      title: 'Transactional Integrity',
+      title: 'Toàn vẹn giao dịch',
       description:
-        'PostgreSQL with strict database check constraints, triggers, and pessimistic locking preventing race conditions during transactions and reviews.',
+        'Cơ sở dữ liệu PostgreSQL với các ràng buộc kiểm tra nghiêm ngặt, trigger và khóa bi quan giúp ngăn ngừa xung đột dữ liệu trong các giao dịch và đánh giá.',
     },
     {
       icon: Globe,
-      title: 'Decoupled Client Architecture',
+      title: 'Kiến trúc giao diện độc lập',
       description:
-        'React 19 single-page application built on Vite 8, TanStack Query for cache invalidation, and Tailwind CSS for accessible, responsive interfaces.',
+        'Ứng dụng đơn trang React 19 phát triển trên Vite 8, sử dụng TanStack Query để quản lý bộ nhớ đệm và Tailwind CSS cho giao diện thích ứng, dễ tiếp cận.',
     },
     {
       icon: Shield,
-      title: 'OpenAPI 3 Documentation',
+      title: 'Tài liệu OpenAPI 3',
       description:
-        'Fully documented REST API with Swagger UI accessible at /swagger-ui.html with explicit operation-level security mapping.',
+        'Hệ thống REST API được ghi nhận đầy đủ với Swagger UI tại /swagger-ui.html với tài liệu bảo mật chi tiết cho từng tác vụ.',
     },
   ];
 
   return (
     <div className="space-y-8 max-w-4xl mx-auto">
       <div>
-        <h1 className="text-3xl font-extrabold text-slate-900 tracking-tight">About ShareLoop</h1>
+        <h1 className="text-3xl font-extrabold text-slate-900 tracking-tight">Về ShareLoop</h1>
         <p className="text-base text-slate-600 mt-2 leading-relaxed">
-          ShareLoop is an open-source, community-oriented item sharing and trading platform designed with enterprise-grade engineering principles.
+          ShareLoop là nền tảng chia sẻ và trao đổi đồ dùng cộng đồng mã nguồn mở, được xây dựng theo các tiêu chuẩn kỹ thuật chuyên nghiệp.
         </p>
       </div>
 

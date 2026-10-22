@@ -36,7 +36,7 @@ describe('ProtectedRoute', () => {
     );
 
     expect(screen.getByRole('status')).toBeInTheDocument();
-    expect(screen.getAllByText(/verifying authentication/i)[0]).toBeInTheDocument();
+    expect(screen.getAllByText(/đang xác thực tài khoản/i)[0]).toBeInTheDocument();
     expect(screen.queryByText('Secret Content')).not.toBeInTheDocument();
   });
 
@@ -136,8 +136,8 @@ describe('ProtectedRoute', () => {
     );
 
     expect(screen.getByRole('alert')).toBeInTheDocument();
-    expect(screen.getByRole('heading', { name: /access denied/i })).toBeInTheDocument();
-    expect(screen.getByText(/does not have permission to access this restricted area/i)).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: /truy cập bị từ chối/i })).toBeInTheDocument();
+    expect(screen.getByText(/không có quyền truy cập khu vực/i)).toBeInTheDocument();
     expect(screen.queryByText('Admin Only Content')).not.toBeInTheDocument();
   });
 
@@ -179,6 +179,6 @@ describe('ProtectedRoute', () => {
     );
 
     expect(screen.getByText('Admin Only Content')).toBeInTheDocument();
-    expect(screen.queryByText(/access denied/i)).not.toBeInTheDocument();
+    expect(screen.queryByText(/truy cập bị từ chối/i)).not.toBeInTheDocument();
   });
 });
