@@ -42,7 +42,7 @@ describe('Application Routing', () => {
 
     renderWithProviders(<RouterProvider router={memoryRouter} />, { withRouter: false });
     expect(screen.getByRole('heading', { name: /khám phá đồ dùng cộng đồng/i })).toBeInTheDocument();
-    expect(screen.getByText(/kế hoạch giai đoạn 3/i)).toBeInTheDocument();
+    expect(screen.getByText(/duyệt tìm đồ dùng cho tặng, trao đổi/i)).toBeInTheDocument();
   });
 
   it('navigates to About page', () => {

@@ -1,7 +1,6 @@
 import { FolderTree } from 'lucide-react';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/Card';
 import { EmptyState } from '@/components/ui/Feedback';
-import { Badge } from '@/components/ui/Badge';
 
 export function AdminCategoriesPage() {
   return (
@@ -13,7 +12,6 @@ export function AdminCategoriesPage() {
             Các điểm cuối máy chủ: <code>POST/PUT/PATCH /api/v1/admin/categories</code>
           </p>
         </div>
-        <Badge variant="neutral">Kế hoạch Giai đoạn 8</Badge>
       </div>
 
       <Card>
@@ -24,7 +22,7 @@ export function AdminCategoriesPage() {
           <EmptyState
             icon={FolderTree}
             title="Giao diện quản trị danh mục"
-            description="Các thao tác CRUD và sắp xếp lại danh mục tương tác đầy đủ sẽ được tích hợp trong Giai đoạn 8 (Trang quản trị) sau khi hoàn tất quy trình người dùng công khai."
+            description="Các thao tác quản lý danh mục và điều chỉnh sắp xếp sẽ sẵn sàng cho quản trị viên sau khi hệ thống hoàn tất cấu hình danh mục cơ sở."
           />
         </CardContent>
       </Card>

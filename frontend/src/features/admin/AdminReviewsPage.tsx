@@ -1,7 +1,6 @@
 import { MessageSquareWarning } from 'lucide-react';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/Card';
 import { EmptyState } from '@/components/ui/Feedback';
-import { Badge } from '@/components/ui/Badge';
 
 export function AdminReviewsPage() {
   return (
@@ -13,7 +12,6 @@ export function AdminReviewsPage() {
             Điểm cuối máy chủ: <code>DELETE /api/v1/admin/reviews/{'{reviewId}'}</code> (Kiểm duyệt ẩn nhẹ)
           </p>
         </div>
-        <Badge variant="neutral">Kế hoạch Giai đoạn 8</Badge>
       </div>
 
       <Card>
@@ -24,7 +22,7 @@ export function AdminReviewsPage() {
           <EmptyState
             icon={MessageSquareWarning}
             title="Hàng đợi kiểm duyệt đánh giá"
-            description="Hàng đợi cho phép quản trị viên ẩn các đánh giá và phản hồi không phù hợp sẽ được kết nối trong Giai đoạn 8."
+            description="Hàng đợi kiểm duyệt cho phép ban quản trị xem xét và xử lý các đánh giá hoặc phản hồi vi phạm quy chuẩn cộng đồng."
           />
         </CardContent>
       </Card>

@@ -328,8 +328,8 @@ export function HomePage() {
             <Link to="/explore" className="w-full sm:w-auto">
               <Button
                 size="lg"
-                className="w-full sm:w-auto bg-white text-emerald-900 hover:bg-gray-100 border-0 font-bold px-7 shadow-sm focus-visible:ring-2 focus-visible:ring-white focus-visible:ring-offset-2 focus-visible:ring-offset-emerald-900 transition-colors"
-                rightIcon={<ArrowRight className="w-4 h-4 text-emerald-900" />}
+                className="w-full sm:w-auto bg-white !text-emerald-900 hover:bg-gray-100 border-0 font-bold px-7 shadow-sm focus-visible:ring-2 focus-visible:ring-white focus-visible:ring-offset-2 focus-visible:ring-offset-emerald-900 transition-colors"
+                rightIcon={<ArrowRight className="w-4 h-4 !text-emerald-900" />}
               >
                 Khám phá đồ dùng
               </Button>
