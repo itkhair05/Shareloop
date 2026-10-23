@@ -19,6 +19,7 @@ import { Button } from '@/components/ui/Button';
 import { EmptyState, ErrorAlert, LoadingSpinner } from '@/components/ui/Feedback';
 import { formatDateTime, formatPrice, isValidUuid, resolveImageUrl } from '@/lib/utils';
 import { useListing } from '../hooks/use-listings';
+import { OwnerRatingBadge, OwnerReputationSection } from '@/features/reviews';
 import type { ListingStatus, ListingType } from '@/types/listing';
 
 const listingTypeConfig: Record<
@@ -393,6 +394,12 @@ export function ListingDetailPage() {
               )}
             </dl>
           </section>
+
+          {/* Owner Reputation, Ratings & Reviews Section (Phase 3F) */}
+          <OwnerReputationSection
+            userId={listing.owner.id}
+            ownerName={listing.owner.displayName}
+          />
         </section>
 
         {/* Right Column: Sticky Sidebar with Title, Price, Owner, Location & Safety */}
@@ -502,6 +509,11 @@ export function ListingDetailPage() {
                   Thành viên cộng đồng ShareLoop
                 </div>
               </div>
+            </div>
+
+            {/* Quick Rating Badge in Owner Card */}
+            <div className="pt-3 border-t border-slate-100">
+              <OwnerRatingBadge userId={listing.owner.id} />
             </div>
           </div>
 
