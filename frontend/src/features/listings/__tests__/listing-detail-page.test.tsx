@@ -159,9 +159,11 @@ describe('ListingDetailPage & Marketplace Navigation', () => {
     // Check description with preserved formatting
     expect(screen.getByText(/Bộ dụng cụ còn mới 95%/)).toBeInTheDocument();
 
-    // Check owner display name (no fabricated ratings/reviews)
+    // Check owner display name and reputation section (Phase 3F)
     expect(screen.getByText('Nguyễn Văn A')).toBeInTheDocument();
-    expect(screen.queryByText(/đánh giá/i)).not.toBeInTheDocument();
+    expect(
+      screen.getByRole('heading', { level: 2, name: /Đánh giá & Uy tín cộng đồng/i })
+    ).toBeInTheDocument();
 
     // Check location
     expect(screen.getByText(/Thảo Điền, TP. Hồ Chí Minh, Việt Nam/)).toBeInTheDocument();
