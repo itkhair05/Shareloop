@@ -39,10 +39,12 @@ export function ExplorePlaceholderPage() {
 
   // Sync inputs when URL changes externally (e.g. back/forward, reset button)
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setKeywordInput(urlKeyword);
   }, [urlKeyword]);
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setCityInput(urlCity);
   }, [urlCity]);
 

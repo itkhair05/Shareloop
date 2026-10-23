@@ -1,7 +1,15 @@
-import { useQuery } from '@tanstack/react-query';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { listingApi, listingKeys } from '../api/listing-api';
 import type { PageResponse } from '@/types/api';
-import type { ListingQueryParams, ListingResponse, ListingSummaryResponse } from '@/types/listing';
+import type {
+  CreateListingRequest,
+  ListingQueryParams,
+  ListingResponse,
+  ListingSummaryResponse,
+  MyListingsQueryParams,
+  UpdateListingRequest,
+} from '@/types/listing';
+import type { FileUploadResponse } from '@/types/file';
 import { isValidUuid } from '@/lib/utils';
 import { appConfig } from '@/lib/config';
 import type { ApiError } from '@/lib/api-error';
@@ -41,6 +49,70 @@ export function useListing(id?: string) {
       }
       return failureCount < 2;
     },
+  });
+}
+
+/**
+ * Hook to retrieve listings owned by the authenticated user
+ */
+export function useMyListings(params?: MyListingsQueryParams) {
+  return useQuery<PageResponse<ListingSummaryResponse>, ApiError>({
+    queryKey: listingKeys.mine(params),
+    queryFn: () => listingApi.getMyListings(params),
+    staleTime: 1000 * 60 * 1, // 1 minute
+  });
+}
+
+/**
+ * Hook to create a new listing
+ */
+export function useCreateListing() {
+  const queryClient = useQueryClient();
+
+  return useMutation<ListingResponse, ApiError, CreateListingRequest>({
+    mutationFn: (payload) => listingApi.createListing(payload),
+    onSuccess: (created) => {
+      queryClient.invalidateQueries({ queryKey: listingKeys.all });
+      queryClient.setQueryData(listingKeys.detail(created.id), created);
+    },
+  });
+}
+
+/**
+ * Hook to update an existing listing
+ */
+export function useUpdateListing() {
+  const queryClient = useQueryClient();
+
+  return useMutation<ListingResponse, ApiError, { id: string; payload: UpdateListingRequest }>({
+    mutationFn: ({ id, payload }) => listingApi.updateListing(id, payload),
+    onSuccess: (updated) => {
+      queryClient.invalidateQueries({ queryKey: listingKeys.all });
+      queryClient.setQueryData(listingKeys.detail(updated.id), updated);
+    },
+  });
+}
+
+/**
+ * Hook to delete an existing listing
+ */
+export function useDeleteListing() {
+  const queryClient = useQueryClient();
+
+  return useMutation<void, ApiError, string>({
+    mutationFn: (id) => listingApi.deleteListing(id),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: listingKeys.all });
+    },
+  });
+}
+
+/**
+ * Hook to upload an image file
+ */
+export function useUploadImage() {
+  return useMutation<FileUploadResponse, ApiError, File>({
+    mutationFn: (file) => listingApi.uploadImage(file),
   });
 }
 

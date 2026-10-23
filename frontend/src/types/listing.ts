@@ -112,6 +112,15 @@ export interface ListingQueryParams {
 }
 
 /**
+ * Query parameters for personal listings (GET /api/v1/listings/mine)
+ */
+export interface MyListingsQueryParams {
+  status?: ListingStatus;
+  page?: number;
+  size?: number;
+}
+
+/**
  * Request payload for creating a new listing (POST /api/v1/listings)
  */
 export interface CreateListingRequest {

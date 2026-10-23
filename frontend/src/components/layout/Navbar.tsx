@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Link, NavLink } from 'react-router-dom';
-import { Menu, X, Shield, LogIn, LogOut, User as UserIcon } from 'lucide-react';
+import { Menu, X, Shield, LogIn, LogOut, User as UserIcon, Plus } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Badge } from '@/components/ui/Badge';
 import { Button } from '@/components/ui/Button';
@@ -58,6 +58,11 @@ export function Navbar() {
             <NavLink to="/explore" className={navLinkClass}>
               Khám phá
             </NavLink>
+            {isAuthenticated && (
+              <NavLink to="/my-listings" className={navLinkClass}>
+                Bài đăng của tôi
+              </NavLink>
+            )}
             <NavLink to="/about" className={navLinkClass}>
               Giới thiệu
             </NavLink>
@@ -67,6 +72,14 @@ export function Navbar() {
           <div className="hidden md:flex items-center gap-3">
             {isAuthenticated ? (
               <div className="flex items-center gap-3">
+                <Link
+                  to="/listings/new"
+                  className="inline-flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white shadow-xs transition-colors"
+                >
+                  <Plus className="w-3.5 h-3.5" />
+                  <span>Đăng bài</span>
+                </Link>
+
                 {isAdmin && (
                   <Link
                     to="/admin"
@@ -171,6 +184,22 @@ export function Navbar() {
           >
             Khám phá
           </NavLink>
+          {isAuthenticated && (
+            <NavLink
+              to="/my-listings"
+              onClick={() => setIsMobileMenuOpen(false)}
+              className={({ isActive }) =>
+                cn(
+                  'block px-3 py-2 rounded-md text-base font-medium',
+                  isActive
+                    ? 'text-emerald-700 bg-emerald-50'
+                    : 'text-slate-600 hover:bg-slate-50'
+                )
+              }
+            >
+              Bài đăng của tôi
+            </NavLink>
+          )}
           <NavLink
             to="/about"
             onClick={() => setIsMobileMenuOpen(false)}
@@ -189,6 +218,15 @@ export function Navbar() {
           <div className="pt-3 mt-2 border-t border-slate-100 space-y-2">
             {isAuthenticated ? (
               <>
+                <Link
+                  to="/listings/new"
+                  onClick={() => setIsMobileMenuOpen(false)}
+                  className="flex items-center justify-center gap-2 px-3 py-2 rounded-lg bg-emerald-600 text-sm font-semibold text-white hover:bg-emerald-700 shadow-xs"
+                >
+                  <Plus className="w-4 h-4" />
+                  <span>Đăng bài mới</span>
+                </Link>
+
                 <div className="px-3 py-1 flex items-center justify-between">
                   <span className="text-sm font-semibold text-slate-800">
                     {user?.displayName}
