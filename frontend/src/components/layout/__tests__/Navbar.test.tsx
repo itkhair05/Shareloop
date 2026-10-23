@@ -43,12 +43,14 @@ describe('Navbar Authentication and Role-Aware Navigation', () => {
     expect(screen.getByRole('link', { name: /đăng nhập/i })).toHaveAttribute('href', '/login');
     expect(screen.getByRole('link', { name: /đăng ký/i })).toHaveAttribute('href', '/register');
 
-    // Admin Console must NOT be shown to unauthenticated users
+    // Admin Console and authenticated links must NOT be shown to unauthenticated users
     expect(screen.queryByRole('link', { name: /bảng quản trị/i })).not.toBeInTheDocument();
+    expect(screen.queryByRole('link', { name: /bài đăng của tôi/i })).not.toBeInTheDocument();
+    expect(screen.queryByRole('link', { name: /^đăng bài$/i })).not.toBeInTheDocument();
     expect(screen.queryByRole('button', { name: /đăng xuất/i })).not.toBeInTheDocument();
   });
 
-  it('renders user identity and logout, but hides admin console for standard USER role', async () => {
+  it('renders user identity, my listings, create listing, and logout, but hides admin console for standard USER role', async () => {
     const user = userEvent.setup();
     const mockLogout = vi.fn();
     const standardUser: UserProfile = {
@@ -76,6 +78,8 @@ describe('Navbar Authentication and Role-Aware Navigation', () => {
     renderWithProviders(<Navbar />);
 
     expect(screen.getByText('Sarah Neighbor')).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: /bài đăng của tôi/i })).toHaveAttribute('href', '/my-listings');
+    expect(screen.getByRole('link', { name: /^đăng bài$/i })).toHaveAttribute('href', '/listings/new');
     expect(screen.getByRole('button', { name: /đăng xuất/i })).toBeInTheDocument();
 
     // Standard user must NOT see Admin Console
