@@ -161,7 +161,12 @@ describe('Listing Request UI Integration (Phase 4A.2)', () => {
       );
 
       await waitFor(() => {
-        expect(screen.getByRole('button', { name: /tôi muốn nhận món này/i })).toBeInTheDocument();
+        const primaryBtn = screen.getByRole('button', { name: /tôi muốn nhận món này/i });
+        expect(primaryBtn).toBeInTheDocument();
+        expect(primaryBtn).toHaveClass('flex', 'flex-row', 'items-center', 'justify-center', 'gap-2');
+        expect(primaryBtn.className).toContain('[&>span]:flex');
+        expect(primaryBtn.className).toContain('[&>span]:flex-row');
+        expect(primaryBtn.className).toContain('[&>span]:items-center');
       });
     });
 
@@ -435,7 +440,12 @@ describe('Listing Request UI Integration (Phase 4A.2)', () => {
       expect(screen.getByText('29/1000')).toBeInTheDocument();
 
       // Submit modal form
-      await user.click(screen.getByRole('button', { name: /gửi yêu cầu nhận đồ/i }));
+      const modalSubmitBtn = screen.getByRole('button', { name: /gửi yêu cầu nhận đồ/i });
+      expect(modalSubmitBtn).toHaveClass('flex', 'flex-row', 'items-center', 'justify-center', 'gap-2');
+      expect(modalSubmitBtn.className).toContain('[&>span]:flex');
+      expect(modalSubmitBtn.className).toContain('[&>span]:flex-row');
+      expect(modalSubmitBtn.className).toContain('[&>span]:items-center');
+      await user.click(modalSubmitBtn);
 
       await waitFor(() => {
         expect(requestApi.createRequest).toHaveBeenCalledWith(
@@ -583,6 +593,10 @@ describe('Listing Request UI Integration (Phase 4A.2)', () => {
       const rejectBtn = screen.getByRole('button', { name: /từ chối/i });
       expect(acceptBtn).toBeInTheDocument();
       expect(rejectBtn).toBeInTheDocument();
+      expect(acceptBtn).toHaveClass('flex', 'flex-row', 'items-center', 'justify-center', 'gap-2');
+      expect(acceptBtn.className).toContain('[&>span]:flex');
+      expect(rejectBtn).toHaveClass('flex', 'flex-row', 'items-center', 'justify-center', 'gap-2');
+      expect(rejectBtn.className).toContain('[&>span]:flex');
 
       // Click Accept opens confirmation dialog
       await user.click(acceptBtn);

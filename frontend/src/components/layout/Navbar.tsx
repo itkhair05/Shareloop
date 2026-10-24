@@ -59,9 +59,14 @@ export function Navbar() {
               Khám phá
             </NavLink>
             {isAuthenticated && (
-              <NavLink to="/my-listings" className={navLinkClass}>
-                Bài đăng của tôi
-              </NavLink>
+              <>
+                <NavLink to="/my-listings" className={navLinkClass}>
+                  Bài đăng của tôi
+                </NavLink>
+                <NavLink to="/transactions" className={navLinkClass}>
+                  Giao dịch
+                </NavLink>
+              </>
             )}
             <NavLink to="/about" className={navLinkClass}>
               Giới thiệu
@@ -185,20 +190,36 @@ export function Navbar() {
             Khám phá
           </NavLink>
           {isAuthenticated && (
-            <NavLink
-              to="/my-listings"
-              onClick={() => setIsMobileMenuOpen(false)}
-              className={({ isActive }) =>
-                cn(
-                  'block px-3 py-2 rounded-md text-base font-medium',
-                  isActive
-                    ? 'text-emerald-700 bg-emerald-50'
-                    : 'text-slate-600 hover:bg-slate-50'
-                )
-              }
-            >
-              Bài đăng của tôi
-            </NavLink>
+            <>
+              <NavLink
+                to="/my-listings"
+                onClick={() => setIsMobileMenuOpen(false)}
+                className={({ isActive }) =>
+                  cn(
+                    'block px-3 py-2 rounded-md text-base font-medium',
+                    isActive
+                      ? 'text-emerald-700 bg-emerald-50'
+                      : 'text-slate-600 hover:bg-slate-50'
+                  )
+                }
+              >
+                Bài đăng của tôi
+              </NavLink>
+              <NavLink
+                to="/transactions"
+                onClick={() => setIsMobileMenuOpen(false)}
+                className={({ isActive }) =>
+                  cn(
+                    'block px-3 py-2 rounded-md text-base font-medium',
+                    isActive
+                      ? 'text-emerald-700 bg-emerald-50'
+                      : 'text-slate-600 hover:bg-slate-50'
+                  )
+                }
+              >
+                Giao dịch
+              </NavLink>
+            </>
           )}
           <NavLink
             to="/about"

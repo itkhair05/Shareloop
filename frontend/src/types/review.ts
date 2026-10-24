@@ -47,3 +47,8 @@ export interface UserReviewsQueryParams {
   page?: number;
   size?: number;
 }
+
+export interface CreateReviewRequest {
+  rating: number; // 1 to 5
+  comment?: string | null;
+}

@@ -63,7 +63,9 @@ class OpenApiControllerIntegrationTest {
 
     @AfterEach
     void tearDown() {
-        userRepository.deleteAll();
+        if (regularUser != null && regularUser.getId() != null) {
+            userRepository.deleteById(regularUser.getId());
+        }
     }
 
     // =========================================================================

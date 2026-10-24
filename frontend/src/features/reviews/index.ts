@@ -5,3 +5,4 @@ export * from './components/RatingSummaryCard';
 export * from './components/UserReviewsList';
 export * from './components/OwnerRatingBadge';
 export * from './components/OwnerReputationSection';
+export * from './components/CreateReviewModal';

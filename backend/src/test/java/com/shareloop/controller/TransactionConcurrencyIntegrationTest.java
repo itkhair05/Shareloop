@@ -53,6 +53,9 @@ class TransactionConcurrencyIntegrationTest {
     private TransactionRepository transactionRepository;
 
     @Autowired
+    private ReviewRepository reviewRepository;
+
+    @Autowired
     private PasswordEncoder passwordEncoder;
 
     @Autowired
@@ -95,13 +98,21 @@ class TransactionConcurrencyIntegrationTest {
 
     @AfterEach
     void tearDown() {
+        reviewRepository.deleteAll();
         transactionRepository.deleteAll();
         listingRequestRepository.deleteAll();
-        listingRepository.deleteAll();
+        if (ownerAlice != null && ownerAlice.getId() != null) {
+            listingRepository.findByOwnerId(ownerAlice.getId()).forEach(listingRepository::delete);
+        }
         if (generalCategory != null && generalCategory.getId() != null) {
             categoryRepository.deleteById(generalCategory.getId());
         }
-        userRepository.deleteAll();
+        if (ownerAlice != null && ownerAlice.getId() != null) {
+            userRepository.deleteById(ownerAlice.getId());
+        }
+        if (requesterBob != null && requesterBob.getId() != null) {
+            userRepository.deleteById(requesterBob.getId());
+        }
     }
 
     private Transaction createTestTransaction() {

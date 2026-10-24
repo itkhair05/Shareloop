@@ -7,6 +7,7 @@ import com.shareloop.entity.ListingImage;
 import com.shareloop.entity.User;
 import com.shareloop.entity.enums.ListingStatus;
 import com.shareloop.entity.enums.ListingType;
+import com.shareloop.entity.enums.TransactionStatus;
 import com.shareloop.entity.enums.UserRole;
 import com.shareloop.exception.ResourceNotFoundException;
 import com.shareloop.repository.CategoryRepository;
@@ -27,10 +28,17 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
 import java.util.Locale;
+import java.util.Set;
 import java.util.UUID;
 
 @Service
 public class ListingService {
+
+    private static final Set<TransactionStatus> QUALIFYING_TRANSACTION_STATUSES = Set.of(
+            TransactionStatus.PENDING,
+            TransactionStatus.IN_PROGRESS,
+            TransactionStatus.COMPLETED
+    );
 
     private final ListingRepository listingRepository;
     private final CategoryRepository categoryRepository;
@@ -92,11 +100,19 @@ public class ListingService {
         Listing listing = listingRepository.findWithDetailsById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Listing not found with id: " + id));
 
-        // If listing is not active, only the owner or an ADMIN may view it
+        // If listing is not active, allow access only when user is:
+        // 1. The listing owner
+        // 2. An authenticated ADMIN
+        // 3. The requester of a qualifying transaction (PENDING, IN_PROGRESS, COMPLETED)
         if (listing.getStatus() != ListingStatus.ACTIVE) {
             boolean isOwner = principal != null && listing.getOwner().getId().equals(principal.getId());
             boolean isAdmin = principal != null && principal.getRole() == UserRole.ADMIN;
-            if (!isOwner && !isAdmin) {
+            boolean isQualifyingRequester = principal != null && transactionRepository.existsByListingIdAndRequesterIdAndStatusIn(
+                    id,
+                    principal.getId(),
+                    QUALIFYING_TRANSACTION_STATUSES
+            );
+            if (!isOwner && !isAdmin && !isQualifyingRequester) {
                 throw new ResourceNotFoundException("Listing not found with id: " + id);
             }
         }

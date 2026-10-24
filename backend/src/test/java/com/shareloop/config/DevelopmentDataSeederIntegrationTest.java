@@ -9,6 +9,7 @@ import com.shareloop.repository.CategoryRepository;
 import com.shareloop.repository.ListingRepository;
 import com.shareloop.repository.UserRepository;
 import com.shareloop.service.ListingService;
+import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -222,5 +223,16 @@ class DevelopmentDataSeederIntegrationTest {
         assertThat(seeder.seed())
                 .as("Seeder must return 0 when profile is not dev, local, or test")
                 .isEqualTo(0);
+    }
+
+    @AfterAll
+    static void tearDownSeededData(
+            @Autowired ListingRepository listingRepository,
+            @Autowired UserRepository userRepository
+    ) {
+        for (DevelopmentDataSeeder.DemoListingDefinition def : DevelopmentDataSeeder.DEMO_LISTINGS) {
+            listingRepository.findById(def.id()).ifPresent(listingRepository::delete);
+        }
+        userRepository.findById(DevelopmentDataSeeder.DEV_OWNER_ID).ifPresent(userRepository::delete);
     }
 }

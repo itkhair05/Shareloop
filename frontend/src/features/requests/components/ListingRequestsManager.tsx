@@ -296,9 +296,9 @@ export function ListingRequestsManager({
                       size="sm"
                       onClick={() => setRequestToReject(request)}
                       disabled={updateStatusMutation.isPending}
-                      className="text-slate-600 hover:text-red-700 hover:bg-red-50 hover:border-red-200"
+                      className="flex flex-row items-center justify-center gap-2 text-slate-600 hover:text-red-700 hover:bg-red-50 hover:border-red-200 [&>span]:flex [&>span]:flex-row [&>span]:items-center [&>span]:gap-1.5"
                     >
-                      <X className="w-3.5 h-3.5 mr-1 text-slate-500" aria-hidden="true" />
+                      <X className="w-3.5 h-3.5 text-slate-500 shrink-0" aria-hidden="true" />
                       <span>Từ chối</span>
                     </Button>
 
@@ -313,9 +313,11 @@ export function ListingRequestsManager({
                           ? 'Không thể chấp nhận vì bài đăng không ở trạng thái Đang hiển thị'
                           : undefined
                       }
-                      className={!canAccept ? 'opacity-50 cursor-not-allowed' : ''}
+                      className={`flex flex-row items-center justify-center gap-2 [&>span]:flex [&>span]:flex-row [&>span]:items-center [&>span]:gap-1.5 ${
+                        !canAccept ? 'opacity-50 cursor-not-allowed' : ''
+                      }`}
                     >
-                      <Check className="w-3.5 h-3.5 mr-1" aria-hidden="true" />
+                      <Check className="w-3.5 h-3.5 shrink-0" aria-hidden="true" />
                       <span>Chấp nhận</span>
                     </Button>
                   </div>

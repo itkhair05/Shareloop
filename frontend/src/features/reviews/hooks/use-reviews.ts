@@ -1,7 +1,8 @@
-import { useQuery } from '@tanstack/react-query';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { reviewApi, reviewKeys } from '../api/review-api';
 import type { PageResponse } from '@/types/api';
 import type {
+  CreateReviewRequest,
   ReviewResponse,
   UserRatingSummaryResponse,
   UserReviewsQueryParams,
@@ -36,5 +37,59 @@ export function useUserReviews(userId?: string, params?: UserReviewsQueryParams)
     queryFn: () => reviewApi.getUserReviews(userId!, params),
     enabled: isIdValid,
     staleTime: 1000 * 60 * 2, // 2 minutes
+  });
+}
+
+/**
+ * Hook to retrieve reviews for a specific transaction.
+ * Validates UUID before initiating network request.
+ */
+export function useTransactionReviews(transactionId?: string, enabled = true) {
+  const isIdValid = Boolean(transactionId && (isValidUuid(transactionId) || transactionId.trim().length > 0));
+
+  return useQuery<ReviewResponse[], ApiError>({
+    queryKey: reviewKeys.transactionReviews(transactionId || ''),
+    queryFn: () => reviewApi.getTransactionReviews(transactionId!),
+    enabled: Boolean(isIdValid && enabled),
+    staleTime: 1000 * 60 * 2,
+  });
+}
+
+/**
+ * Mutation hook to submit a review for a completed transaction.
+ * Invalidates transaction reviews, user reviews, and rating summary.
+ */
+export function useCreateReview() {
+  const queryClient = useQueryClient();
+
+  return useMutation<
+    ReviewResponse,
+    ApiError,
+    { transactionId: string; payload: CreateReviewRequest; revieweeId?: string }
+  >({
+    mutationFn: ({ transactionId, payload }) =>
+      reviewApi.createReview(transactionId, payload),
+    onSuccess: (data, variables) => {
+      // Invalidate transaction reviews
+      queryClient.invalidateQueries({
+        queryKey: reviewKeys.transactionReviews(variables.transactionId),
+      });
+      // Invalidate target user's rating summary & reviews
+      const targetUserId = variables.revieweeId || data.reviewee?.id;
+      if (targetUserId) {
+        queryClient.invalidateQueries({
+          queryKey: reviewKeys.ratingSummary(targetUserId),
+        });
+        queryClient.invalidateQueries({
+          queryKey: reviewKeys.userReviews(targetUserId),
+        });
+      }
+      queryClient.invalidateQueries({
+        queryKey: reviewKeys.ratingSummaries(),
+      });
+      queryClient.invalidateQueries({
+        queryKey: reviewKeys.userReviewsAll(),
+      });
+    },
   });
 }

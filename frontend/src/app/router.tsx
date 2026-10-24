@@ -10,6 +10,10 @@ import {
   ListingDetailPage,
   MyListingsPage,
 } from '@/features/listings';
+import {
+  TransactionsPage,
+  TransactionDetailPage,
+} from '@/features/transactions';
 import { LoginPage } from '@/features/auth/pages/LoginPage';
 import { RegisterPage } from '@/features/auth/pages/RegisterPage';
 import { ProtectedRoute } from '@/features/auth/components/ProtectedRoute';
@@ -57,6 +61,22 @@ export const router = createBrowserRouter([
         element: (
           <ProtectedRoute>
             <MyListingsPage />
+          </ProtectedRoute>
+        ),
+      },
+      {
+        path: 'transactions',
+        element: (
+          <ProtectedRoute>
+            <TransactionsPage />
+          </ProtectedRoute>
+        ),
+      },
+      {
+        path: 'transactions/:id',
+        element: (
+          <ProtectedRoute>
+            <TransactionDetailPage />
           </ProtectedRoute>
         ),
       },

@@ -23,6 +23,7 @@ import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
+import java.time.Instant;
 import java.util.List;
 import java.util.UUID;
 
@@ -294,6 +295,115 @@ class ListingControllerIntegrationTest {
             mockMvc.perform(get("/api/v1/listings/{id}", draftListing.getId())
                             .header(HttpHeaders.AUTHORIZATION, adminToken))
                     .andExpect(status().isOk());
+        }
+
+        @Test
+        @DisplayName("Authorized requester can retrieve RESERVED listing associated with qualifying transaction")
+        void authorizedRequesterCanViewReservedListingWithQualifyingTransaction() throws Exception {
+            Listing reservedListing = createListing(userAlice, electronicsCategory, ListingType.GIVEAWAY, "Reserved Laptop", "Ha Noi", ListingStatus.RESERVED);
+
+            ListingRequest req = new ListingRequest(reservedListing, userBob, "I want this item!", ListingRequestStatus.ACCEPTED);
+            req = listingRequestRepository.saveAndFlush(req);
+
+            Transaction tx = new Transaction(req, reservedListing, userAlice, userBob, TransactionStatus.PENDING);
+            transactionRepository.saveAndFlush(tx);
+
+            // Bob (qualifying requester) -> 200 OK
+            mockMvc.perform(get("/api/v1/listings/{id}", reservedListing.getId())
+                            .header(HttpHeaders.AUTHORIZATION, bobToken))
+                    .andExpect(status().isOk())
+                    .andExpect(jsonPath("$.id").value(reservedListing.getId().toString()))
+                    .andExpect(jsonPath("$.status").value("RESERVED"));
+        }
+
+        @Test
+        @DisplayName("Authorized requester can retrieve COMPLETED listing associated with qualifying completed transaction")
+        void authorizedRequesterCanViewCompletedListingWithCompletedTransaction() throws Exception {
+            Listing completedListing = createListing(userAlice, electronicsCategory, ListingType.GIVEAWAY, "Completed Book", "Ha Noi", ListingStatus.COMPLETED);
+
+            ListingRequest req = new ListingRequest(completedListing, userBob, "I want this book!", ListingRequestStatus.ACCEPTED);
+            req = listingRequestRepository.saveAndFlush(req);
+
+            Transaction tx = new Transaction(req, completedListing, userAlice, userBob, TransactionStatus.COMPLETED);
+            tx.setOwnerCompleted(true);
+            tx.setOwnerCompletedAt(Instant.now());
+            tx.setRequesterCompleted(true);
+            tx.setRequesterCompletedAt(Instant.now());
+            transactionRepository.saveAndFlush(tx);
+
+            // Bob (qualifying requester) -> 200 OK
+            mockMvc.perform(get("/api/v1/listings/{id}", completedListing.getId())
+                            .header(HttpHeaders.AUTHORIZATION, bobToken))
+                    .andExpect(status().isOk())
+                    .andExpect(jsonPath("$.id").value(completedListing.getId().toString()))
+                    .andExpect(jsonPath("$.status").value("COMPLETED"));
+        }
+
+        @Test
+        @DisplayName("Unrelated authenticated user receives 404 for non-ACTIVE listing")
+        void unrelatedAuthenticatedUserReceives404ForNonActiveListing() throws Exception {
+            Listing reservedListing = createListing(userAlice, electronicsCategory, ListingType.GIVEAWAY, "Reserved Laptop", "Ha Noi", ListingStatus.RESERVED);
+
+            ListingRequest req = new ListingRequest(reservedListing, userBob, "I want this item!", ListingRequestStatus.ACCEPTED);
+            req = listingRequestRepository.saveAndFlush(req);
+
+            Transaction tx = new Transaction(req, reservedListing, userAlice, userBob, TransactionStatus.PENDING);
+            transactionRepository.saveAndFlush(tx);
+
+            // Charlie (unrelated 3rd user)
+            User userCharlie = userRepository.saveAndFlush(new User(
+                    "Charlie Pham",
+                    "charlie." + UUID.randomUUID() + "@example.com",
+                    passwordEncoder.encode("Password123!"),
+                    UserRole.USER,
+                    UserStatus.ACTIVE
+            ));
+            String charlieToken = "Bearer " + jwtService.generateToken(userCharlie.getId(), userCharlie.getEmail(), userCharlie.getRole(), userCharlie.getStatus());
+
+            // Charlie request -> 404
+            mockMvc.perform(get("/api/v1/listings/{id}", reservedListing.getId())
+                            .header(HttpHeaders.AUTHORIZATION, charlieToken))
+                    .andExpect(status().isNotFound())
+                    .andExpect(jsonPath("$.message").value(containsString("Listing not found")));
+        }
+
+        @Test
+        @DisplayName("Requester whose only transaction is CANCELLED receives 404 for non-ACTIVE listing")
+        void requesterWithCancelledTransactionReceives404ForNonActiveListing() throws Exception {
+            Listing reservedListing = createListing(userAlice, electronicsCategory, ListingType.GIVEAWAY, "Cancelled Item", "Ha Noi", ListingStatus.RESERVED);
+
+            ListingRequest req = new ListingRequest(reservedListing, userBob, "I want this item!", ListingRequestStatus.ACCEPTED);
+            req = listingRequestRepository.saveAndFlush(req);
+
+            Transaction tx = new Transaction(req, reservedListing, userAlice, userBob, TransactionStatus.CANCELLED);
+            tx.setCancelledAt(Instant.now());
+            tx.setCancelledBy(userBob);
+            tx.setCancellationReason("No longer needed");
+            transactionRepository.saveAndFlush(tx);
+
+            // Bob request -> 404
+            mockMvc.perform(get("/api/v1/listings/{id}", reservedListing.getId())
+                            .header(HttpHeaders.AUTHORIZATION, bobToken))
+                    .andExpect(status().isNotFound())
+                    .andExpect(jsonPath("$.message").value(containsString("Listing not found")));
+        }
+
+        @Test
+        @DisplayName("Owner and ADMIN maintain existing access to non-ACTIVE listings")
+        void ownerAndAdminMaintainExistingAccessToNonActiveListings() throws Exception {
+            Listing reservedListing = createListing(userAlice, electronicsCategory, ListingType.GIVEAWAY, "Reserved Item", "Ha Noi", ListingStatus.RESERVED);
+
+            // Alice (owner) -> 200 OK
+            mockMvc.perform(get("/api/v1/listings/{id}", reservedListing.getId())
+                            .header(HttpHeaders.AUTHORIZATION, aliceToken))
+                    .andExpect(status().isOk())
+                    .andExpect(jsonPath("$.id").value(reservedListing.getId().toString()));
+
+            // Admin -> 200 OK
+            mockMvc.perform(get("/api/v1/listings/{id}", reservedListing.getId())
+                            .header(HttpHeaders.AUTHORIZATION, adminToken))
+                    .andExpect(status().isOk())
+                    .andExpect(jsonPath("$.id").value(reservedListing.getId().toString()));
         }
     }
 

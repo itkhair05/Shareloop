@@ -73,6 +73,9 @@ class ReviewControllerIntegrationTest {
 
     private Category generalCategory;
 
+    private final java.util.List<UUID> createdListingIds = new java.util.ArrayList<>();
+    private final java.util.List<UUID> createdUserIds = new java.util.ArrayList<>();
+
     @BeforeEach
     void setUp() {
         ownerAlice = userRepository.saveAndFlush(new User(
@@ -125,11 +128,32 @@ class ReviewControllerIntegrationTest {
         reviewRepository.deleteAll();
         transactionRepository.deleteAll();
         listingRequestRepository.deleteAll();
-        listingRepository.deleteAll();
+        for (UUID listingId : createdListingIds) {
+            listingRepository.deleteById(listingId);
+        }
+        createdListingIds.clear();
+        if (ownerAlice != null && ownerAlice.getId() != null) {
+            listingRepository.findByOwnerId(ownerAlice.getId()).forEach(listingRepository::delete);
+        }
         if (generalCategory != null && generalCategory.getId() != null) {
             categoryRepository.deleteById(generalCategory.getId());
         }
-        userRepository.deleteAll();
+        if (ownerAlice != null && ownerAlice.getId() != null) {
+            userRepository.deleteById(ownerAlice.getId());
+        }
+        if (requesterBob != null && requesterBob.getId() != null) {
+            userRepository.deleteById(requesterBob.getId());
+        }
+        if (outsiderCharlie != null && outsiderCharlie.getId() != null) {
+            userRepository.deleteById(outsiderCharlie.getId());
+        }
+        if (adminDave != null && adminDave.getId() != null) {
+            userRepository.deleteById(adminDave.getId());
+        }
+        for (UUID userId : createdUserIds) {
+            userRepository.deleteById(userId);
+        }
+        createdUserIds.clear();
     }
 
     private Transaction createCompletedTransaction(User owner, User requester) {
@@ -143,6 +167,7 @@ class ReviewControllerIntegrationTest {
         ));
         listing.setStatus(ListingStatus.COMPLETED);
         listing = listingRepository.saveAndFlush(listing);
+        createdListingIds.add(listing.getId());
 
         ListingRequest request = listingRequestRepository.saveAndFlush(new ListingRequest(
                 listing,
@@ -177,6 +202,7 @@ class ReviewControllerIntegrationTest {
         ));
         listing.setStatus(ListingStatus.RESERVED);
         listing = listingRepository.saveAndFlush(listing);
+        createdListingIds.add(listing.getId());
 
         ListingRequest request = listingRequestRepository.saveAndFlush(new ListingRequest(
                 listing,
@@ -206,6 +232,7 @@ class ReviewControllerIntegrationTest {
         ));
         listing.setStatus(ListingStatus.RESERVED);
         listing = listingRepository.saveAndFlush(listing);
+        createdListingIds.add(listing.getId());
 
         ListingRequest request = listingRequestRepository.saveAndFlush(new ListingRequest(
                 listing,
@@ -541,9 +568,11 @@ class ReviewControllerIntegrationTest {
         Transaction tx2 = createCompletedTransaction(requesterBob, outsiderCharlie);
 
         User user3 = userRepository.saveAndFlush(new User("User 3", "u3." + UUID.randomUUID() + "@example.com", "hash", UserRole.USER, UserStatus.ACTIVE));
+        createdUserIds.add(user3.getId());
         Transaction tx3 = createCompletedTransaction(user3, outsiderCharlie);
 
         User user4 = userRepository.saveAndFlush(new User("User 4", "u4." + UUID.randomUUID() + "@example.com", "hash", UserRole.USER, UserStatus.ACTIVE));
+        createdUserIds.add(user4.getId());
         Transaction tx4 = createCompletedTransaction(user4, outsiderCharlie);
 
         // Submit reviews: 5, 4, 5, 1

@@ -11,7 +11,7 @@ import { ListingCard, useListings } from '@/features/listings';
 import type { ListingQueryParams, ListingType } from '@/types/listing';
 
 const VALID_TYPES: ListingType[] = ['GIVEAWAY', 'SALE', 'WANTED'];
-const PAGE_SIZE = 20;
+const PAGE_SIZE = 12;
 
 export function ExplorePlaceholderPage() {
   const [searchParams, setSearchParams] = useSearchParams();

@@ -589,9 +589,9 @@ export function ListingDetailPage() {
                     variant="primary"
                     size="lg"
                     onClick={() => setIsRequestModalOpen(true)}
-                    className="w-full font-bold shadow-sm flex items-center justify-center gap-2 cursor-pointer"
+                    className="w-full font-bold shadow-sm flex flex-row items-center justify-center gap-2 cursor-pointer [&>span]:flex [&>span]:flex-row [&>span]:items-center [&>span]:gap-1.5"
                   >
-                    <Send className="w-4 h-4" aria-hidden="true" />
+                    <Send className="w-4 h-4 shrink-0" aria-hidden="true" />
                     <span>
                       {listing.listingType === 'GIVEAWAY'
                         ? 'Tôi muốn nhận món này'

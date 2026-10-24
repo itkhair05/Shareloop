@@ -123,11 +123,30 @@ class ChatControllerIntegrationTest {
         chatMessageRepository.deleteAll();
         conversationRepository.deleteAll();
         listingRequestRepository.deleteAll();
-        listingRepository.deleteAll();
+        if (ownerAlice != null && ownerAlice.getId() != null) {
+            listingRepository.findByOwnerId(ownerAlice.getId()).forEach(listingRepository::delete);
+        }
+        if (requesterBob != null && requesterBob.getId() != null) {
+            listingRepository.findByOwnerId(requesterBob.getId()).forEach(listingRepository::delete);
+        }
+        if (otherCharlie != null && otherCharlie.getId() != null) {
+            listingRepository.findByOwnerId(otherCharlie.getId()).forEach(listingRepository::delete);
+        }
         if (generalCategory != null && generalCategory.getId() != null) {
             categoryRepository.deleteById(generalCategory.getId());
         }
-        userRepository.deleteAll();
+        if (ownerAlice != null && ownerAlice.getId() != null) {
+            userRepository.deleteById(ownerAlice.getId());
+        }
+        if (requesterBob != null && requesterBob.getId() != null) {
+            userRepository.deleteById(requesterBob.getId());
+        }
+        if (otherCharlie != null && otherCharlie.getId() != null) {
+            userRepository.deleteById(otherCharlie.getId());
+        }
+        if (adminUser != null && adminUser.getId() != null) {
+            userRepository.deleteById(adminUser.getId());
+        }
     }
 
     private Listing createListing(User owner, ListingType type, ListingStatus status, String title) {

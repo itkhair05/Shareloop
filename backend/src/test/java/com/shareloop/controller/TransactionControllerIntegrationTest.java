@@ -51,6 +51,9 @@ class TransactionControllerIntegrationTest {
     private TransactionRepository transactionRepository;
 
     @Autowired
+    private ReviewRepository reviewRepository;
+
+    @Autowired
     private PasswordEncoder passwordEncoder;
 
     @Autowired
@@ -117,13 +120,27 @@ class TransactionControllerIntegrationTest {
 
     @AfterEach
     void tearDown() {
+        reviewRepository.deleteAll();
         transactionRepository.deleteAll();
         listingRequestRepository.deleteAll();
-        listingRepository.deleteAll();
+        if (ownerAlice != null && ownerAlice.getId() != null) {
+            listingRepository.findByOwnerId(ownerAlice.getId()).forEach(listingRepository::delete);
+        }
         if (generalCategory != null && generalCategory.getId() != null) {
             categoryRepository.deleteById(generalCategory.getId());
         }
-        userRepository.deleteAll();
+        if (ownerAlice != null && ownerAlice.getId() != null) {
+            userRepository.deleteById(ownerAlice.getId());
+        }
+        if (requesterBob != null && requesterBob.getId() != null) {
+            userRepository.deleteById(requesterBob.getId());
+        }
+        if (outsiderCharlie != null && outsiderCharlie.getId() != null) {
+            userRepository.deleteById(outsiderCharlie.getId());
+        }
+        if (adminDave != null && adminDave.getId() != null) {
+            userRepository.deleteById(adminDave.getId());
+        }
     }
 
     private Transaction createTestTransaction(ListingStatus listingStatus, TransactionStatus txStatus) {

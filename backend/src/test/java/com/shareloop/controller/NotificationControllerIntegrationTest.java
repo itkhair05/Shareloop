@@ -130,11 +130,27 @@ class NotificationControllerIntegrationTest {
         conversationRepository.deleteAll();
         transactionRepository.deleteAll();
         listingRequestRepository.deleteAll();
-        listingRepository.deleteAll();
+        if (alice != null && alice.getId() != null) {
+            listingRepository.findByOwnerId(alice.getId()).forEach(listingRepository::delete);
+        }
+        if (bob != null && bob.getId() != null) {
+            listingRepository.findByOwnerId(bob.getId()).forEach(listingRepository::delete);
+        }
+        if (charlie != null && charlie.getId() != null) {
+            listingRepository.findByOwnerId(charlie.getId()).forEach(listingRepository::delete);
+        }
         if (testCategory != null && testCategory.getId() != null) {
             categoryRepository.deleteById(testCategory.getId());
         }
-        userRepository.deleteAll();
+        if (alice != null && alice.getId() != null) {
+            userRepository.deleteById(alice.getId());
+        }
+        if (bob != null && bob.getId() != null) {
+            userRepository.deleteById(bob.getId());
+        }
+        if (charlie != null && charlie.getId() != null) {
+            userRepository.deleteById(charlie.getId());
+        }
     }
 
     private Listing createTestListing(User owner, ListingType type) {

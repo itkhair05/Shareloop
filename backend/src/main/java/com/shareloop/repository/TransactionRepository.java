@@ -29,6 +29,8 @@ public interface TransactionRepository extends JpaRepository<Transaction, UUID> 
 
     Optional<Transaction> findByListingIdAndStatusIn(UUID listingId, Collection<TransactionStatus> statuses);
 
+    boolean existsByListingIdAndRequesterIdAndStatusIn(UUID listingId, UUID requesterId, Collection<TransactionStatus> statuses);
+
     @Lock(LockModeType.PESSIMISTIC_WRITE)
     @Query("SELECT t FROM Transaction t WHERE t.id = :id")
     Optional<Transaction> findByIdForUpdate(@Param("id") UUID id);

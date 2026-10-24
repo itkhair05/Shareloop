@@ -256,9 +256,9 @@ export function CreateRequestModal({
               size="md"
               isLoading={createRequestMutation.isPending}
               disabled={isOverLimit || createRequestMutation.isPending}
-              className="w-full sm:w-auto min-w-[140px]"
+              className="w-full sm:w-auto min-w-[140px] flex flex-row items-center justify-center gap-2 [&>span]:flex [&>span]:flex-row [&>span]:items-center [&>span]:gap-1.5"
             >
-              <Send className="w-4 h-4 mr-1.5" aria-hidden="true" />
+              <Send className="w-4 h-4 shrink-0" aria-hidden="true" />
               <span>{actionButtonText}</span>
             </Button>
           </div>

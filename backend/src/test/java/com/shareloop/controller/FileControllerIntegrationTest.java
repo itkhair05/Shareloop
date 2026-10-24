@@ -85,7 +85,9 @@ class FileControllerIntegrationTest {
                 });
             }
         }
-        userRepository.deleteAll();
+        if (alice != null && alice.getId() != null) {
+            userRepository.deleteById(alice.getId());
+        }
     }
 
     private byte[] createValidImage(String format, int width, int height) throws IOException {
