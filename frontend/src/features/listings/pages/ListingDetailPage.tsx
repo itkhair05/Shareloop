@@ -1,18 +1,22 @@
 import { useState } from 'react';
-import { useParams, useNavigate, Link } from 'react-router-dom';
+import { useParams, useNavigate, Link, useLocation } from 'react-router-dom';
 import {
   ArrowLeft,
   Calendar,
+  CheckCircle2,
   ChevronLeft,
   ChevronRight,
   Clock,
+  Edit3,
   FileText,
   Folder,
   MapPin,
   Package,
+  Send,
   ShieldCheck,
   Tag,
   User,
+  X,
 } from 'lucide-react';
 import { Badge } from '@/components/ui/Badge';
 import { Button } from '@/components/ui/Button';
@@ -20,6 +24,8 @@ import { EmptyState, ErrorAlert, LoadingSpinner } from '@/components/ui/Feedback
 import { formatDateTime, formatPrice, isValidUuid, resolveImageUrl } from '@/lib/utils';
 import { useListing } from '../hooks/use-listings';
 import { OwnerRatingBadge, OwnerReputationSection } from '@/features/reviews';
+import { useAuth } from '@/features/auth';
+import { CreateRequestModal, ListingRequestsManager, useMyRequests } from '@/features/requests';
 import type { ListingStatus, ListingType } from '@/types/listing';
 
 const listingTypeConfig: Record<
@@ -47,13 +53,36 @@ export function ListingDetailPage() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
 
+  const { user, isAuthenticated } = useAuth();
+  const location = useLocation();
+
   const [selectedImageIndex, setSelectedImageIndex] = useState(0);
   const [imageErrorMap, setImageErrorMap] = useState<Record<number, boolean>>({});
+  const [isRequestModalOpen, setIsRequestModalOpen] = useState(false);
+  const [requestSuccessBanner, setRequestSuccessBanner] = useState<string | null>(null);
+  const [hasConflictPendingRequest, setHasConflictPendingRequest] = useState(false);
 
   const isIdValid = Boolean(id && isValidUuid(id));
 
   // Query hook will be disabled automatically if !isIdValid
   const { data: listing, isLoading, isError, error, refetch, isFetching } = useListing(id);
+
+  const isOwner = Boolean(user && listing && user.id === listing.owner.id);
+  const isAdmin = user?.role === 'ADMIN';
+
+  // Check if current authenticated non-owner user has a pending request for this listing
+  const { data: myPendingRequests } = useMyRequests(
+    { status: 'PENDING', page: 0, size: 100 },
+    { enabled: Boolean(isAuthenticated && !isOwner && listing?.status === 'ACTIVE') }
+  );
+
+  const hasPendingRequest =
+    hasConflictPendingRequest ||
+    Boolean(
+      myPendingRequests?.content?.some(
+        (req) => req.listing?.id === listing?.id && req.status === 'PENDING'
+      )
+    );
 
   const handleBack = () => {
     if (window.history.length > 1) {
@@ -395,6 +424,14 @@ export function ListingDetailPage() {
             </dl>
           </section>
 
+          {/* Owner / Admin Community Requests Management */}
+          {(isOwner || isAdmin) && (
+            <ListingRequestsManager
+              listing={listing}
+              onRequestUpdated={() => refetch()}
+            />
+          )}
+
           {/* Owner Reputation, Ratings & Reviews Section (Phase 3F) */}
           <OwnerReputationSection
             userId={listing.owner.id}
@@ -483,6 +520,87 @@ export function ListingDetailPage() {
                 <span className="font-medium text-slate-700">{locationDisplay}</span>
               </div>
             )}
+
+            {/* Request Success Banner */}
+            {requestSuccessBanner && (
+              <div
+                role="status"
+                className="p-3.5 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-900 text-xs flex items-start justify-between gap-2.5 animate-in fade-in"
+              >
+                <div className="flex items-start gap-2">
+                  <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0 mt-0.5" aria-hidden="true" />
+                  <span className="font-medium leading-relaxed">{requestSuccessBanner}</span>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setRequestSuccessBanner(null)}
+                  className="text-emerald-700 hover:text-emerald-900 p-0.5 rounded cursor-pointer shrink-0"
+                  aria-label="Đóng thông báo"
+                >
+                  <X className="w-3.5 h-3.5" />
+                </button>
+              </div>
+            )}
+
+            {/* Request Action / State Section */}
+            {listing.status === 'ACTIVE' && listing.listingType !== 'WANTED' && (
+              <div className="pt-4 border-t border-slate-100 space-y-3">
+                {isOwner ? (
+                  <div className="p-3.5 rounded-xl bg-slate-50 border border-slate-200/80 text-xs text-slate-600 flex items-center justify-between gap-3">
+                    <span className="font-medium">Bạn là người đăng bài này</span>
+                    <Link
+                      to={`/listings/${listing.id}/edit`}
+                      className="inline-flex items-center gap-1 font-semibold text-emerald-700 hover:text-emerald-800"
+                    >
+                      <Edit3 className="w-3.5 h-3.5" />
+                      <span>Chỉnh sửa</span>
+                    </Link>
+                  </div>
+                ) : !isAuthenticated ? (
+                  <Button
+                    variant="primary"
+                    size="lg"
+                    onClick={() => navigate('/login', { state: { from: location } })}
+                    className="w-full font-bold shadow-sm"
+                  >
+                    {listing.listingType === 'GIVEAWAY'
+                      ? 'Đăng nhập để nhận món này'
+                      : 'Đăng nhập để đề nghị mua'}
+                  </Button>
+                ) : hasPendingRequest ? (
+                  <div
+                    role="status"
+                    className="p-4 rounded-xl bg-amber-50 border border-amber-200 text-amber-900 space-y-1.5"
+                  >
+                    <div className="flex items-center gap-2 font-bold text-sm text-amber-950">
+                      <Clock className="w-4 h-4 text-amber-700 shrink-0" aria-hidden="true" />
+                      <span>Yêu cầu đang chờ phản hồi</span>
+                    </div>
+                    <p className="text-xs text-amber-800 leading-relaxed">
+                      Bạn đã gửi{' '}
+                      {listing.listingType === 'GIVEAWAY'
+                        ? 'yêu cầu nhận món đồ này'
+                        : 'đề nghị mua món đồ này'}
+                      . Vui lòng chờ người đăng xem xét và phản hồi.
+                    </p>
+                  </div>
+                ) : (
+                  <Button
+                    variant="primary"
+                    size="lg"
+                    onClick={() => setIsRequestModalOpen(true)}
+                    className="w-full font-bold shadow-sm flex items-center justify-center gap-2 cursor-pointer"
+                  >
+                    <Send className="w-4 h-4" aria-hidden="true" />
+                    <span>
+                      {listing.listingType === 'GIVEAWAY'
+                        ? 'Tôi muốn nhận món này'
+                        : 'Đề nghị mua'}
+                    </span>
+                  </Button>
+                )}
+              </div>
+            )}
           </div>
 
           {/* Owner Profile Card */}
@@ -531,6 +649,23 @@ export function ListingDetailPage() {
           </div>
         </aside>
       </div>
+
+      {/* Create Request Modal */}
+      {listing && (
+        <CreateRequestModal
+          isOpen={isRequestModalOpen}
+          onClose={() => setIsRequestModalOpen(false)}
+          listing={listing}
+          onConflict={() => setHasConflictPendingRequest(true)}
+          onSuccess={() => {
+            setRequestSuccessBanner(
+              listing.listingType === 'GIVEAWAY'
+                ? 'Đã gửi yêu cầu nhận món đồ thành công! Người đăng sẽ nhận được thông báo để xem xét.'
+                : 'Đã gửi đề nghị mua thành công! Người đăng sẽ nhận được thông báo để xem xét.'
+            );
+          }}
+        />
+      )}
     </div>
   );
 }
