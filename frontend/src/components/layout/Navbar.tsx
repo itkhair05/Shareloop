@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Link, NavLink } from 'react-router-dom';
-import { Menu, X, Shield, LogIn, LogOut, User as UserIcon, Plus, Bell, MessageSquare, Home, Compass, List, ArrowLeftRight, Info } from 'lucide-react';
+import { Menu, X, Shield, LogIn, LogOut, User as UserIcon, Plus, Bell, MessageSquare, Home, Compass, List, ArrowLeftRight, HelpCircle } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Badge } from '@/components/ui/Badge';
 import { Button } from '@/components/ui/Button';
@@ -75,7 +75,7 @@ export function Navbar() {
               </>
             )}
             <NavLink to="/about" className={navLinkClass}>
-              Giới thiệu
+              Trợ giúp
             </NavLink>
           </nav>
 
@@ -287,8 +287,8 @@ export function Navbar() {
               )
             }
           >
-            <Info className="w-4 h-4" />
-            <span>Giới thiệu</span>
+            <HelpCircle className="w-4 h-4" />
+            <span>Trợ giúp</span>
           </NavLink>
 
           <div className="pt-3 mt-2 border-t border-slate-100 space-y-2">

@@ -19,7 +19,7 @@ export function Footer() {
             </Link>
             <span aria-hidden="true">•</span>
             <Link to="/about" className="hover:text-slate-800 transition-colors">
-              Giới thiệu
+              Trợ giúp
             </Link>
             <span aria-hidden="true">•</span>
             <Link to="/admin" className="hover:text-slate-800 transition-colors">

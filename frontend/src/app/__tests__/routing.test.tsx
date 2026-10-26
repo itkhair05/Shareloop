@@ -51,8 +51,8 @@ describe('Application Routing', () => {
     });
 
     renderWithProviders(<RouterProvider router={memoryRouter} />, { withRouter: false });
-    expect(screen.getByRole('heading', { level: 1, name: /về shareloop/i })).toBeInTheDocument();
-    expect(screen.getByText(/xác thực & bảo mật/i)).toBeInTheDocument();
+    expect(screen.getByRole('heading', { level: 1, name: /trung tâm trợ giúp/i })).toBeInTheDocument();
+    expect(screen.getByRole('heading', { level: 2, name: /câu hỏi thường gặp/i })).toBeInTheDocument();
   });
 
   it('renders 404 NotFoundPage for unknown routes', () => {

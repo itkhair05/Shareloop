@@ -37,7 +37,7 @@ describe('Navbar Authentication and Role-Aware Navigation', () => {
     expect(screen.getByText('ShareLoop')).toBeInTheDocument();
     expect(screen.getByRole('link', { name: /^trang chủ$/i })).toBeInTheDocument();
     expect(screen.getByRole('link', { name: /^khám phá$/i })).toBeInTheDocument();
-    expect(screen.getByRole('link', { name: /^giới thiệu$/i })).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: /^trợ giúp$/i })).toBeInTheDocument();
 
     // Log In and Sign Up buttons present
     expect(screen.getByRole('link', { name: /đăng nhập/i })).toHaveAttribute('href', '/login');
