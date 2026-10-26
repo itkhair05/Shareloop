@@ -14,6 +14,7 @@ import {
   TransactionsPage,
   TransactionDetailPage,
 } from '@/features/transactions';
+import { NotificationsPage } from '@/features/notifications';
 import { LoginPage } from '@/features/auth/pages/LoginPage';
 import { RegisterPage } from '@/features/auth/pages/RegisterPage';
 import { ProtectedRoute } from '@/features/auth/components/ProtectedRoute';
@@ -77,6 +78,14 @@ export const router = createBrowserRouter([
         element: (
           <ProtectedRoute>
             <TransactionDetailPage />
+          </ProtectedRoute>
+        ),
+      },
+      {
+        path: 'notifications',
+        element: (
+          <ProtectedRoute>
+            <NotificationsPage />
           </ProtectedRoute>
         ),
       },

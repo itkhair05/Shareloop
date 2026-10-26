@@ -1,14 +1,17 @@
 import { useState } from 'react';
 import { Link, NavLink } from 'react-router-dom';
-import { Menu, X, Shield, LogIn, LogOut, User as UserIcon, Plus } from 'lucide-react';
+import { Menu, X, Shield, LogIn, LogOut, User as UserIcon, Plus, Bell } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Badge } from '@/components/ui/Badge';
 import { Button } from '@/components/ui/Button';
 import { useAuth } from '@/features/auth';
+import { NotificationBell, useUnreadNotificationCount } from '@/features/notifications';
 
 export function Navbar() {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const { user, isAuthenticated, logout } = useAuth();
+  const { data: unreadData } = useUnreadNotificationCount({ enabled: isAuthenticated });
+  const unreadCount = unreadData?.unreadCount ?? 0;
 
   const navLinkClass = ({ isActive }: { isActive: boolean }) =>
     cn(
@@ -85,6 +88,8 @@ export function Navbar() {
                   <span>Đăng bài</span>
                 </Link>
 
+                <NotificationBell />
+
                 {isAdmin && (
                   <Link
                     to="/admin"
@@ -138,8 +143,9 @@ export function Navbar() {
             )}
           </div>
 
-          {/* Mobile Hamburger Button */}
-          <div className="flex md:hidden">
+          {/* Mobile Right Action / Bell + Hamburger */}
+          <div className="flex items-center gap-1 md:hidden">
+            {isAuthenticated && <NotificationBell />}
             <button
               type="button"
               onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
@@ -218,6 +224,28 @@ export function Navbar() {
                 }
               >
                 Giao dịch
+              </NavLink>
+              <NavLink
+                to="/notifications"
+                onClick={() => setIsMobileMenuOpen(false)}
+                className={({ isActive }) =>
+                  cn(
+                    'flex items-center justify-between px-3 py-2 rounded-md text-base font-medium',
+                    isActive
+                      ? 'text-emerald-700 bg-emerald-50'
+                      : 'text-slate-600 hover:bg-slate-50'
+                  )
+                }
+              >
+                <div className="flex items-center gap-2">
+                  <Bell className="w-5 h-5 text-slate-500" />
+                  <span>Thông báo</span>
+                </div>
+                {unreadCount > 0 && (
+                  <span className="inline-flex items-center justify-center px-2 py-0.5 text-xs font-bold text-white bg-rose-600 rounded-full">
+                    {unreadCount > 99 ? '99+' : unreadCount}
+                  </span>
+                )}
               </NavLink>
             </>
           )}
