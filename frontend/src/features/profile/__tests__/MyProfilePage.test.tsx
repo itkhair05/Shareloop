@@ -1,5 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { screen, waitFor } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 import { Routes, Route } from 'react-router-dom';
 import { MyProfilePage } from '../pages/MyProfilePage';
 import { ProfileHeader } from '../components/ProfileHeader';
@@ -8,11 +9,19 @@ import { ProtectedRoute } from '@/features/auth/components/ProtectedRoute';
 import { useAuth } from '@/features/auth';
 import { listingApi } from '@/features/listings/api/listing-api';
 import { reviewApi } from '@/features/reviews/api/review-api';
+import { profileApi } from '../api/profile-api';
 import { renderWithProviders, createTestQueryClient } from '@/test/test-utils';
 import type { UserProfile } from '@/types/auth';
 import type { PageResponse } from '@/types/api';
 import type { ListingSummaryResponse } from '@/types/listing';
 import type { ReviewResponse, UserRatingSummaryResponse } from '@/types/review';
+
+// Mock profile API
+vi.mock('../api/profile-api', () => ({
+  profileApi: {
+    updateProfile: vi.fn(),
+  },
+}));
 
 // Mock auth hook
 vi.mock('@/features/auth', async () => {
@@ -376,6 +385,54 @@ describe('User Profile Phase 1: My Profile Page', () => {
       renderWithProviders(<MyProfilePage />);
 
       expect(screen.getByRole('status')).toHaveTextContent('Đang tải thông tin hồ sơ cá nhân...');
+    });
+
+    it('renders "Chỉnh sửa hồ sơ" action buttons on the page', () => {
+      renderWithProviders(<MyProfilePage />);
+
+      const editButtons = screen.getAllByRole('button', { name: /Chỉnh sửa hồ sơ/i });
+      expect(editButtons.length).toBeGreaterThanOrEqual(1);
+    });
+
+    it('opens EditProfileModal when clicking "Chỉnh sửa hồ sơ" button', async () => {
+      const user = userEvent.setup();
+      renderWithProviders(<MyProfilePage />);
+
+      const editBtn = screen.getAllByRole('button', { name: /Chỉnh sửa hồ sơ/i })[0];
+      await user.click(editBtn);
+
+      expect(screen.getByRole('dialog', { name: /Chỉnh sửa hồ sơ/i })).toBeInTheDocument();
+      expect(screen.getByLabelText(/Tên hiển thị/i)).toHaveValue(mockUser.displayName);
+    });
+
+    it('displays success notification upon successful profile update', async () => {
+      const user = userEvent.setup();
+      const updatedUser: UserProfile = {
+        ...mockUser,
+        displayName: 'Nguyễn Minh Mới',
+      };
+      vi.mocked(profileApi.updateProfile).mockResolvedValueOnce(updatedUser);
+
+      renderWithProviders(<MyProfilePage />);
+
+      // Open modal
+      const editBtn = screen.getAllByRole('button', { name: /Chỉnh sửa hồ sơ/i })[0];
+      await user.click(editBtn);
+
+      const nameInput = screen.getByLabelText(/Tên hiển thị/i);
+      await user.clear(nameInput);
+      await user.type(nameInput, 'Nguyễn Minh Mới');
+
+      const phoneInput = screen.getByLabelText(/Số điện thoại/i);
+      await user.clear(phoneInput);
+      await user.type(phoneInput, '+84912345678');
+
+      const submitBtn = screen.getByRole('button', { name: /Lưu thay đổi/i });
+      await user.click(submitBtn);
+
+      await waitFor(() => {
+        expect(screen.getByText('Cập nhật thông tin hồ sơ thành công!')).toBeInTheDocument();
+      });
     });
   });
 

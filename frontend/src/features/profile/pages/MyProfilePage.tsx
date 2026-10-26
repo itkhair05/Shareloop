@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { ArrowRight, Package, Plus, Sparkles } from 'lucide-react';
+import { ArrowRight, CheckCircle2, Package, Pencil, Plus, Sparkles, X } from 'lucide-react';
 import { useAuth } from '@/features/auth';
 import { useMyListings, ListingCard } from '@/features/listings';
 import {
@@ -11,12 +11,17 @@ import {
 } from '@/features/reviews';
 import { ProfileHeader } from '../components/ProfileHeader';
 import { ProfileStatsCards } from '../components/ProfileStatsCards';
+import { EditProfileModal } from '../components/EditProfileModal';
 import { EmptyState, ErrorAlert, LoadingSpinner } from '@/components/ui/Feedback';
 import { Button } from '@/components/ui/Button';
 
 export function MyProfilePage() {
   const navigate = useNavigate();
   const { user, isLoading: isAuthLoading } = useAuth();
+
+  // Edit profile modal state
+  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+  const [successMessage, setSuccessMessage] = useState<string | null>(null);
 
   // Ratings & reviews state
   const [reviewsPage, setReviewsPage] = useState(0);
@@ -81,6 +86,16 @@ export function MyProfilePage() {
         </div>
         <div className="flex items-center gap-3">
           <Button
+            type="button"
+            variant="outline"
+            size="md"
+            onClick={() => setIsEditModalOpen(true)}
+            leftIcon={<Pencil className="w-4 h-4" aria-hidden="true" />}
+            className="shadow-2xs"
+          >
+            Chỉnh sửa hồ sơ
+          </Button>
+          <Button
             variant="primary"
             size="md"
             onClick={() => navigate('/listings/new')}
@@ -92,11 +107,33 @@ export function MyProfilePage() {
         </div>
       </div>
 
+      {/* Success notification */}
+      {successMessage && (
+        <div
+          role="status"
+          className="bg-emerald-50 border border-emerald-200 text-emerald-800 px-4 py-3 rounded-xl flex items-center justify-between text-sm font-medium shadow-xs animate-in fade-in duration-200"
+        >
+          <div className="flex items-center gap-2.5">
+            <CheckCircle2 className="w-5 h-5 text-emerald-600 shrink-0" aria-hidden="true" />
+            <span>{successMessage}</span>
+          </div>
+          <button
+            type="button"
+            onClick={() => setSuccessMessage(null)}
+            className="text-emerald-600 hover:text-emerald-800 p-1 rounded-md hover:bg-emerald-100 transition-colors cursor-pointer"
+            aria-label="Đóng thông báo"
+          >
+            <X className="w-4 h-4" aria-hidden="true" />
+          </button>
+        </div>
+      )}
+
       {/* Profile Header (Avatar, Details, Badges) */}
       <ProfileHeader
         user={user}
         ratingSummary={ratingSummary}
         isLoadingRating={isLoadingRating}
+        onEditProfile={() => setIsEditModalOpen(true)}
       />
 
       {/* Stats Cards Overview */}
@@ -110,12 +147,12 @@ export function MyProfilePage() {
 
       {/* Section 1: Recent Listings Preview */}
       <section aria-labelledby="my-listings-heading" className="space-y-4">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-2.5">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 sm:gap-4 mb-4">
+          <div className="flex items-center gap-2.5 flex-wrap">
             <h2 id="my-listings-heading" className="text-xl font-bold text-slate-900 tracking-tight">
               Tin đăng gần đây
             </h2>
-            <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200">
+            <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200 w-fit">
               {totalListings} món đồ
             </span>
           </div>
@@ -123,7 +160,7 @@ export function MyProfilePage() {
           {totalListings > 0 && (
             <Link
               to="/my-listings"
-              className="inline-flex items-center gap-1.5 text-sm font-semibold text-emerald-600 hover:text-emerald-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 rounded px-1.5 py-0.5"
+              className="inline-flex items-center gap-1.5 text-sm font-semibold text-emerald-600 hover:text-emerald-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 rounded px-1.5 py-0.5 w-fit"
             >
               <span>Xem tất cả ({totalListings})</span>
               <ArrowRight className="w-4 h-4" aria-hidden="true" />
@@ -163,11 +200,11 @@ export function MyProfilePage() {
 
       {/* Section 2: Reputation & Reviews */}
       <section aria-labelledby="my-reviews-heading" className="space-y-4">
-        <div className="flex items-center gap-2.5">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 sm:gap-4 mb-4">
           <h2 id="my-reviews-heading" className="text-xl font-bold text-slate-900 tracking-tight">
             Đánh giá & Uy tín cộng đồng
           </h2>
-          <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-amber-50 text-amber-800 border border-amber-200">
+          <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-amber-50 text-amber-800 border border-amber-200 w-fit">
             <Sparkles className="w-3 h-3 text-amber-600" aria-hidden="true" />
             <span>Phản hồi thực tế</span>
           </span>
@@ -201,6 +238,16 @@ export function MyProfilePage() {
           </div>
         </div>
       </section>
+
+      {/* Edit Profile Modal */}
+      <EditProfileModal
+        isOpen={isEditModalOpen}
+        onClose={() => setIsEditModalOpen(false)}
+        user={user}
+        onSuccess={() => {
+          setSuccessMessage('Cập nhật thông tin hồ sơ thành công!');
+        }}
+      />
     </main>
   );
 }

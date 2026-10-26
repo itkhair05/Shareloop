@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Link, NavLink } from 'react-router-dom';
-import { Menu, X, Shield, LogIn, LogOut, User as UserIcon, Plus, Bell, MessageSquare } from 'lucide-react';
+import { Menu, X, Shield, LogIn, LogOut, User as UserIcon, Plus, Bell, MessageSquare, Home, Compass, List, ArrowLeftRight, Info } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Badge } from '@/components/ui/Badge';
 import { Button } from '@/components/ui/Button';
@@ -179,28 +179,30 @@ export function Navbar() {
             onClick={() => setIsMobileMenuOpen(false)}
             className={({ isActive }) =>
               cn(
-                'block px-3 py-2 rounded-md text-base font-medium',
+                'flex items-center gap-2 px-3 py-2 rounded-md text-base font-medium',
                 isActive
                   ? 'text-emerald-700 bg-emerald-50'
                   : 'text-slate-600 hover:bg-slate-50'
               )
             }
           >
-            Trang chủ
+            <Home className="w-4 h-4" />
+            <span>Trang chủ</span>
           </NavLink>
           <NavLink
             to="/explore"
             onClick={() => setIsMobileMenuOpen(false)}
             className={({ isActive }) =>
               cn(
-                'block px-3 py-2 rounded-md text-base font-medium',
+                'flex items-center gap-2 px-3 py-2 rounded-md text-base font-medium',
                 isActive
                   ? 'text-emerald-700 bg-emerald-50'
                   : 'text-slate-600 hover:bg-slate-50'
               )
             }
           >
-            Khám phá
+            <Compass className="w-4 h-4" />
+            <span>Khám phá</span>
           </NavLink>
           {isAuthenticated && (
             <>
@@ -209,28 +211,30 @@ export function Navbar() {
                 onClick={() => setIsMobileMenuOpen(false)}
                 className={({ isActive }) =>
                   cn(
-                    'block px-3 py-2 rounded-md text-base font-medium',
+                    'flex items-center gap-2 px-3 py-2 rounded-md text-base font-medium',
                     isActive
                       ? 'text-emerald-700 bg-emerald-50'
                       : 'text-slate-600 hover:bg-slate-50'
                   )
                 }
               >
-                Bài đăng của tôi
+                <List className="w-4 h-4" />
+                <span>Bài đăng của tôi</span>
               </NavLink>
               <NavLink
                 to="/transactions"
                 onClick={() => setIsMobileMenuOpen(false)}
                 className={({ isActive }) =>
                   cn(
-                    'block px-3 py-2 rounded-md text-base font-medium',
+                    'flex items-center gap-2 px-3 py-2 rounded-md text-base font-medium',
                     isActive
                       ? 'text-emerald-700 bg-emerald-50'
                       : 'text-slate-600 hover:bg-slate-50'
                   )
                 }
               >
-                Giao dịch
+                <ArrowLeftRight className="w-4 h-4" />
+                <span>Giao dịch</span>
               </NavLink>
               <NavLink
                 to="/messages"
@@ -276,14 +280,15 @@ export function Navbar() {
             onClick={() => setIsMobileMenuOpen(false)}
             className={({ isActive }) =>
               cn(
-                'block px-3 py-2 rounded-md text-base font-medium',
+                'flex items-center gap-2 px-3 py-2 rounded-md text-base font-medium',
                 isActive
                   ? 'text-emerald-700 bg-emerald-50'
                   : 'text-slate-600 hover:bg-slate-50'
               )
             }
           >
-            Giới thiệu
+            <Info className="w-4 h-4" />
+            <span>Giới thiệu</span>
           </NavLink>
 
           <div className="pt-3 mt-2 border-t border-slate-100 space-y-2">

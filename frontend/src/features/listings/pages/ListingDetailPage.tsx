@@ -634,19 +634,23 @@ export function ListingDetailPage() {
             </h2>
 
             <div className="flex items-center gap-3.5">
-              <div
-                className="w-12 h-12 rounded-full bg-emerald-100 text-emerald-800 font-bold text-lg flex items-center justify-center shrink-0 border border-emerald-200"
-                aria-hidden="true"
+              <Link
+                to={`/users/${listing.owner.id}`}
+                className="w-12 h-12 rounded-full bg-emerald-100 hover:bg-emerald-200 text-emerald-800 font-bold text-lg flex items-center justify-center shrink-0 border border-emerald-200 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500"
+                aria-label={`Xem hồ sơ của ${listing.owner.displayName}`}
               >
                 {listing.owner.displayName?.charAt(0).toUpperCase() || (
                   <User className="w-6 h-6 text-emerald-700" />
                 )}
-              </div>
+              </Link>
 
               <div className="min-w-0 flex-1">
-                <div className="font-bold text-slate-900 text-base truncate">
+                <Link
+                  to={`/users/${listing.owner.id}`}
+                  className="font-bold text-slate-900 text-base truncate hover:text-emerald-700 transition-colors block focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 rounded"
+                >
                   {listing.owner.displayName}
-                </div>
+                </Link>
                 <div className="text-xs text-slate-500 truncate">
                   Thành viên cộng đồng ShareLoop
                 </div>

@@ -1,5 +1,6 @@
-import { Calendar, Mail, Phone, Shield, Star } from 'lucide-react';
+import { Calendar, Mail, Pencil, Phone, Shield, Star } from 'lucide-react';
 import { Badge } from '@/components/ui/Badge';
+import { Button } from '@/components/ui/Button';
 import { StarRating } from '@/features/reviews';
 import type { UserProfile } from '@/types/auth';
 import type { UserRatingSummaryResponse } from '@/types/review';
@@ -9,6 +10,7 @@ export interface ProfileHeaderProps {
   ratingSummary?: UserRatingSummaryResponse | null;
   isLoadingRating?: boolean;
   className?: string;
+  onEditProfile?: () => void;
 }
 
 function formatJoinDate(dateString?: string): string {
@@ -31,6 +33,7 @@ export function ProfileHeader({
   ratingSummary,
   isLoadingRating = false,
   className = '',
+  onEditProfile,
 }: ProfileHeaderProps) {
   const initial = user.displayName?.trim().charAt(0).toUpperCase() || 'U';
   const phoneDisplay = user.phoneNumber?.trim() ? user.phoneNumber : 'Chưa cập nhật';
@@ -71,17 +74,32 @@ export function ProfileHeader({
 
         {/* User Details */}
         <div className="flex-1 min-w-0 space-y-3 w-full">
-          <div className="flex flex-wrap items-center gap-2.5">
-            <h2 className="text-xl sm:text-2xl font-bold text-slate-900 tracking-tight truncate">
-              {user.displayName}
-            </h2>
-            <Badge variant={roleVariant} className="font-semibold">
-              <Shield className="w-3 h-3 mr-1" aria-hidden="true" />
-              {roleLabel}
-            </Badge>
-            <Badge variant={statusVariant} withDot className="font-semibold">
-              {statusLabel}
-            </Badge>
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+            <div className="flex flex-wrap items-center gap-2.5">
+              <h2 className="text-xl sm:text-2xl font-bold text-slate-900 tracking-tight truncate">
+                {user.displayName}
+              </h2>
+              <Badge variant={roleVariant} className="font-semibold">
+                <Shield className="w-3 h-3 mr-1" aria-hidden="true" />
+                {roleLabel}
+              </Badge>
+              <Badge variant={statusVariant} withDot className="font-semibold">
+                {statusLabel}
+              </Badge>
+            </div>
+
+            {onEditProfile && (
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={onEditProfile}
+                leftIcon={<Pencil className="w-3.5 h-3.5" aria-hidden="true" />}
+                className="shrink-0 self-start sm:self-auto shadow-2xs"
+              >
+                Chỉnh sửa hồ sơ
+              </Button>
+            )}
           </div>
 
           {/* Contact and Metadata */}

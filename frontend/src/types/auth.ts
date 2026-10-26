@@ -42,3 +42,16 @@ export interface RegisterRequest {
   email: string;
   password: string;
 }
+
+export interface UpdateProfileRequest {
+  displayName: string;
+  phoneNumber?: string | null;
+}
+
+export interface PublicUserProfile {
+  id: string;
+  displayName: string;
+  role: UserRole;
+  status: UserStatus;
+  createdAt: string;
+}
