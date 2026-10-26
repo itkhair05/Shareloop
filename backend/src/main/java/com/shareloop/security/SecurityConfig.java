@@ -113,8 +113,13 @@ public class SecurityConfig {
                         // Category endpoints: public retrieval
                         .requestMatchers(HttpMethod.GET, "/api/v1/categories", "/api/v1/categories/{slug}").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/v1/listings", "/api/v1/listings/{id}").permitAll()
-                        // Public user reviews and rating summaries
-                        .requestMatchers(HttpMethod.GET, "/api/v1/users/{userId}/reviews", "/api/v1/users/{userId}/rating-summary").permitAll()
+                        // Public user profile, user listings, reviews, and rating summaries
+                        .requestMatchers(HttpMethod.GET,
+                                "/api/v1/users/{userId}",
+                                "/api/v1/users/{userId}/listings",
+                                "/api/v1/users/{userId}/reviews",
+                                "/api/v1/users/{userId}/rating-summary"
+                        ).permitAll()
                         // Admin endpoints restricted to ADMIN role
                         .requestMatchers("/api/v1/admin/**").hasRole("ADMIN")
                         // All other endpoints require authentication

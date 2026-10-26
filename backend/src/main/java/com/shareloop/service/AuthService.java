@@ -3,6 +3,7 @@ package com.shareloop.service;
 import com.shareloop.dto.auth.AuthResponse;
 import com.shareloop.dto.auth.LoginRequest;
 import com.shareloop.dto.auth.RegisterRequest;
+import com.shareloop.dto.auth.UpdateProfileRequest;
 import com.shareloop.dto.auth.UserProfileResponse;
 import com.shareloop.entity.User;
 import com.shareloop.entity.enums.UserRole;
@@ -117,5 +118,22 @@ public class AuthService {
                 .orElseThrow(() -> new ResourceNotFoundException("User not found with id: " + userId));
 
         return UserProfileResponse.fromEntity(user);
+    }
+
+    @Transactional
+    public UserProfileResponse updateCurrentUser(UUID userId, UpdateProfileRequest request) {
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new ResourceNotFoundException("User not found with id: " + userId));
+
+        user.setDisplayName(request.getDisplayName().trim());
+
+        String rawPhone = request.getPhoneNumber();
+        String normalizedPhone = (rawPhone == null || rawPhone.trim().isEmpty())
+                ? null
+                : rawPhone.trim();
+        user.setPhoneNumber(normalizedPhone);
+
+        User savedUser = userRepository.save(user);
+        return UserProfileResponse.fromEntity(savedUser);
     }
 }

@@ -82,6 +82,11 @@ describe('Navbar Authentication and Role-Aware Navigation', () => {
     expect(screen.getByRole('link', { name: /^đăng bài$/i })).toHaveAttribute('href', '/listings/new');
     expect(screen.getByRole('button', { name: /đăng xuất/i })).toBeInTheDocument();
 
+    // Profile link must be rendered and point to /profile
+    const profileLink = screen.getByRole('link', { name: /xem hồ sơ cá nhân/i });
+    expect(profileLink).toBeInTheDocument();
+    expect(profileLink).toHaveAttribute('href', '/profile');
+
     // Standard user must NOT see Admin Console
     expect(screen.queryByRole('link', { name: /bảng quản trị/i })).not.toBeInTheDocument();
     expect(screen.queryByText(/đăng ký/i)).not.toBeInTheDocument();
@@ -119,5 +124,52 @@ describe('Navbar Authentication and Role-Aware Navigation', () => {
     expect(screen.getByRole('link', { name: /bảng quản trị/i })).toHaveAttribute('href', '/admin');
     expect(screen.getByText('Quản trị viên')).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /đăng xuất/i })).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: /xem hồ sơ cá nhân/i })).toHaveAttribute('href', '/profile');
+  });
+
+  it('renders profile link in both desktop and mobile navigation layouts', async () => {
+    const user = userEvent.setup();
+    const testUser: UserProfile = {
+      id: 'usr-2',
+      displayName: 'Lê Hoàng Nam',
+      email: 'nam.le@shareloop.org',
+      role: 'USER',
+      status: 'ACTIVE',
+      createdAt: '2026-10-26T00:00:00Z',
+      updatedAt: '2026-10-26T00:00:00Z',
+    };
+
+    vi.mocked(useAuth).mockReturnValue({
+      user: testUser,
+      isAuthenticated: true,
+      isLoading: false,
+      error: null,
+      login: vi.fn(),
+      register: vi.fn(),
+      logout: vi.fn(),
+      clearError: vi.fn(),
+      refreshUser: vi.fn(),
+    });
+
+    renderWithProviders(<Navbar />);
+
+    // Desktop profile link exists with proper aria-label and destination
+    const desktopProfileLink = screen.getByRole('link', { name: /xem hồ sơ cá nhân/i });
+    expect(desktopProfileLink).toHaveAttribute('href', '/profile');
+    expect(desktopProfileLink).toHaveTextContent('Lê Hoàng Nam');
+
+    // Open mobile menu
+    const menuToggle = screen.getByRole('button', { name: /mở menu điều hướng/i });
+    await user.click(menuToggle);
+
+    // Both desktop and mobile profile links now exist
+    const profileLinks = screen.getAllByRole('link', { name: /xem hồ sơ cá nhân/i });
+    expect(profileLinks).toHaveLength(2);
+    expect(profileLinks[0]).toHaveAttribute('href', '/profile');
+    expect(profileLinks[1]).toHaveAttribute('href', '/profile');
+
+    // Clicking mobile profile link closes mobile menu
+    await user.click(profileLinks[1]);
+    expect(screen.queryByRole('button', { name: /đóng menu điều hướng/i })).not.toBeInTheDocument();
   });
 });

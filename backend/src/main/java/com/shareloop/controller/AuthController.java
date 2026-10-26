@@ -3,6 +3,7 @@ package com.shareloop.controller;
 import com.shareloop.dto.auth.AuthResponse;
 import com.shareloop.dto.auth.LoginRequest;
 import com.shareloop.dto.auth.RegisterRequest;
+import com.shareloop.dto.auth.UpdateProfileRequest;
 import com.shareloop.dto.auth.UserProfileResponse;
 import com.shareloop.exception.InvalidTokenException;
 import com.shareloop.security.UserPrincipal;
@@ -45,6 +46,19 @@ public class AuthController {
             throw new InvalidTokenException("Authenticated principal not found");
         }
         UserProfileResponse response = authService.getCurrentUser(principal.getId());
+        return ResponseEntity.ok(response);
+    }
+
+    @SecurityRequirement(name = "bearerAuth")
+    @PutMapping("/me")
+    public ResponseEntity<UserProfileResponse> updateCurrentUser(
+            @Valid @RequestBody UpdateProfileRequest request,
+            @AuthenticationPrincipal UserPrincipal principal
+    ) {
+        if (principal == null) {
+            throw new InvalidTokenException("Authenticated principal not found");
+        }
+        UserProfileResponse response = authService.updateCurrentUser(principal.getId(), request);
         return ResponseEntity.ok(response);
     }
 }

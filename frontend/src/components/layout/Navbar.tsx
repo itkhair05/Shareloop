@@ -103,7 +103,11 @@ export function Navbar() {
                   </Link>
                 )}
 
-                <div className="flex items-center gap-2 px-2.5 py-1 bg-slate-50 rounded-lg border border-slate-200">
+                <Link
+                  to="/profile"
+                  aria-label="Xem hồ sơ cá nhân"
+                  className="flex items-center gap-2 px-2.5 py-1 bg-slate-50 hover:bg-slate-100 rounded-lg border border-slate-200 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500"
+                >
                   <div className="w-6 h-6 rounded-full bg-emerald-100 text-emerald-700 flex items-center justify-center font-bold text-xs">
                     <UserIcon className="w-3.5 h-3.5" />
                   </div>
@@ -115,7 +119,7 @@ export function Navbar() {
                       Quản trị viên
                     </Badge>
                   )}
-                </div>
+                </Link>
 
                 <Button
                   variant="ghost"
@@ -294,16 +298,26 @@ export function Navbar() {
                   <span>Đăng bài mới</span>
                 </Link>
 
-                <div className="px-3 py-1 flex items-center justify-between">
-                  <span className="text-sm font-semibold text-slate-800">
-                    {user?.displayName}
-                  </span>
+                <Link
+                  to="/profile"
+                  onClick={() => setIsMobileMenuOpen(false)}
+                  aria-label="Xem hồ sơ cá nhân"
+                  className="px-3 py-2 flex items-center justify-between rounded-lg bg-slate-50 hover:bg-slate-100 border border-slate-200 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500"
+                >
+                  <div className="flex items-center gap-2 min-w-0">
+                    <div className="w-6 h-6 rounded-full bg-emerald-100 text-emerald-700 flex items-center justify-center font-bold text-xs shrink-0">
+                      <UserIcon className="w-3.5 h-3.5" />
+                    </div>
+                    <span className="text-sm font-semibold text-slate-800 truncate">
+                      {user?.displayName}
+                    </span>
+                  </div>
                   {isAdmin && (
-                    <Badge variant="warning" className="text-xs">
+                    <Badge variant="warning" className="text-xs shrink-0">
                       Quản trị viên
                     </Badge>
                   )}
-                </div>
+                </Link>
 
                 {isAdmin && (
                   <Link

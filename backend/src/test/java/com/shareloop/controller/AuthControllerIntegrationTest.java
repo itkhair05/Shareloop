@@ -3,6 +3,7 @@ package com.shareloop.controller;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.shareloop.dto.auth.LoginRequest;
 import com.shareloop.dto.auth.RegisterRequest;
+import com.shareloop.dto.auth.UpdateProfileRequest;
 import com.shareloop.entity.User;
 import com.shareloop.entity.enums.UserRole;
 import com.shareloop.entity.enums.UserStatus;
@@ -31,6 +32,7 @@ import static org.hamcrest.Matchers.is;
 import static org.hamcrest.Matchers.not;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
@@ -412,6 +414,183 @@ class AuthControllerIntegrationTest {
                             .header("Authorization", "Bearer " + adminToken))
                     .andExpect(status().isForbidden())
                     .andExpect(jsonPath("$.status").value(403));
+        }
+    }
+
+    @Nested
+    @DisplayName("Profile Update Endpoint Tests (PUT /api/v1/auth/me)")
+    class ProfileUpdateTests {
+
+        @Test
+        @DisplayName("Authenticated user can update displayName and valid phone number")
+        void updateDisplayNameAndPhoneNumberSuccessfully() throws Exception {
+            User user = createTestUser("update.profile@example.com", "Password123!", UserRole.USER, UserStatus.ACTIVE);
+            String token = jwtService.generateToken(user.getId(), user.getEmail(), user.getRole(), user.getStatus());
+
+            UpdateProfileRequest request = new UpdateProfileRequest("Nguyễn Văn Updated", "+84912345678");
+
+            mockMvc.perform(put("/api/v1/auth/me")
+                            .header("Authorization", "Bearer " + token)
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content(objectMapper.writeValueAsString(request)))
+                    .andExpect(status().isOk())
+                    .andExpect(jsonPath("$.id").value(user.getId().toString()))
+                    .andExpect(jsonPath("$.displayName").value("Nguyễn Văn Updated"))
+                    .andExpect(jsonPath("$.email").value(user.getEmail()))
+                    .andExpect(jsonPath("$.phoneNumber").value("+84912345678"))
+                    .andExpect(jsonPath("$.role").value("USER"))
+                    .andExpect(jsonPath("$.status").value("ACTIVE"));
+
+            // Verify persistence in DB
+            User updatedUser = userRepository.findById(user.getId()).orElseThrow();
+            assertThat(updatedUser.getDisplayName()).isEqualTo("Nguyễn Văn Updated");
+            assertThat(updatedUser.getPhoneNumber()).isEqualTo("+84912345678");
+
+            // Verify subsequent GET /api/v1/auth/me reflects the update
+            mockMvc.perform(get("/api/v1/auth/me")
+                            .header("Authorization", "Bearer " + token))
+                    .andExpect(status().isOk())
+                    .andExpect(jsonPath("$.displayName").value("Nguyễn Văn Updated"))
+                    .andExpect(jsonPath("$.phoneNumber").value("+84912345678"));
+        }
+
+        @Test
+        @DisplayName("Authenticated user can set phoneNumber to null or empty string to clear it")
+        void clearingPhoneNumberSetsDatabaseNull() throws Exception {
+            User user = createTestUser("clear.phone@example.com", "Password123!", UserRole.USER, UserStatus.ACTIVE);
+            user.setPhoneNumber("+84987654321");
+            userRepository.saveAndFlush(user);
+
+            String token = jwtService.generateToken(user.getId(), user.getEmail(), user.getRole(), user.getStatus());
+
+            // 1. Update with empty string clears phone number to null
+            UpdateProfileRequest emptyRequest = new UpdateProfileRequest("New Name 1", "");
+            mockMvc.perform(put("/api/v1/auth/me")
+                            .header("Authorization", "Bearer " + token)
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content(objectMapper.writeValueAsString(emptyRequest)))
+                    .andExpect(status().isOk())
+                    .andExpect(jsonPath("$.phoneNumber").isEmpty());
+
+            User dbUser1 = userRepository.findById(user.getId()).orElseThrow();
+            assertThat(dbUser1.getPhoneNumber()).isNull();
+
+            // 2. Update with null clears phone number
+            user.setPhoneNumber("+84987654321");
+            userRepository.saveAndFlush(user);
+
+            UpdateProfileRequest nullRequest = new UpdateProfileRequest("New Name 2", null);
+            mockMvc.perform(put("/api/v1/auth/me")
+                            .header("Authorization", "Bearer " + token)
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content(objectMapper.writeValueAsString(nullRequest)))
+                    .andExpect(status().isOk())
+                    .andExpect(jsonPath("$.phoneNumber").isEmpty());
+
+            User dbUser2 = userRepository.findById(user.getId()).orElseThrow();
+            assertThat(dbUser2.getPhoneNumber()).isNull();
+        }
+
+        @Test
+        @DisplayName("Blank, null, or out-of-range displayName returns 400 Bad Request")
+        void invalidDisplayNameRejectedWith400() throws Exception {
+            User user = createTestUser("invalid.name@example.com", "Password123!", UserRole.USER, UserStatus.ACTIVE);
+            String token = jwtService.generateToken(user.getId(), user.getEmail(), user.getRole(), user.getStatus());
+
+            // Blank displayName
+            UpdateProfileRequest blankRequest = new UpdateProfileRequest("   ", "+84912345678");
+            mockMvc.perform(put("/api/v1/auth/me")
+                            .header("Authorization", "Bearer " + token)
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content(objectMapper.writeValueAsString(blankRequest)))
+                    .andExpect(status().isBadRequest())
+                    .andExpect(jsonPath("$.errors.displayName").exists());
+
+            // Null displayName
+            UpdateProfileRequest nullRequest = new UpdateProfileRequest(null, "+84912345678");
+            mockMvc.perform(put("/api/v1/auth/me")
+                            .header("Authorization", "Bearer " + token)
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content(objectMapper.writeValueAsString(nullRequest)))
+                    .andExpect(status().isBadRequest())
+                    .andExpect(jsonPath("$.errors.displayName").exists());
+
+            // Oversized displayName (> 100 chars)
+            String overlong = "A".repeat(101);
+            UpdateProfileRequest overlongRequest = new UpdateProfileRequest(overlong, "+84912345678");
+            mockMvc.perform(put("/api/v1/auth/me")
+                            .header("Authorization", "Bearer " + token)
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content(objectMapper.writeValueAsString(overlongRequest)))
+                    .andExpect(status().isBadRequest())
+                    .andExpect(jsonPath("$.errors.displayName").exists());
+        }
+
+        @Test
+        @DisplayName("Invalid phone number format returns 400 Bad Request before database check constraint")
+        void invalidPhoneNumberFormatRejectedWith400() throws Exception {
+            User user = createTestUser("invalid.phone@example.com", "Password123!", UserRole.USER, UserStatus.ACTIVE);
+            String token = jwtService.generateToken(user.getId(), user.getEmail(), user.getRole(), user.getStatus());
+
+            // Non-numeric phone string
+            UpdateProfileRequest nonNumericRequest = new UpdateProfileRequest("Valid Name", "abc-def-ghij");
+            mockMvc.perform(put("/api/v1/auth/me")
+                            .header("Authorization", "Bearer " + token)
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content(objectMapper.writeValueAsString(nonNumericRequest)))
+                    .andExpect(status().isBadRequest())
+                    .andExpect(jsonPath("$.errors.phoneNumber").exists());
+
+            // Whitespace-only phone number rejected
+            UpdateProfileRequest whitespaceRequest = new UpdateProfileRequest("Valid Name", "    ");
+            mockMvc.perform(put("/api/v1/auth/me")
+                            .header("Authorization", "Bearer " + token)
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content(objectMapper.writeValueAsString(whitespaceRequest)))
+                    .andExpect(status().isBadRequest())
+                    .andExpect(jsonPath("$.errors.phoneNumber").exists());
+
+            // Overlong phone number (> 30 chars)
+            UpdateProfileRequest overlongPhone = new UpdateProfileRequest("Valid Name", "+1234567890123456789012345678901");
+            mockMvc.perform(put("/api/v1/auth/me")
+                            .header("Authorization", "Bearer " + token)
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content(objectMapper.writeValueAsString(overlongPhone)))
+                    .andExpect(status().isBadRequest())
+                    .andExpect(jsonPath("$.errors.phoneNumber").exists());
+        }
+
+        @Test
+        @DisplayName("Unauthenticated update request returns 401 Unauthorized")
+        void unauthenticatedUpdateRequestRejected() throws Exception {
+            UpdateProfileRequest request = new UpdateProfileRequest("Valid Name", "+84912345678");
+
+            mockMvc.perform(put("/api/v1/auth/me")
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content(objectMapper.writeValueAsString(request)))
+                    .andExpect(status().isUnauthorized());
+        }
+
+        @Test
+        @DisplayName("Updating one user's profile cannot affect another user")
+        void updatingProfileDoesNotAffectOtherUsers() throws Exception {
+            User user1 = createTestUser("user1@example.com", "Password123!", UserRole.USER, UserStatus.ACTIVE);
+            User user2 = createTestUser("user2@example.com", "Password123!", UserRole.USER, UserStatus.ACTIVE);
+
+            String token1 = jwtService.generateToken(user1.getId(), user1.getEmail(), user1.getRole(), user1.getStatus());
+
+            UpdateProfileRequest request = new UpdateProfileRequest("User 1 Updated", "+84911111111");
+            mockMvc.perform(put("/api/v1/auth/me")
+                            .header("Authorization", "Bearer " + token1)
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content(objectMapper.writeValueAsString(request)))
+                    .andExpect(status().isOk());
+
+            // Verify user 2 was completely unchanged
+            User dbUser2 = userRepository.findById(user2.getId()).orElseThrow();
+            assertThat(dbUser2.getDisplayName()).isEqualTo("Test User");
+            assertThat(dbUser2.getPhoneNumber()).isNull();
+            assertThat(dbUser2.getEmail()).isEqualTo("user2@example.com");
         }
     }
 }
