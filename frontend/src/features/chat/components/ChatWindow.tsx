@@ -397,7 +397,7 @@ export function ChatWindow({ conversationId, onBack, className }: ChatWindowProp
           }}
           className="space-y-2"
         >
-          <div className="relative flex items-end gap-2 bg-slate-50 border border-slate-200 rounded-2xl p-2 focus-within:bg-white focus-within:border-emerald-500 focus-within:ring-2 focus-within:ring-emerald-500/20 transition-all">
+          <div className="relative flex items-end gap-2 border border-slate-200 rounded-xl p-2 bg-slate-50 focus-within:border-emerald-500 focus-within:ring-1 focus-within:ring-emerald-500 focus-within:bg-white transition-all">
             <textarea
               ref={textareaRef}
               value={content}
@@ -409,7 +409,7 @@ export function ChatWindow({ conversationId, onBack, className }: ChatWindowProp
               placeholder="Nhập tin nhắn..."
               rows={1}
               maxLength={2000}
-              className="flex-1 bg-transparent border-0 resize-none max-h-32 min-h-[38px] p-1.5 text-sm text-slate-900 placeholder:text-slate-400 focus:outline-none"
+              className="flex-1 bg-transparent border-0 outline-none focus:ring-0 focus:outline-none focus:border-0 resize-none max-h-32 min-h-[38px] p-1.5 text-sm text-slate-900 placeholder:text-slate-400"
               aria-label="Nội dung tin nhắn"
             />
 

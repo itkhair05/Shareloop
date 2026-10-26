@@ -453,6 +453,32 @@ describe('ChatWindow & Message History', () => {
     expect(chatApi.sendMessage).not.toHaveBeenCalled();
   });
 
+  it('renders composer textarea and wrapper with correct non-persistent focus styling classes', async () => {
+    renderWithProviders(<ChatWindow conversationId={mockConversation1.id} />);
+
+    const textarea = await screen.findByPlaceholderText(/nhập tin nhắn/i);
+    const wrapper = textarea.parentElement;
+
+    expect(wrapper).toBeInTheDocument();
+    // Default border is neutral slate without unconditional green border or unconditional ring
+    expect(wrapper?.className).toContain('border-slate-200');
+    expect(wrapper?.className).not.toMatch(/(^|\s)border-emerald-500(\s|$)/);
+    expect(wrapper?.className).not.toMatch(/(^|\s)ring-(\d|emerald)/);
+    // Green focus styling is applied conditionally via focus-within border and ring
+    expect(wrapper?.className).toContain('focus-within:border-emerald-500');
+    expect(wrapper?.className).toContain('focus-within:ring-1');
+    expect(wrapper?.className).toContain('focus-within:ring-emerald-500');
+
+    // Textarea has border-0, outline-none, focus:ring-0, focus:outline-none, focus:border-0
+    expect(textarea.className).toContain('border-0');
+    expect(textarea.className).toContain('outline-none');
+    expect(textarea.className).toContain('focus:ring-0');
+    expect(textarea.className).toContain('focus:outline-none');
+    expect(textarea.className).toContain('focus:border-0');
+    expect(textarea.className).not.toContain('border-emerald');
+    expect(textarea.className).not.toContain('ring-emerald');
+  });
+
   it('loads and merges older message pages without duplicate IDs or order inversion', async () => {
     const user = userEvent.setup();
     const page0: PageResponse<ChatMessageResponse> = {
