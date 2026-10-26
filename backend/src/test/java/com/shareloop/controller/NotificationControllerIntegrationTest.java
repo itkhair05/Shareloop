@@ -432,8 +432,8 @@ class NotificationControllerIntegrationTest {
 
         Notification notif = aliceNotifs.get(0);
         assertThat(notif.getType()).isEqualTo(NotificationType.REQUEST_RECEIVED);
-        assertThat(notif.getTitle()).isEqualTo("New Request Received");
-        assertThat(notif.getMessage()).contains("Bob requested your listing");
+        assertThat(notif.getTitle()).isEqualTo("Yêu cầu mới");
+        assertThat(notif.getMessage()).contains("Bob").contains("cho bài đăng");
         assertThat(notif.getReferenceType()).isEqualTo("LISTING_REQUEST");
         assertThat(notif.getReferenceId()).isNotNull();
 
@@ -467,8 +467,8 @@ class NotificationControllerIntegrationTest {
 
         Notification notif = bobNotifs.get(0);
         assertThat(notif.getType()).isEqualTo(NotificationType.REQUEST_ACCEPTED);
-        assertThat(notif.getTitle()).isEqualTo("Request Accepted");
-        assertThat(notif.getMessage()).contains("was accepted");
+        assertThat(notif.getTitle()).isEqualTo("Yêu cầu được chấp nhận");
+        assertThat(notif.getMessage()).contains("đã được chấp nhận");
         assertThat(notif.getReferenceType()).isEqualTo("TRANSACTION");
     }
 
@@ -497,8 +497,8 @@ class NotificationControllerIntegrationTest {
 
         Notification notif = bobNotifs.get(0);
         assertThat(notif.getType()).isEqualTo(NotificationType.REQUEST_REJECTED);
-        assertThat(notif.getTitle()).isEqualTo("Request Declined");
-        assertThat(notif.getMessage()).contains("was declined");
+        assertThat(notif.getTitle()).isEqualTo("Yêu cầu bị từ chối");
+        assertThat(notif.getMessage()).contains("đã bị từ chối");
         assertThat(notif.getReferenceType()).isEqualTo("LISTING_REQUEST");
     }
 
@@ -525,8 +525,8 @@ class NotificationControllerIntegrationTest {
 
         Notification notif = aliceNotifs.get(0);
         assertThat(notif.getType()).isEqualTo(NotificationType.CHAT_MESSAGE);
-        assertThat(notif.getTitle()).isEqualTo("New Message");
-        assertThat(notif.getMessage()).contains("You received a new message from Bob");
+        assertThat(notif.getTitle()).isEqualTo("Tin nhắn mới");
+        assertThat(notif.getMessage()).contains("Bạn có tin nhắn mới từ Bob");
         // Verify private chat text is NOT exposed in the notification body
         assertThat(notif.getMessage()).doesNotContain("Hello Alice, is this item still available?");
         assertThat(notif.getReferenceType()).isEqualTo("CONVERSATION");
@@ -589,11 +589,15 @@ class NotificationControllerIntegrationTest {
 
         assertThat(aliceNotifs).hasSize(1);
         assertThat(aliceNotifs.get(0).getType()).isEqualTo(NotificationType.TRANSACTION_COMPLETED);
+        assertThat(aliceNotifs.get(0).getTitle()).isEqualTo("Giao dịch hoàn tất");
+        assertThat(aliceNotifs.get(0).getMessage()).contains("đã hoàn tất. Bạn có thể để lại đánh giá.");
         assertThat(aliceNotifs.get(0).getReferenceType()).isEqualTo("TRANSACTION");
         assertThat(aliceNotifs.get(0).getReferenceId()).isEqualTo(tx.getId());
 
         assertThat(bobNotifs).hasSize(1);
         assertThat(bobNotifs.get(0).getType()).isEqualTo(NotificationType.TRANSACTION_COMPLETED);
+        assertThat(bobNotifs.get(0).getTitle()).isEqualTo("Giao dịch hoàn tất");
+        assertThat(bobNotifs.get(0).getMessage()).contains("đã hoàn tất. Bạn có thể để lại đánh giá.");
         assertThat(bobNotifs.get(0).getReferenceType()).isEqualTo("TRANSACTION");
         assertThat(bobNotifs.get(0).getReferenceId()).isEqualTo(tx.getId());
 
@@ -632,4 +636,27 @@ class NotificationControllerIntegrationTest {
 
         assertThat(notificationRepository.findAll()).isEmpty();
     }
+
+    @Test
+    @DisplayName("Localization: Conversation creation with initial message generates Vietnamese notification")
+    void localization_conversationCreationGeneratesVietnameseNotification() throws Exception {
+        Listing listing = createTestListing(alice, ListingType.GIVEAWAY);
+
+        CreateConversationRequest request = new CreateConversationRequest("Tôi muốn xin món đồ này!");
+
+        mockMvc.perform(post("/api/v1/listings/{listingId}/conversations", listing.getId())
+                        .header(HttpHeaders.AUTHORIZATION, bobToken)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isOk());
+
+        List<Notification> aliceNotifs = notificationRepository.findByRecipientId(alice.getId(), null).getContent();
+        assertThat(aliceNotifs).hasSize(1);
+        Notification notif = aliceNotifs.get(0);
+        assertThat(notif.getType()).isEqualTo(NotificationType.CHAT_MESSAGE);
+        assertThat(notif.getTitle()).isEqualTo("Tin nhắn mới");
+        assertThat(notif.getMessage()).isEqualTo("Bạn có tin nhắn mới từ Bob");
+        assertThat(notif.getMessage()).doesNotContain("null");
+    }
 }
+

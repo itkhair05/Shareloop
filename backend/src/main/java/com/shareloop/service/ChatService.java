@@ -176,11 +176,18 @@ public class ChatService {
             savedConversation = conversationRepository.saveAndFlush(savedConversation);
             messagePreview = savedMessage.getContent();
 
+            String senderName = (requester != null && requester.getDisplayName() != null && !requester.getDisplayName().isBlank())
+                    ? requester.getDisplayName().trim()
+                    : null;
+            String notifMessage = (senderName != null)
+                    ? "Bạn có tin nhắn mới từ " + senderName
+                    : "Bạn có tin nhắn mới";
+
             notificationService.createNotification(
                     listing.getOwner(),
                     NotificationType.CHAT_MESSAGE,
-                    "New Message",
-                    "You received a new message from " + requester.getDisplayName(),
+                    "Tin nhắn mới",
+                    notifMessage,
                     "CONVERSATION",
                     savedConversation.getId()
             );
@@ -300,11 +307,18 @@ public class ChatService {
                 ? conversation.getRequester()
                 : conversation.getOwner();
 
+        String senderName = (sender != null && sender.getDisplayName() != null && !sender.getDisplayName().isBlank())
+                ? sender.getDisplayName().trim()
+                : null;
+        String notifMessage = (senderName != null)
+                ? "Bạn có tin nhắn mới từ " + senderName
+                : "Bạn có tin nhắn mới";
+
         notificationService.createNotification(
                 recipient,
                 NotificationType.CHAT_MESSAGE,
-                "New Message",
-                "You received a new message from " + sender.getDisplayName(),
+                "Tin nhắn mới",
+                notifMessage,
                 "CONVERSATION",
                 conversation.getId()
         );

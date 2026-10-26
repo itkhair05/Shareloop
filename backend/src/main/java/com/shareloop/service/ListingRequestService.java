@@ -104,11 +104,29 @@ public class ListingRequestService {
 
         ListingRequest saved = listingRequestRepository.save(request);
 
+        String listingTitle = (listing != null && listing.getTitle() != null && !listing.getTitle().isBlank())
+                ? listing.getTitle().trim()
+                : null;
+        String requesterName = (requester != null && requester.getDisplayName() != null && !requester.getDisplayName().isBlank())
+                ? requester.getDisplayName().trim()
+                : null;
+
+        String requestMessage;
+        if (requesterName != null && listingTitle != null) {
+            requestMessage = "Bạn có một yêu cầu mới từ " + requesterName + " cho bài đăng \"" + listingTitle + "\"";
+        } else if (listingTitle != null) {
+            requestMessage = "Bạn có một yêu cầu mới cho bài đăng \"" + listingTitle + "\"";
+        } else if (requesterName != null) {
+            requestMessage = "Bạn có một yêu cầu mới từ " + requesterName + " cho bài đăng của mình";
+        } else {
+            requestMessage = "Bạn có một yêu cầu mới cho bài đăng của mình";
+        }
+
         notificationService.createNotification(
                 listing.getOwner(),
                 NotificationType.REQUEST_RECEIVED,
-                "New Request Received",
-                requester.getDisplayName() + " requested your listing \"" + listing.getTitle() + "\"",
+                "Yêu cầu mới",
+                requestMessage,
                 "LISTING_REQUEST",
                 saved.getId()
         );
@@ -258,11 +276,18 @@ public class ListingRequestService {
             lockedListing.setStatus(ListingStatus.RESERVED);
             listingRepository.saveAndFlush(lockedListing);
 
+            String acceptedListingTitle = (lockedListing != null && lockedListing.getTitle() != null && !lockedListing.getTitle().isBlank())
+                    ? lockedListing.getTitle().trim()
+                    : null;
+            String acceptedMessage = (acceptedListingTitle != null)
+                    ? "Yêu cầu của bạn cho \"" + acceptedListingTitle + "\" đã được chấp nhận"
+                    : "Yêu cầu của bạn đã được chấp nhận";
+
             notificationService.createNotification(
                     request.getRequester(),
                     NotificationType.REQUEST_ACCEPTED,
-                    "Request Accepted",
-                    "Your request for \"" + lockedListing.getTitle() + "\" was accepted",
+                    "Yêu cầu được chấp nhận",
+                    acceptedMessage,
                     "TRANSACTION",
                     transaction.getId()
             );
@@ -272,11 +297,18 @@ public class ListingRequestService {
             request.setStatus(ListingRequestStatus.REJECTED);
             ListingRequest savedRequest = listingRequestRepository.save(request);
 
+            String rejectedListingTitle = (request.getListing() != null && request.getListing().getTitle() != null && !request.getListing().getTitle().isBlank())
+                    ? request.getListing().getTitle().trim()
+                    : null;
+            String rejectedMessage = (rejectedListingTitle != null)
+                    ? "Yêu cầu của bạn cho \"" + rejectedListingTitle + "\" đã bị từ chối"
+                    : "Yêu cầu của bạn đã bị từ chối";
+
             notificationService.createNotification(
                     request.getRequester(),
                     NotificationType.REQUEST_REJECTED,
-                    "Request Declined",
-                    "Your request for \"" + request.getListing().getTitle() + "\" was declined",
+                    "Yêu cầu bị từ chối",
+                    rejectedMessage,
                     "LISTING_REQUEST",
                     savedRequest.getId()
             );

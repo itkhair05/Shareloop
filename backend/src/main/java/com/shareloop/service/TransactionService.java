@@ -206,11 +206,18 @@ public class TransactionService {
                 listingRepository.saveAndFlush(listing);
             }
 
+            String listingTitle = (listing != null && listing.getTitle() != null && !listing.getTitle().isBlank())
+                    ? listing.getTitle().trim()
+                    : null;
+            String completedMessage = (listingTitle != null)
+                    ? "Giao dịch cho \"" + listingTitle + "\" đã hoàn tất. Bạn có thể để lại đánh giá."
+                    : "Giao dịch đã hoàn tất. Bạn có thể để lại đánh giá.";
+
             notificationService.createNotification(
                     transaction.getOwner(),
                     NotificationType.TRANSACTION_COMPLETED,
-                    "Transaction Completed",
-                    "Your transaction for \"" + listing.getTitle() + "\" has been completed. You can now leave a review.",
+                    "Giao dịch hoàn tất",
+                    completedMessage,
                     "TRANSACTION",
                     transaction.getId()
             );
@@ -218,8 +225,8 @@ public class TransactionService {
             notificationService.createNotification(
                     transaction.getRequester(),
                     NotificationType.TRANSACTION_COMPLETED,
-                    "Transaction Completed",
-                    "Your transaction for \"" + listing.getTitle() + "\" has been completed. You can now leave a review.",
+                    "Giao dịch hoàn tất",
+                    completedMessage,
                     "TRANSACTION",
                     transaction.getId()
             );
