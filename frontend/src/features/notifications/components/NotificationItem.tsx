@@ -72,9 +72,14 @@ export function NotificationItem({
       return;
     }
 
-    if (referenceType === 'CONVERSATION') {
-      // Chat UI will be implemented in Phase 5B.3. Do not navigate to a broken 404 route.
-      setFeedbackMessage('Tính năng trò chuyện chi tiết sẽ sớm ra mắt trong phiên bản tiếp theo.');
+    if (referenceType === 'CONVERSATION' || notification.type === 'CHAT_MESSAGE') {
+      onClose?.();
+      const cleanRefId = referenceId?.trim();
+      if (cleanRefId && cleanRefId !== 'undefined' && cleanRefId !== 'null') {
+        navigate(`/messages/${cleanRefId}`);
+      } else {
+        navigate('/messages');
+      }
       return;
     }
 

@@ -17,6 +17,7 @@ import {
   Tag,
   User,
   X,
+  MessageSquare,
 } from 'lucide-react';
 import { Badge } from '@/components/ui/Badge';
 import { Button } from '@/components/ui/Button';
@@ -26,6 +27,7 @@ import { useListing } from '../hooks/use-listings';
 import { OwnerRatingBadge, OwnerReputationSection } from '@/features/reviews';
 import { useAuth } from '@/features/auth';
 import { CreateRequestModal, ListingRequestsManager, useMyRequests } from '@/features/requests';
+import { StartChatModal } from '@/features/chat';
 import type { ListingStatus, ListingType } from '@/types/listing';
 
 const listingTypeConfig: Record<
@@ -59,6 +61,7 @@ export function ListingDetailPage() {
   const [selectedImageIndex, setSelectedImageIndex] = useState(0);
   const [imageErrorMap, setImageErrorMap] = useState<Record<number, boolean>>({});
   const [isRequestModalOpen, setIsRequestModalOpen] = useState(false);
+  const [isChatModalOpen, setIsChatModalOpen] = useState(false);
   const [requestSuccessBanner, setRequestSuccessBanner] = useState<string | null>(null);
   const [hasConflictPendingRequest, setHasConflictPendingRequest] = useState(false);
 
@@ -76,13 +79,12 @@ export function ListingDetailPage() {
     { enabled: Boolean(isAuthenticated && !isOwner && listing?.status === 'ACTIVE') }
   );
 
-  const hasPendingRequest =
-    hasConflictPendingRequest ||
-    Boolean(
-      myPendingRequests?.content?.some(
-        (req) => req.listing?.id === listing?.id && req.status === 'PENDING'
-      )
-    );
+  const myPendingRequest = myPendingRequests?.content?.find(
+    (req) => req.listing?.id === listing?.id && req.status === 'PENDING'
+  );
+
+  const hasPendingRequest = hasConflictPendingRequest || Boolean(myPendingRequest);
+  const activeListingRequestId = myPendingRequest?.id ?? null;
 
   const handleBack = () => {
     if (window.history.length > 1) {
@@ -601,6 +603,28 @@ export function ListingDetailPage() {
                 )}
               </div>
             )}
+
+            {/* Direct Message Action (Phase 5B.3A) */}
+            {!isOwner && (
+              <div className="pt-3 border-t border-slate-100">
+                <Button
+                  variant="outline"
+                  size="md"
+                  onClick={() => {
+                    if (!isAuthenticated) {
+                      navigate('/login', { state: { from: location } });
+                    } else {
+                      setIsChatModalOpen(true);
+                    }
+                  }}
+                  className="w-full font-semibold flex flex-row items-center justify-center gap-2 border-slate-200 text-slate-700 hover:text-emerald-700 hover:bg-slate-50 cursor-pointer [&>span]:flex [&>span]:flex-row [&>span]:items-center [&>span]:gap-1.5"
+                  aria-label="Nhắn tin cho người đăng"
+                >
+                  <MessageSquare className="w-4 h-4 text-emerald-600 shrink-0" aria-hidden="true" />
+                  <span>Nhắn tin cho người đăng</span>
+                </Button>
+              </div>
+            )}
           </div>
 
           {/* Owner Profile Card */}
@@ -664,6 +688,18 @@ export function ListingDetailPage() {
                 : 'Đã gửi đề nghị mua thành công! Người đăng sẽ nhận được thông báo để xem xét.'
             );
           }}
+        />
+      )}
+
+      {/* Start Chat Modal */}
+      {listing && (
+        <StartChatModal
+          isOpen={isChatModalOpen}
+          onClose={() => setIsChatModalOpen(false)}
+          listingId={listing.id}
+          listingTitle={listing.title}
+          ownerName={listing.owner.displayName || 'Người đăng'}
+          listingRequestId={activeListingRequestId}
         />
       )}
     </div>

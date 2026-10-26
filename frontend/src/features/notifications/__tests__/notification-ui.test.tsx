@@ -270,6 +270,8 @@ describe('NotificationDropdown UI', () => {
     expect(screen.getByText('Yêu cầu nhận đồ mới')).toBeInTheDocument();
 
     const markAllBtn = screen.getByRole('button', { name: /đánh dấu tất cả thông báo là đã đọc/i });
+    expect(markAllBtn.className).toContain('[&>span]:flex');
+    expect(markAllBtn.className).toContain('[&>span]:flex-row');
     await user.click(markAllBtn);
 
     expect(notificationApi.markAllAsRead).toHaveBeenCalledTimes(1);
@@ -371,7 +373,7 @@ describe('NotificationItem & Safe Navigation', () => {
     expect(await screen.findByText('Trang Bài Đăng Của Tôi')).toBeInTheDocument();
   });
 
-  it('displays polite feedback and does NOT navigate to a broken route for CONVERSATION reference', async () => {
+  it('navigates to /messages/:conversationId for CONVERSATION reference after marking as read', async () => {
     const user = userEvent.setup();
     vi.mocked(notificationApi.markAsRead).mockResolvedValueOnce({
       ...mockChatNotification,
@@ -381,7 +383,7 @@ describe('NotificationItem & Safe Navigation', () => {
     renderWithProviders(
       <Routes>
         <Route path="/" element={<NotificationItem notification={mockChatNotification} />} />
-        <Route path="/messages/:id" element={<div>Broken Chat Route</div>} />
+        <Route path="/messages/:conversationId" element={<div>Trang Cuộc Trò Chuyện conv-789</div>} />
       </Routes>,
       { initialEntries: ['/'] }
     );
@@ -390,10 +392,34 @@ describe('NotificationItem & Safe Navigation', () => {
     await user.click(item);
 
     expect(notificationApi.markAsRead).toHaveBeenCalledWith('notif-3');
-    expect(
-      await screen.findByText('Tính năng trò chuyện chi tiết sẽ sớm ra mắt trong phiên bản tiếp theo.')
-    ).toBeInTheDocument();
-    expect(screen.queryByText('Broken Chat Route')).not.toBeInTheDocument();
+    expect(await screen.findByText('Trang Cuộc Trò Chuyện conv-789')).toBeInTheDocument();
+  });
+
+  it('navigates to fallback /messages for CONVERSATION notification when referenceId is missing or empty', async () => {
+    const user = userEvent.setup();
+    const notificationWithoutId: NotificationResponse = {
+      ...mockChatNotification,
+      id: 'notif-missing-id',
+      referenceId: null,
+    };
+    vi.mocked(notificationApi.markAsRead).mockResolvedValueOnce({
+      ...notificationWithoutId,
+      isRead: true,
+    });
+
+    renderWithProviders(
+      <Routes>
+        <Route path="/" element={<NotificationItem notification={notificationWithoutId} />} />
+        <Route path="/messages" element={<div>Trang Danh Sách Tin Nhắn Chung</div>} />
+      </Routes>,
+      { initialEntries: ['/'] }
+    );
+
+    const item = screen.getByRole('button', { name: /thông báo chưa đọc: tin nhắn mới/i });
+    await user.click(item);
+
+    expect(notificationApi.markAsRead).toHaveBeenCalledWith('notif-missing-id');
+    expect(await screen.findByText('Trang Danh Sách Tin Nhắn Chung')).toBeInTheDocument();
   });
 
   it('shows error feedback and does not navigate if markAsRead fails', async () => {

@@ -88,7 +88,7 @@ export function NotificationDropdown({ isOpen, onClose }: NotificationDropdownPr
             size="sm"
             onClick={() => markAllMutation.mutate()}
             disabled={markAllMutation.isPending}
-            className="text-[11px] font-semibold text-emerald-700 hover:text-emerald-800 hover:bg-emerald-50 px-2 py-1 h-auto"
+            className="text-[11px] font-semibold text-emerald-700 hover:text-emerald-800 hover:bg-emerald-50 px-2 py-1 h-auto flex flex-row items-center justify-center gap-2 [&>span]:flex [&>span]:flex-row [&>span]:items-center [&>span]:gap-1.5"
             aria-label="Đánh dấu tất cả thông báo là đã đọc"
           >
             {markAllMutation.isPending ? (

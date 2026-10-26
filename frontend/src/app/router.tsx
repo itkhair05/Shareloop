@@ -15,6 +15,7 @@ import {
   TransactionDetailPage,
 } from '@/features/transactions';
 import { NotificationsPage } from '@/features/notifications';
+import { MessagesPage } from '@/features/chat';
 import { LoginPage } from '@/features/auth/pages/LoginPage';
 import { RegisterPage } from '@/features/auth/pages/RegisterPage';
 import { ProtectedRoute } from '@/features/auth/components/ProtectedRoute';
@@ -86,6 +87,22 @@ export const router = createBrowserRouter([
         element: (
           <ProtectedRoute>
             <NotificationsPage />
+          </ProtectedRoute>
+        ),
+      },
+      {
+        path: 'messages',
+        element: (
+          <ProtectedRoute>
+            <MessagesPage />
+          </ProtectedRoute>
+        ),
+      },
+      {
+        path: 'messages/:conversationId',
+        element: (
+          <ProtectedRoute>
+            <MessagesPage />
           </ProtectedRoute>
         ),
       },

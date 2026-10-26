@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Link, NavLink } from 'react-router-dom';
-import { Menu, X, Shield, LogIn, LogOut, User as UserIcon, Plus, Bell } from 'lucide-react';
+import { Menu, X, Shield, LogIn, LogOut, User as UserIcon, Plus, Bell, MessageSquare } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Badge } from '@/components/ui/Badge';
 import { Button } from '@/components/ui/Button';
@@ -68,6 +68,9 @@ export function Navbar() {
                 </NavLink>
                 <NavLink to="/transactions" className={navLinkClass}>
                   Giao dịch
+                </NavLink>
+                <NavLink to="/messages" className={navLinkClass}>
+                  Tin nhắn
                 </NavLink>
               </>
             )}
@@ -224,6 +227,21 @@ export function Navbar() {
                 }
               >
                 Giao dịch
+              </NavLink>
+              <NavLink
+                to="/messages"
+                onClick={() => setIsMobileMenuOpen(false)}
+                className={({ isActive }) =>
+                  cn(
+                    'flex items-center gap-2 px-3 py-2 rounded-md text-base font-medium',
+                    isActive
+                      ? 'text-emerald-700 bg-emerald-50'
+                      : 'text-slate-600 hover:bg-slate-50'
+                  )
+                }
+              >
+                <MessageSquare className="w-5 h-5 text-slate-500" />
+                <span>Tin nhắn</span>
               </NavLink>
               <NavLink
                 to="/notifications"
