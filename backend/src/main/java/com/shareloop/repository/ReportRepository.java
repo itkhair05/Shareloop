@@ -51,4 +51,6 @@ public interface ReportRepository extends JpaRepository<Report, UUID> {
             "LEFT JOIN FETCH r.resolvedBy rb " +
             "WHERE r.id = :id")
     Optional<Report> findWithDetailsById(@Param("id") UUID id);
+
+    long countByStatus(ReportStatus status);
 }

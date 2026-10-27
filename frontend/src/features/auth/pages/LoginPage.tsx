@@ -9,17 +9,17 @@ import { Input } from '@/components/ui/Input';
 import { Button } from '@/components/ui/Button';
 import { Card, CardContent, CardHeader } from '@/components/ui/Card';
 import { ApiError } from '@/lib/api-error';
+import { resolvePostLoginDestination } from '../utils/auth-redirect';
 
 export function LoginPage() {
   const navigate = useNavigate();
   const location = useLocation();
-  const { login, isAuthenticated } = useAuth();
+  const { login, isAuthenticated, user } = useAuth();
   const [showPassword, setShowPassword] = useState(false);
   const [generalError, setGeneralError] = useState<string | null>(null);
 
   // Intended destination after successful login
   const fromLocation = (location.state as { from?: Location })?.from;
-  const fromPath = fromLocation?.pathname ? `${fromLocation.pathname}${fromLocation.search || ''}` : '/';
 
   const {
     register,
@@ -33,12 +33,13 @@ export function LoginPage() {
     },
   });
 
-  // If already authenticated, redirect to target destination
+  // If already authenticated, redirect based on role or intended destination
   useEffect(() => {
     if (isAuthenticated) {
-      navigate(fromPath, { replace: true });
+      const destination = resolvePostLoginDestination(fromLocation, user?.role);
+      navigate(destination, { replace: true });
     }
-  }, [isAuthenticated, navigate, fromPath]);
+  }, [isAuthenticated, navigate, fromLocation, user?.role]);
 
   if (isAuthenticated) {
     return null;
@@ -47,8 +48,9 @@ export function LoginPage() {
   const onSubmit = async (data: LoginFormData) => {
     setGeneralError(null);
     try {
-      await login(data);
-      navigate(fromPath, { replace: true });
+      const response = await login(data);
+      const destination = resolvePostLoginDestination(fromLocation, response.role);
+      navigate(destination, { replace: true });
     } catch (err) {
       if (err instanceof ApiError) {
         if (err.isUnauthorized) {

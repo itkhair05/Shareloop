@@ -1,5 +1,6 @@
 package com.shareloop.repository;
 
+import com.shareloop.dto.category.CategoryListingCountProjection;
 import com.shareloop.entity.Listing;
 import com.shareloop.entity.enums.ListingStatus;
 import com.shareloop.entity.enums.ListingType;
@@ -53,4 +54,12 @@ public interface ListingRepository extends JpaRepository<Listing, UUID>, JpaSpec
     List<Listing> findByCityIgnoreCaseAndStatus(String city, ListingStatus status);
 
     long countByCategoryIdAndStatus(UUID categoryId, ListingStatus status);
+
+    long countByStatus(ListingStatus status);
+
+    @Query("SELECT l.category.id AS categoryId, COUNT(l) AS count " +
+            "FROM Listing l " +
+            "WHERE l.status = :status " +
+            "GROUP BY l.category.id")
+    List<CategoryListingCountProjection> countListingsByStatusGroupedByCategory(@Param("status") ListingStatus status);
 }

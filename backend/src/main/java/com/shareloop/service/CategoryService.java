@@ -12,8 +12,10 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
 import java.util.Locale;
+import java.util.Map;
 import java.util.UUID;
 import java.util.regex.Pattern;
+import java.util.stream.Collectors;
 
 @Service
 public class CategoryService {
@@ -124,6 +126,29 @@ public class CategoryService {
         Category updated = categoryRepository.save(category);
 
         return CategoryResponse.fromEntity(updated);
+    }
+
+    /**
+     * Admin: Retrieve all categories (both active and inactive) ordered alphabetically,
+     * including each category's count of active listings.
+     * Uses a single aggregated group-by query to avoid N+1 query overhead.
+     */
+    @Transactional(readOnly = true)
+    public List<CategoryDetailResponse> getAllCategoriesForAdmin() {
+        List<Category> categories = categoryRepository.findAllByOrderByNameAsc();
+        List<CategoryListingCountProjection> listingCounts = listingRepository.countListingsByStatusGroupedByCategory(ListingStatus.ACTIVE);
+
+        Map<UUID, Long> countMap = listingCounts.stream()
+                .filter(projection -> projection.getCategoryId() != null)
+                .collect(Collectors.toMap(
+                        CategoryListingCountProjection::getCategoryId,
+                        p -> p.getCount() != null ? p.getCount() : 0L,
+                        (existing, replacement) -> existing
+                ));
+
+        return categories.stream()
+                .map(category -> CategoryDetailResponse.fromEntity(category, countMap.getOrDefault(category.getId(), 0L)))
+                .toList();
     }
 
     private String normalizeSlug(String slug) {

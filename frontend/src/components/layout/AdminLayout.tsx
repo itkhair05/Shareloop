@@ -11,8 +11,10 @@ import {
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Badge } from '@/components/ui/Badge';
+import { useAuth } from '@/features/auth';
 
 export function AdminLayout() {
+  const { user } = useAuth();
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
 
   const adminNavItems = [
@@ -118,15 +120,23 @@ export function AdminLayout() {
 
       {/* Main Admin Content Area */}
       <div className="flex-1 flex flex-col min-w-0 overflow-y-auto">
-        <header className="bg-white border-b border-slate-200 px-6 py-4 flex items-center justify-between">
+        <header className="bg-white border-b border-slate-200 px-6 py-3.5 flex items-center justify-between">
           <div>
-            <h1 className="text-xl font-bold text-slate-900">Bảng điều khiển quản trị</h1>
+            <h2 className="text-base font-bold text-slate-900 tracking-tight">Bảng điều khiển quản trị</h2>
             <p className="text-xs text-slate-500 mt-0.5">
-              Khu vực quản lý dành riêng cho kiểm duyệt danh mục và đánh giá cộng đồng
+              Hệ thống giám sát dữ liệu, kiểm duyệt nội dung và hỗ trợ cộng đồng
             </p>
           </div>
-          <div className="hidden sm:flex items-center gap-2">
-            <span className="text-xs text-slate-500 font-mono">Hệ thống: Spring Boot 3</span>
+          <div className="flex items-center gap-3">
+            {user && (
+              <div className="text-right hidden sm:block">
+                <div className="text-xs font-semibold text-slate-900">{user.displayName}</div>
+                <div className="text-[11px] text-slate-500 font-mono">{user.email}</div>
+              </div>
+            )}
+            <Badge variant="warning" className="text-xs">
+              Quản trị viên
+            </Badge>
           </div>
         </header>
 

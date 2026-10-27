@@ -52,4 +52,6 @@ public interface TransactionRepository extends JpaRepository<Transaction, UUID> 
     @Query(value = "SELECT t FROM Transaction t JOIN FETCH t.listing l JOIN FETCH t.owner o JOIN FETCH t.requester r LEFT JOIN FETCH t.cancelledBy cb WHERE r.id = :userId AND (:status IS NULL OR t.status = :status)",
             countQuery = "SELECT count(t) FROM Transaction t WHERE t.requester.id = :userId AND (:status IS NULL OR t.status = :status)")
     Page<Transaction> findByRequesterIdAndOptionalStatus(@Param("userId") UUID userId, @Param("status") TransactionStatus status, Pageable pageable);
+
+    long countByStatus(TransactionStatus status);
 }

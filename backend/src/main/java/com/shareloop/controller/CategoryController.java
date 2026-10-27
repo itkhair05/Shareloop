@@ -2,6 +2,7 @@ package com.shareloop.controller;
 
 import com.shareloop.dto.category.*;
 import com.shareloop.service.CategoryService;
+import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
@@ -38,6 +39,17 @@ public class CategoryController {
     public ResponseEntity<CategoryDetailResponse> getCategoryBySlug(@PathVariable String slug) {
         CategoryDetailResponse category = categoryService.getCategoryBySlug(slug);
         return ResponseEntity.ok(category);
+    }
+
+    /**
+     * Admin: Retrieve all categories (both active and inactive) ordered alphabetically with active listing counts.
+     */
+    @Operation(summary = "Retrieve all categories including inactive categories (Admin only)")
+    @SecurityRequirement(name = "bearerAuth")
+    @GetMapping("/api/v1/admin/categories")
+    public ResponseEntity<List<CategoryDetailResponse>> getAllCategoriesForAdmin() {
+        List<CategoryDetailResponse> categories = categoryService.getAllCategoriesForAdmin();
+        return ResponseEntity.ok(categories);
     }
 
     /**

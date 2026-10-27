@@ -2,6 +2,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { LoginPage } from '../pages/LoginPage';
+import { resolvePostLoginDestination } from '../utils/auth-redirect';
 import { authApi } from '../api/auth-api';
 import { tokenStorage } from '@/lib/token-storage';
 import { ApiError } from '@/lib/api-error';
@@ -173,5 +174,35 @@ describe('LoginPage', () => {
 
     const alert = await screen.findByRole('alert');
     expect(alert).toHaveTextContent(/không thể kết nối đến máy chủ/i);
+  });
+
+  describe('Post-login Redirection Logic (resolvePostLoginDestination)', () => {
+    it('redirects an ADMIN logging in directly without previous destination to /admin', () => {
+      expect(resolvePostLoginDestination(undefined, 'ADMIN')).toBe('/admin');
+      expect(resolvePostLoginDestination({}, 'ADMIN')).toBe('/admin');
+    });
+
+    it('redirects an ADMIN with prior from destination to that specific destination', () => {
+      expect(resolvePostLoginDestination({ pathname: '/admin/categories' }, 'ADMIN')).toBe('/admin/categories');
+      expect(resolvePostLoginDestination({ pathname: '/listings/new', search: '?type=GIVEAWAY' }, 'ADMIN')).toBe('/listings/new?type=GIVEAWAY');
+    });
+
+    it('redirects a regular USER logging in directly to /', () => {
+      expect(resolvePostLoginDestination(undefined, 'USER')).toBe('/');
+      expect(resolvePostLoginDestination({}, 'USER')).toBe('/');
+    });
+
+    it('redirects a regular USER with prior from destination to that specific destination', () => {
+      expect(resolvePostLoginDestination({ pathname: '/listings/new' }, 'USER')).toBe('/listings/new');
+      expect(resolvePostLoginDestination({ pathname: '/profile' }, 'USER')).toBe('/profile');
+    });
+
+    it('sanitizes unsafe or circular redirect destinations', () => {
+      // Directs away from circular /login redirect
+      expect(resolvePostLoginDestination({ pathname: '/login' }, 'ADMIN')).toBe('/admin');
+      expect(resolvePostLoginDestination({ pathname: '/login' }, 'USER')).toBe('/');
+      // Rejects non-relative paths
+      expect(resolvePostLoginDestination({ pathname: 'http://malicious.site' }, 'USER')).toBe('/');
+    });
   });
 });

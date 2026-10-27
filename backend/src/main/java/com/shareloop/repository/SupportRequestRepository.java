@@ -41,4 +41,6 @@ public interface SupportRequestRepository extends JpaRepository<SupportRequest, 
             "LEFT JOIN FETCH s.resolvedBy rb " +
             "WHERE s.id = :id")
     Optional<SupportRequest> findWithDetailsById(@Param("id") UUID id);
+
+    long countByStatus(SupportRequestStatus status);
 }

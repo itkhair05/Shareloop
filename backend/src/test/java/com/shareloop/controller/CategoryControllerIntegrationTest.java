@@ -189,6 +189,23 @@ class CategoryControllerIntegrationTest {
     class AdminAuthorizationTests {
 
         @Test
+        @DisplayName("GET /api/v1/admin/categories - Anonymous request returns 401 Unauthorized")
+        void getAllCategoriesAnonymousReturns401() throws Exception {
+            mockMvc.perform(get("/api/v1/admin/categories")
+                            .accept(MediaType.APPLICATION_JSON))
+                    .andExpect(status().isUnauthorized());
+        }
+
+        @Test
+        @DisplayName("GET /api/v1/admin/categories - Regular USER role returns 403 Forbidden")
+        void getAllCategoriesRegularUserReturns403() throws Exception {
+            mockMvc.perform(get("/api/v1/admin/categories")
+                            .header(HttpHeaders.AUTHORIZATION, userToken)
+                            .accept(MediaType.APPLICATION_JSON))
+                    .andExpect(status().isForbidden());
+        }
+
+        @Test
         @DisplayName("POST /api/v1/admin/categories - Anonymous request returns 401 Unauthorized")
         void createCategoryAnonymousReturns401() throws Exception {
             CreateCategoryRequest req = new CreateCategoryRequest("Garden Tools", "garden-tools", "Desc", true);
@@ -360,6 +377,69 @@ class CategoryControllerIntegrationTest {
             Listing reloadedListing = listingRepository.findById(listing.getId()).orElseThrow();
             assertThat(reloadedListing.getCategory().getId()).isEqualTo(cat.getId());
             assertThat(reloadedListing.getStatus()).isEqualTo(ListingStatus.ACTIVE);
+        }
+
+        @Test
+        @DisplayName("GET /api/v1/admin/categories - Admin retrieves active and inactive categories with activeListingCount")
+        void adminRetrievesAllCategoriesIncludingInactiveWithListingCounts() throws Exception {
+            // Create an inactive category with no listings
+            String inactiveSlug = "vintage-relics-" + UUID.randomUUID().toString().substring(0, 8);
+            Category inactiveCat = categoryRepository.saveAndFlush(new Category(
+                    "Vintage Relics",
+                    inactiveSlug,
+                    "Historic collectibles",
+                    false
+            ));
+
+            // Setup active listing count for tools-diy
+            Category toolsCat = categoryRepository.findBySlug("tools-diy").orElseThrow();
+            long initialToolsCount = listingRepository.countByCategoryIdAndStatus(toolsCat.getId(), ListingStatus.ACTIVE);
+
+            // Add 2 ACTIVE and 1 COMPLETED listings to tools-diy
+            createListing(toolsCat, ListingStatus.ACTIVE, "Cordless Drill");
+            createListing(toolsCat, ListingStatus.ACTIVE, "Wrench Set");
+            createListing(toolsCat, ListingStatus.COMPLETED, "Sold Circular Saw");
+
+            mockMvc.perform(get("/api/v1/admin/categories")
+                            .header(HttpHeaders.AUTHORIZATION, adminToken)
+                            .accept(MediaType.APPLICATION_JSON))
+                    .andExpect(status().isOk())
+                    .andExpect(jsonPath("$", isA(java.util.List.class)))
+                    // Verify inactive category is present with 0 active listings
+                    .andExpect(jsonPath("$[?(@.slug == '" + inactiveSlug + "')].isActive").value(hasItem(false)))
+                    .andExpect(jsonPath("$[?(@.slug == '" + inactiveSlug + "')].activeListingCount").value(hasItem(0)))
+                    // Verify tools-diy has correct activeListingCount (initial + 2)
+                    .andExpect(jsonPath("$[?(@.slug == 'tools-diy')].activeListingCount").value(hasItem((int) initialToolsCount + 2)))
+                    // Verify active category is present with isActive = true
+                    .andExpect(jsonPath("$[?(@.slug == 'tools-diy')].isActive").value(hasItem(true)));
+
+            // Verify public endpoint still excludes the inactive category
+            mockMvc.perform(get("/api/v1/categories")
+                            .accept(MediaType.APPLICATION_JSON))
+                    .andExpect(status().isOk())
+                    .andExpect(jsonPath("$[*].slug", not(hasItem(inactiveSlug))));
+        }
+
+        @Test
+        @DisplayName("GET /api/v1/admin/categories - Categories are ordered by name ascending")
+        void adminCategoriesAreOrderedByNameAscending() throws Exception {
+            var mvcResult = mockMvc.perform(get("/api/v1/admin/categories")
+                            .header(HttpHeaders.AUTHORIZATION, adminToken)
+                            .accept(MediaType.APPLICATION_JSON))
+                    .andExpect(status().isOk())
+                    .andReturn();
+
+            String json = mvcResult.getResponse().getContentAsString();
+            var jsonNode = objectMapper.readTree(json);
+            java.util.List<String> names = new java.util.ArrayList<>();
+            for (var node : jsonNode) {
+                names.add(node.get("name").asText());
+            }
+
+            assertThat(names).isNotEmpty();
+            java.util.List<String> sortedNames = new java.util.ArrayList<>(names);
+            sortedNames.sort(String::compareTo);
+            assertThat(names).isEqualTo(sortedNames);
         }
     }
 

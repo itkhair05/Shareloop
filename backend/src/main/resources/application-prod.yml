@@ -2,3 +2,5 @@
 app:
   seed:
     enabled: false
+  admin-bootstrap:
+    enabled: false

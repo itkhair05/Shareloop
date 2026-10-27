@@ -41,6 +41,12 @@ jwt:
 app:
   seed:
     enabled: ${APP_SEED_ENABLED:false}
+  admin-bootstrap:
+    enabled: ${APP_ADMIN_BOOTSTRAP_ENABLED:false}
+    email: ${ADMIN_BOOTSTRAP_EMAIL:}
+    password: ${ADMIN_BOOTSTRAP_PASSWORD:}
+    name: ${ADMIN_BOOTSTRAP_NAME:Admin ShareLoop}
+    production-confirmed: ${APP_ADMIN_BOOTSTRAP_PRODUCTION_CONFIRMED:false}
   cors:
     allowed-origins: ${CORS_ALLOWED_ORIGINS:http://localhost:5173,http://localhost:3000}
   storage:
