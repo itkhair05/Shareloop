@@ -427,7 +427,7 @@ class AuthControllerIntegrationTest {
             User user = createTestUser("update.profile@example.com", "Password123!", UserRole.USER, UserStatus.ACTIVE);
             String token = jwtService.generateToken(user.getId(), user.getEmail(), user.getRole(), user.getStatus());
 
-            UpdateProfileRequest request = new UpdateProfileRequest("Nguyễn Văn Updated", "+84912345678");
+            UpdateProfileRequest request = new UpdateProfileRequest("Nguyễn Văn Updated", "0912345678");
 
             mockMvc.perform(put("/api/v1/auth/me")
                             .header("Authorization", "Bearer " + token)
@@ -437,28 +437,28 @@ class AuthControllerIntegrationTest {
                     .andExpect(jsonPath("$.id").value(user.getId().toString()))
                     .andExpect(jsonPath("$.displayName").value("Nguyễn Văn Updated"))
                     .andExpect(jsonPath("$.email").value(user.getEmail()))
-                    .andExpect(jsonPath("$.phoneNumber").value("+84912345678"))
+                    .andExpect(jsonPath("$.phoneNumber").value("0912345678"))
                     .andExpect(jsonPath("$.role").value("USER"))
                     .andExpect(jsonPath("$.status").value("ACTIVE"));
 
             // Verify persistence in DB
             User updatedUser = userRepository.findById(user.getId()).orElseThrow();
             assertThat(updatedUser.getDisplayName()).isEqualTo("Nguyễn Văn Updated");
-            assertThat(updatedUser.getPhoneNumber()).isEqualTo("+84912345678");
+            assertThat(updatedUser.getPhoneNumber()).isEqualTo("0912345678");
 
             // Verify subsequent GET /api/v1/auth/me reflects the update
             mockMvc.perform(get("/api/v1/auth/me")
                             .header("Authorization", "Bearer " + token))
                     .andExpect(status().isOk())
                     .andExpect(jsonPath("$.displayName").value("Nguyễn Văn Updated"))
-                    .andExpect(jsonPath("$.phoneNumber").value("+84912345678"));
+                    .andExpect(jsonPath("$.phoneNumber").value("0912345678"));
         }
 
         @Test
         @DisplayName("Authenticated user can set phoneNumber to null or empty string to clear it")
         void clearingPhoneNumberSetsDatabaseNull() throws Exception {
             User user = createTestUser("clear.phone@example.com", "Password123!", UserRole.USER, UserStatus.ACTIVE);
-            user.setPhoneNumber("+84987654321");
+            user.setPhoneNumber("0987654321");
             userRepository.saveAndFlush(user);
 
             String token = jwtService.generateToken(user.getId(), user.getEmail(), user.getRole(), user.getStatus());
@@ -476,7 +476,7 @@ class AuthControllerIntegrationTest {
             assertThat(dbUser1.getPhoneNumber()).isNull();
 
             // 2. Update with null clears phone number
-            user.setPhoneNumber("+84987654321");
+            user.setPhoneNumber("0987654321");
             userRepository.saveAndFlush(user);
 
             UpdateProfileRequest nullRequest = new UpdateProfileRequest("New Name 2", null);
@@ -498,7 +498,7 @@ class AuthControllerIntegrationTest {
             String token = jwtService.generateToken(user.getId(), user.getEmail(), user.getRole(), user.getStatus());
 
             // Blank displayName
-            UpdateProfileRequest blankRequest = new UpdateProfileRequest("   ", "+84912345678");
+            UpdateProfileRequest blankRequest = new UpdateProfileRequest("   ", "0912345678");
             mockMvc.perform(put("/api/v1/auth/me")
                             .header("Authorization", "Bearer " + token)
                             .contentType(MediaType.APPLICATION_JSON)
@@ -507,7 +507,7 @@ class AuthControllerIntegrationTest {
                     .andExpect(jsonPath("$.errors.displayName").exists());
 
             // Null displayName
-            UpdateProfileRequest nullRequest = new UpdateProfileRequest(null, "+84912345678");
+            UpdateProfileRequest nullRequest = new UpdateProfileRequest(null, "0912345678");
             mockMvc.perform(put("/api/v1/auth/me")
                             .header("Authorization", "Bearer " + token)
                             .contentType(MediaType.APPLICATION_JSON)
@@ -517,7 +517,7 @@ class AuthControllerIntegrationTest {
 
             // Oversized displayName (> 100 chars)
             String overlong = "A".repeat(101);
-            UpdateProfileRequest overlongRequest = new UpdateProfileRequest(overlong, "+84912345678");
+            UpdateProfileRequest overlongRequest = new UpdateProfileRequest(overlong, "0912345678");
             mockMvc.perform(put("/api/v1/auth/me")
                             .header("Authorization", "Bearer " + token)
                             .contentType(MediaType.APPLICATION_JSON)
@@ -532,6 +532,33 @@ class AuthControllerIntegrationTest {
             User user = createTestUser("invalid.phone@example.com", "Password123!", UserRole.USER, UserStatus.ACTIVE);
             String token = jwtService.generateToken(user.getId(), user.getEmail(), user.getRole(), user.getStatus());
 
+            // Legacy +84 format rejected
+            UpdateProfileRequest legacyPlus84Request = new UpdateProfileRequest("Valid Name", "+84912345678");
+            mockMvc.perform(put("/api/v1/auth/me")
+                            .header("Authorization", "Bearer " + token)
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content(objectMapper.writeValueAsString(legacyPlus84Request)))
+                    .andExpect(status().isBadRequest())
+                    .andExpect(jsonPath("$.errors.phoneNumber").value("Số điện thoại phải gồm đúng 10 chữ số và bắt đầu bằng số 0"));
+
+            // 9-digit phone number rejected
+            UpdateProfileRequest nineDigitsRequest = new UpdateProfileRequest("Valid Name", "091234567");
+            mockMvc.perform(put("/api/v1/auth/me")
+                            .header("Authorization", "Bearer " + token)
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content(objectMapper.writeValueAsString(nineDigitsRequest)))
+                    .andExpect(status().isBadRequest())
+                    .andExpect(jsonPath("$.errors.phoneNumber").value("Số điện thoại phải gồm đúng 10 chữ số và bắt đầu bằng số 0"));
+
+            // 11-digit phone number rejected
+            UpdateProfileRequest elevenDigitsRequest = new UpdateProfileRequest("Valid Name", "09123456789");
+            mockMvc.perform(put("/api/v1/auth/me")
+                            .header("Authorization", "Bearer " + token)
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content(objectMapper.writeValueAsString(elevenDigitsRequest)))
+                    .andExpect(status().isBadRequest())
+                    .andExpect(jsonPath("$.errors.phoneNumber").value("Số điện thoại phải gồm đúng 10 chữ số và bắt đầu bằng số 0"));
+
             // Non-numeric phone string
             UpdateProfileRequest nonNumericRequest = new UpdateProfileRequest("Valid Name", "abc-def-ghij");
             mockMvc.perform(put("/api/v1/auth/me")
@@ -539,7 +566,7 @@ class AuthControllerIntegrationTest {
                             .contentType(MediaType.APPLICATION_JSON)
                             .content(objectMapper.writeValueAsString(nonNumericRequest)))
                     .andExpect(status().isBadRequest())
-                    .andExpect(jsonPath("$.errors.phoneNumber").exists());
+                    .andExpect(jsonPath("$.errors.phoneNumber").value("Số điện thoại phải gồm đúng 10 chữ số và bắt đầu bằng số 0"));
 
             // Whitespace-only phone number rejected
             UpdateProfileRequest whitespaceRequest = new UpdateProfileRequest("Valid Name", "    ");
@@ -548,22 +575,22 @@ class AuthControllerIntegrationTest {
                             .contentType(MediaType.APPLICATION_JSON)
                             .content(objectMapper.writeValueAsString(whitespaceRequest)))
                     .andExpect(status().isBadRequest())
-                    .andExpect(jsonPath("$.errors.phoneNumber").exists());
+                    .andExpect(jsonPath("$.errors.phoneNumber").value("Số điện thoại phải gồm đúng 10 chữ số và bắt đầu bằng số 0"));
 
-            // Overlong phone number (> 30 chars)
-            UpdateProfileRequest overlongPhone = new UpdateProfileRequest("Valid Name", "+1234567890123456789012345678901");
+            // Punctuation / spaces inside phone number rejected
+            UpdateProfileRequest punctuationRequest = new UpdateProfileRequest("Valid Name", "091-234-5678");
             mockMvc.perform(put("/api/v1/auth/me")
                             .header("Authorization", "Bearer " + token)
                             .contentType(MediaType.APPLICATION_JSON)
-                            .content(objectMapper.writeValueAsString(overlongPhone)))
+                            .content(objectMapper.writeValueAsString(punctuationRequest)))
                     .andExpect(status().isBadRequest())
-                    .andExpect(jsonPath("$.errors.phoneNumber").exists());
+                    .andExpect(jsonPath("$.errors.phoneNumber").value("Số điện thoại phải gồm đúng 10 chữ số và bắt đầu bằng số 0"));
         }
 
         @Test
         @DisplayName("Unauthenticated update request returns 401 Unauthorized")
         void unauthenticatedUpdateRequestRejected() throws Exception {
-            UpdateProfileRequest request = new UpdateProfileRequest("Valid Name", "+84912345678");
+            UpdateProfileRequest request = new UpdateProfileRequest("Valid Name", "0912345678");
 
             mockMvc.perform(put("/api/v1/auth/me")
                             .contentType(MediaType.APPLICATION_JSON)
@@ -579,7 +606,7 @@ class AuthControllerIntegrationTest {
 
             String token1 = jwtService.generateToken(user1.getId(), user1.getEmail(), user1.getRole(), user1.getStatus());
 
-            UpdateProfileRequest request = new UpdateProfileRequest("User 1 Updated", "+84911111111");
+            UpdateProfileRequest request = new UpdateProfileRequest("User 1 Updated", "0911111111");
             mockMvc.perform(put("/api/v1/auth/me")
                             .header("Authorization", "Bearer " + token1)
                             .contentType(MediaType.APPLICATION_JSON)

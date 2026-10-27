@@ -1244,4 +1244,93 @@ class DatabaseSchemaConstraintIntegrationTest {
             assertThat(newUpdatedAt).isAfterOrEqualTo(initialUpdatedAt);
         }
     }
+
+    @Nested
+    @DisplayName("User Phone Number Format Constraint Tests (chk_users_phone_format)")
+    class UserPhoneNumberConstraintTests {
+
+        @Test
+        @DisplayName("Valid 10-digit Vietnamese phone number starting with 0 is accepted by database")
+        void validVietnamesePhoneNumberAccepted() {
+            UUID userId = UUID.randomUUID();
+            jdbcTemplate.update(
+                    "INSERT INTO users (id, display_name, email, phone_number, password_hash, role, status) VALUES (?, 'Valid Phone', 'valid.phone@example.com', '0912345678', 'hash', 'USER', 'ACTIVE')",
+                    userId
+            );
+
+            String savedPhone = jdbcTemplate.queryForObject(
+                    "SELECT phone_number FROM users WHERE id = ?",
+                    String.class,
+                    userId
+            );
+            assertThat(savedPhone).isEqualTo("0912345678");
+        }
+
+        @Test
+        @DisplayName("NULL phone number is accepted by database constraint")
+        void nullPhoneNumberAccepted() {
+            UUID userId = UUID.randomUUID();
+            jdbcTemplate.update(
+                    "INSERT INTO users (id, display_name, email, phone_number, password_hash, role, status) VALUES (?, 'Null Phone', 'null.phone@example.com', NULL, 'hash', 'USER', 'ACTIVE')",
+                    userId
+            );
+
+            String savedPhone = jdbcTemplate.queryForObject(
+                    "SELECT phone_number FROM users WHERE id = ?",
+                    String.class,
+                    userId
+            );
+            assertThat(savedPhone).isNull();
+        }
+
+        @Test
+        @DisplayName("Legacy +84 phone number violates chk_users_phone_format constraint")
+        void legacyPlus84PhoneNumberViolatesConstraint() {
+            UUID userId = UUID.randomUUID();
+            assertThatThrownBy(() -> jdbcTemplate.update(
+                    "INSERT INTO users (id, display_name, email, phone_number, password_hash, role, status) VALUES (?, 'Invalid Phone', 'legacy@example.com', '+84912345678', 'hash', 'USER', 'ACTIVE')",
+                    userId
+            )).isInstanceOf(DataIntegrityViolationException.class);
+        }
+
+        @Test
+        @DisplayName("9-digit number violates chk_users_phone_format constraint")
+        void shortPhoneNumberViolatesConstraint() {
+            UUID userId = UUID.randomUUID();
+            assertThatThrownBy(() -> jdbcTemplate.update(
+                    "INSERT INTO users (id, display_name, email, phone_number, password_hash, role, status) VALUES (?, 'Short Phone', 'short@example.com', '091234567', 'hash', 'USER', 'ACTIVE')",
+                    userId
+            )).isInstanceOf(DataIntegrityViolationException.class);
+        }
+
+        @Test
+        @DisplayName("11-digit number violates chk_users_phone_format constraint")
+        void longPhoneNumberViolatesConstraint() {
+            UUID userId = UUID.randomUUID();
+            assertThatThrownBy(() -> jdbcTemplate.update(
+                    "INSERT INTO users (id, display_name, email, phone_number, password_hash, role, status) VALUES (?, 'Long Phone', 'long@example.com', '09123456789', 'hash', 'USER', 'ACTIVE')",
+                    userId
+            )).isInstanceOf(DataIntegrityViolationException.class);
+        }
+
+        @Test
+        @DisplayName("Letters in phone number violate chk_users_phone_format constraint")
+        void lettersInPhoneNumberViolateConstraint() {
+            UUID userId = UUID.randomUUID();
+            assertThatThrownBy(() -> jdbcTemplate.update(
+                    "INSERT INTO users (id, display_name, email, phone_number, password_hash, role, status) VALUES (?, 'Letter Phone', 'letter@example.com', '091234567a', 'hash', 'USER', 'ACTIVE')",
+                    userId
+            )).isInstanceOf(DataIntegrityViolationException.class);
+        }
+
+        @Test
+        @DisplayName("Punctuation in phone number violates chk_users_phone_format constraint")
+        void punctuationInPhoneNumberViolatesConstraint() {
+            UUID userId = UUID.randomUUID();
+            assertThatThrownBy(() -> jdbcTemplate.update(
+                    "INSERT INTO users (id, display_name, email, phone_number, password_hash, role, status) VALUES (?, 'Dash Phone', 'dash@example.com', '091-234-5678', 'hash', 'USER', 'ACTIVE')",
+                    userId
+            )).isInstanceOf(DataIntegrityViolationException.class);
+        }
+    }
 }

@@ -29,7 +29,7 @@ const mockUser: UserProfile = {
   id: 'a1b2c3d4-e5f6-7a8b-9c0d-1e2f3a4b5c6d',
   displayName: 'Nguyễn Văn Minh',
   email: 'minh.nguyen@shareloop.org',
-  phoneNumber: '+84912345678',
+  phoneNumber: '0912345678',
   role: 'USER',
   status: 'ACTIVE',
   createdAt: '2026-03-15T08:30:00Z',
@@ -56,7 +56,7 @@ describe('EditProfileModal Component', () => {
 
     expect(screen.getByRole('dialog', { name: /Chỉnh sửa hồ sơ/i })).toBeInTheDocument();
     expect(screen.getByLabelText(/Tên hiển thị/i)).toHaveValue('Nguyễn Văn Minh');
-    expect(screen.getByLabelText(/Số điện thoại/i)).toHaveValue('+84912345678');
+    expect(screen.getByLabelText(/Số điện thoại/i)).toHaveValue('0912345678');
     expect(screen.getByLabelText(/Địa chỉ email/i)).toHaveValue('minh.nguyen@shareloop.org');
     expect(screen.getByLabelText(/Địa chỉ email/i)).toHaveAttribute('readonly');
   });
@@ -105,7 +105,7 @@ describe('EditProfileModal Component', () => {
     expect(profileApi.updateProfile).not.toHaveBeenCalled();
   });
 
-  it('rejects invalid phone numbers matching backend constraints (starts with 0 or letters)', async () => {
+  it('rejects invalid phone numbers (+84 format, 9 digits, 11 digits, letters, punctuation)', async () => {
     const user = userEvent.setup();
     renderWithProviders(
       <EditProfileModal
@@ -119,15 +119,51 @@ describe('EditProfileModal Component', () => {
     const phoneInput = screen.getByLabelText(/Số điện thoại/i);
     const submitBtn = screen.getByRole('button', { name: /Lưu thay đổi/i });
 
-    // Local 0-prefixed number is NOT accepted by backend regex ^\+?[1-9]\d{1,14}$
+    // 1. Legacy +84 format is rejected
     await user.clear(phoneInput);
-    await user.type(phoneInput, '0912345678');
+    await user.type(phoneInput, '+84912345678');
     await user.click(submitBtn);
 
     expect(
-      screen.getByText(/Số điện thoại phải theo định dạng quốc tế/i)
+      screen.getByText('Số điện thoại phải gồm đúng 10 chữ số và bắt đầu bằng số 0')
     ).toBeInTheDocument();
     expect(profileApi.updateProfile).not.toHaveBeenCalled();
+
+    // 2. 9-digit number is rejected
+    await user.clear(phoneInput);
+    await user.type(phoneInput, '091234567');
+    await user.click(submitBtn);
+
+    expect(
+      screen.getByText('Số điện thoại phải gồm đúng 10 chữ số và bắt đầu bằng số 0')
+    ).toBeInTheDocument();
+
+    // 3. 11-digit number is rejected
+    await user.clear(phoneInput);
+    await user.type(phoneInput, '09123456789');
+    await user.click(submitBtn);
+
+    expect(
+      screen.getByText('Số điện thoại phải gồm đúng 10 chữ số và bắt đầu bằng số 0')
+    ).toBeInTheDocument();
+
+    // 4. Letters inside number rejected
+    await user.clear(phoneInput);
+    await user.type(phoneInput, '091234567a');
+    await user.click(submitBtn);
+
+    expect(
+      screen.getByText('Số điện thoại phải gồm đúng 10 chữ số và bắt đầu bằng số 0')
+    ).toBeInTheDocument();
+
+    // 5. Punctuation / spaces inside number rejected
+    await user.clear(phoneInput);
+    await user.type(phoneInput, '091-234-5678');
+    await user.click(submitBtn);
+
+    expect(
+      screen.getByText('Số điện thoại phải gồm đúng 10 chữ số và bắt đầu bằng số 0')
+    ).toBeInTheDocument();
   });
 
   it('submits valid updates with correct payload and refreshes user', async () => {
@@ -135,7 +171,7 @@ describe('EditProfileModal Component', () => {
     const updatedUser: UserProfile = {
       ...mockUser,
       displayName: 'Nguyễn Văn Minh An',
-      phoneNumber: '+84987654321',
+      phoneNumber: '0987654321',
       updatedAt: '2026-10-27T10:00:00Z',
     };
     vi.mocked(profileApi.updateProfile).mockResolvedValueOnce(updatedUser);
@@ -156,14 +192,14 @@ describe('EditProfileModal Component', () => {
     await user.clear(nameInput);
     await user.type(nameInput, 'Nguyễn Văn Minh An');
     await user.clear(phoneInput);
-    await user.type(phoneInput, '+84987654321');
+    await user.type(phoneInput, '0987654321');
 
     await user.click(submitBtn);
 
     await waitFor(() => {
       expect(profileApi.updateProfile).toHaveBeenCalledWith({
         displayName: 'Nguyễn Văn Minh An',
-        phoneNumber: '+84987654321',
+        phoneNumber: '0987654321',
       });
     });
 
@@ -238,7 +274,7 @@ describe('EditProfileModal Component', () => {
     await user.clear(nameInput);
     await user.type(nameInput, 'Tên Đã Thay Đổi');
     await user.clear(phoneInput);
-    await user.type(phoneInput, '+84912345679');
+    await user.type(phoneInput, '0987654321');
 
     await user.click(submitBtn);
 
@@ -249,7 +285,7 @@ describe('EditProfileModal Component', () => {
 
     // Inputs are preserved
     expect(nameInput).toHaveValue('Tên Đã Thay Đổi');
-    expect(phoneInput).toHaveValue('+84912345679');
+    expect(phoneInput).toHaveValue('0987654321');
     expect(mockOnClose).not.toHaveBeenCalled();
   });
 

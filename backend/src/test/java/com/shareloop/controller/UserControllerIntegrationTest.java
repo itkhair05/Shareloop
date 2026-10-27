@@ -66,7 +66,7 @@ class UserControllerIntegrationTest {
                 UserRole.USER,
                 UserStatus.ACTIVE
         ));
-        userAlice.setPhoneNumber("+84901234567");
+        userAlice.setPhoneNumber("0901234567");
         userAlice = userRepository.saveAndFlush(userAlice);
 
         userBob = userRepository.saveAndFlush(new User(

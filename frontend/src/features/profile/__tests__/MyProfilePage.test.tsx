@@ -425,7 +425,7 @@ describe('User Profile Phase 1: My Profile Page', () => {
 
       const phoneInput = screen.getByLabelText(/Số điện thoại/i);
       await user.clear(phoneInput);
-      await user.type(phoneInput, '+84912345678');
+      await user.type(phoneInput, '0912345678');
 
       const submitBtn = screen.getByRole('button', { name: /Lưu thay đổi/i });
       await user.click(submitBtn);

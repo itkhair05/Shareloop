@@ -13,7 +13,7 @@ export interface EditProfileModalProps {
   onSuccess?: (updatedUser: UserProfile) => void;
 }
 
-const PHONE_REGEX = /^\+?[1-9]\d{1,14}$/;
+const PHONE_REGEX = /^0[0-9]{9}$/;
 
 export function EditProfileModal({
   isOpen,
@@ -102,11 +102,8 @@ export function EditProfileModal({
     }
 
     if (currentTrimmedPhone) {
-      if (currentTrimmedPhone.length > 30) {
-        errors.phoneNumber = 'Số điện thoại không được vượt quá 30 ký tự';
-      } else if (!PHONE_REGEX.test(currentTrimmedPhone)) {
-        errors.phoneNumber =
-          'Số điện thoại phải theo định dạng quốc tế (ví dụ: +84912345678, từ 2 đến 15 chữ số và không bắt đầu bằng số 0)';
+      if (!PHONE_REGEX.test(currentTrimmedPhone)) {
+        errors.phoneNumber = 'Số điện thoại phải gồm đúng 10 chữ số và bắt đầu bằng số 0';
       }
     }
 
@@ -252,7 +249,7 @@ export function EditProfileModal({
           <Input
             id="edit-profile-phone-number"
             label="Số điện thoại"
-            placeholder="+84912345678"
+            placeholder="0912345678"
             value={phoneNumber}
             onChange={(e) => {
               setPhoneNumber(e.target.value);
@@ -261,7 +258,7 @@ export function EditProfileModal({
               }
             }}
             error={fieldErrors.phoneNumber}
-            helperText="Định dạng quốc tế, ví dụ: +84912345678. Để trống nếu muốn xóa số điện thoại."
+            helperText="Ví dụ: 0912345678 (gồm đúng 10 chữ số). Để trống nếu muốn xóa số điện thoại."
             disabled={isSubmitting}
             rightElement={<Phone className="w-4 h-4 text-slate-400" aria-hidden="true" />}
             autoComplete="tel"

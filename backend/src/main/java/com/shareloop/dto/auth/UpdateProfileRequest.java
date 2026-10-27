@@ -11,8 +11,8 @@ public class UpdateProfileRequest {
     private String displayName;
 
     @Pattern(
-            regexp = "^$|^\\+?[1-9]\\d{1,14}$",
-            message = "Phone number must be a valid E.164-like phone number (1-15 digits)"
+            regexp = "^$|^0[0-9]{9}$",
+            message = "Số điện thoại phải gồm đúng 10 chữ số và bắt đầu bằng số 0"
     )
     @Size(max = 30, message = "Phone number must not exceed 30 characters")
     private String phoneNumber;
