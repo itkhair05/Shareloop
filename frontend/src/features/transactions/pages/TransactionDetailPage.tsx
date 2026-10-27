@@ -14,6 +14,8 @@ import {
   ShieldCheck,
   Star,
   XCircle,
+  LifeBuoy,
+  ShieldAlert,
 } from 'lucide-react';
 import { Badge } from '@/components/ui/Badge';
 import { Button } from '@/components/ui/Button';
@@ -25,6 +27,8 @@ import {
 } from '../hooks/use-transactions';
 import { CancelTransactionModal } from '../components/CancelTransactionModal';
 import { CreateReviewModal, useTransactionReviews } from '@/features/reviews';
+import { CreateSupportRequestModal } from '@/features/support';
+import { CreateReportModal } from '@/features/reports';
 import { useAuth } from '@/features/auth';
 import { formatDateTime, formatPrice, isValidUuid } from '@/lib/utils';
 import type { TransactionStatus } from '@/types/transaction';
@@ -48,6 +52,8 @@ export function TransactionDetailPage() {
   const [isConfirmCompleteOpen, setIsConfirmCompleteOpen] = useState(false);
   const [isCancelModalOpen, setIsCancelModalOpen] = useState(false);
   const [isReviewModalOpen, setIsReviewModalOpen] = useState(false);
+  const [isSupportModalOpen, setIsSupportModalOpen] = useState(false);
+  const [isReportModalOpen, setIsReportModalOpen] = useState(false);
   const [actionSuccessMessage, setActionSuccessMessage] = useState<string | null>(null);
   const [actionErrorMessage, setActionErrorMessage] = useState<string | null>(null);
 
@@ -546,6 +552,36 @@ export function TransactionDetailPage() {
           </div>
         )}
 
+        {/* Support & Report Action Bar for Transaction Participants */}
+        <div className="pt-3 border-t border-slate-100 flex flex-wrap items-center justify-between gap-3 text-xs">
+          <div className="text-slate-500 flex items-center gap-1.5">
+            <LifeBuoy className="w-4 h-4 text-emerald-600" aria-hidden="true" />
+            <span>Gặp trở ngại hoặc có nghi vấn về giao dịch này?</span>
+          </div>
+          <div className="flex items-center gap-2">
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              onClick={() => setIsSupportModalOpen(true)}
+              leftIcon={<LifeBuoy className="w-3.5 h-3.5 text-emerald-600" />}
+              className="text-xs text-emerald-700 hover:text-emerald-800 hover:bg-emerald-50 cursor-pointer"
+            >
+              Yêu cầu hỗ trợ
+            </Button>
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              onClick={() => setIsReportModalOpen(true)}
+              leftIcon={<ShieldAlert className="w-3.5 h-3.5 text-red-500" />}
+              className="text-xs text-red-600 hover:text-red-700 hover:bg-red-50 cursor-pointer"
+            >
+              Báo cáo vi phạm
+            </Button>
+          </div>
+        </div>
+
         {/* Section 4: Timestamps & Meta */}
         <div className="pt-4 border-t border-slate-100 flex flex-wrap items-center justify-between gap-3 text-xs text-slate-400">
           <div className="flex items-center gap-1.5">
@@ -605,6 +641,23 @@ export function TransactionDetailPage() {
           }}
         />
       )}
+
+      {/* Support Request Modal */}
+      <CreateSupportRequestModal
+        isOpen={isSupportModalOpen}
+        onClose={() => setIsSupportModalOpen(false)}
+        defaultTransactionId={transaction.id}
+        defaultCategory="TRANSACTION_ISSUE"
+      />
+
+      {/* Violation Report Modal */}
+      <CreateReportModal
+        isOpen={isReportModalOpen}
+        onClose={() => setIsReportModalOpen(false)}
+        targetType="TRANSACTION"
+        targetId={transaction.id}
+        targetTitle={`Giao dịch #${transaction.id.substring(0, 8)} (${listing.title})`}
+      />
     </div>
   );
 }

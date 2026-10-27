@@ -8,3 +8,5 @@ export * from './request';
 export * from './transaction';
 export * from './chat';
 export * from './notification';
+export * from './support';
+export * from './report';

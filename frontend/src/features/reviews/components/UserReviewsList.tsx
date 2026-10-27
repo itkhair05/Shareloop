@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import {
   ChevronLeft,
@@ -10,6 +11,8 @@ import {
 } from 'lucide-react';
 import { StarRating } from './StarRating';
 import { Button } from '@/components/ui/Button';
+import { useAuth } from '@/features/auth';
+import { CreateReportModal } from '@/features/reports';
 import { formatDateTime } from '@/lib/utils';
 import type { ReviewResponse } from '@/types/review';
 
@@ -38,6 +41,9 @@ export function UserReviewsList({
   userName,
   className = '',
 }: UserReviewsListProps) {
+  const { user: currentUser } = useAuth();
+  const [reportingReview, setReportingReview] = useState<ReviewResponse | null>(null);
+
   if (isLoading) {
     return (
       <div className={`space-y-4 ${className}`}>
@@ -142,8 +148,21 @@ export function UserReviewsList({
                   </div>
                 </div>
 
-                {/* Rating */}
-                <StarRating rating={review.rating} size="sm" showScore />
+                {/* Rating & Actions */}
+                <div className="flex items-center gap-2">
+                  <StarRating rating={review.rating} size="sm" showScore />
+                  {currentUser && currentUser.id !== review.reviewer?.id && (
+                    <button
+                      type="button"
+                      onClick={() => setReportingReview(review)}
+                      className="p-1 rounded text-slate-400 hover:text-rose-600 hover:bg-rose-50 transition-colors ml-1"
+                      title="Báo cáo nhận xét này nếu vi phạm tiêu chuẩn cộng đồng"
+                      aria-label="Báo cáo nhận xét này"
+                    >
+                      <ShieldAlert className="w-3.5 h-3.5" />
+                    </button>
+                  )}
+                </div>
               </div>
 
               {/* Review Comment */}
@@ -206,6 +225,17 @@ export function UserReviewsList({
             </Button>
           </div>
         </div>
+      )}
+
+      {/* Report Modal */}
+      {reportingReview && (
+        <CreateReportModal
+          isOpen={Boolean(reportingReview)}
+          onClose={() => setReportingReview(null)}
+          targetType="REVIEW"
+          targetId={reportingReview.id}
+          targetTitle={`Đánh giá từ ${reportingReview.reviewer?.displayName || 'Thành viên'}`}
+        />
       )}
     </div>
   );

@@ -1,5 +1,5 @@
 import { useState, useMemo, useEffect } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import {
   Search,
   ChevronDown,
@@ -16,10 +16,13 @@ import {
   RotateCcw,
   Sparkles,
   Package,
+  LifeBuoy,
 } from 'lucide-react';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
 import { cn } from '@/lib/utils';
+import { useAuth } from '@/features/auth';
+import { CreateSupportRequestModal } from '@/features/support';
 
 interface FAQItem {
   id: string;
@@ -190,15 +193,26 @@ const COMMUNITY_GUIDELINES = [
 ];
 
 export function AboutPage() {
+  const navigate = useNavigate();
+  const { isAuthenticated } = useAuth();
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedCategory, setSelectedCategory] = useState<FAQCategory>('Tất cả');
   const [expandedIds, setExpandedIds] = useState<Record<string, boolean>>({
     'faq-profile-edit': true, // Expand first FAQ by default
   });
+  const [isSupportModalOpen, setIsSupportModalOpen] = useState(false);
 
   useEffect(() => {
     document.title = 'Trung tâm trợ giúp | ShareLoop';
   }, []);
+
+  const handleOpenSupport = () => {
+    if (!isAuthenticated) {
+      navigate('/login', { state: { from: { pathname: '/about' } } });
+      return;
+    }
+    setIsSupportModalOpen(true);
+  };
 
   const toggleAccordion = (id: string) => {
     setExpandedIds((prev) => ({
@@ -465,24 +479,64 @@ export function AboutPage() {
           ))}
         </div>
 
-        {/* Honest Note About Reporting/Blocking Limitations */}
-        <div className="p-5 rounded-2xl bg-amber-50/80 border border-amber-200 text-amber-900 flex flex-col sm:flex-row items-start sm:items-center gap-4">
-          <div className="w-9 h-9 rounded-full bg-amber-100 text-amber-700 flex items-center justify-center shrink-0">
-            <AlertTriangle className="w-5 h-5" aria-hidden="true" />
+        {/* Safety & Moderation Reporting Guidance */}
+        <div className="p-5 rounded-2xl bg-emerald-50/80 border border-emerald-200 text-emerald-900 flex flex-col sm:flex-row items-start sm:items-center gap-4">
+          <div className="w-9 h-9 rounded-full bg-emerald-100 text-emerald-700 flex items-center justify-center shrink-0">
+            <ShieldCheck className="w-5 h-5" aria-hidden="true" />
           </div>
           <div className="text-sm leading-relaxed space-y-1">
-            <strong className="font-semibold text-amber-950">Lưu ý quan trọng về an toàn:</strong>
+            <strong className="font-semibold text-emerald-950">Lưu ý quan trọng về an toàn:</strong>
             <p>
-              Hệ thống ShareLoop hiện chưa có tính năng tự động chặn tài khoản hoặc tiếp nhận báo cáo
-              xử lý tức thì. Khi gặp dấu hiệu bất thường, bạn hãy{' '}
-              <strong>chủ động hủy giao dịch, từ chối yêu cầu và dừng trò chuyện</strong> để bảo vệ
-              bản thân.
+              Hệ thống ShareLoop hiện chưa có tính năng tự động chặn tài khoản. Nếu phát hiện dấu hiệu lừa đảo, quấy rối hoặc vi phạm, bạn hãy bấm{' '}
+              <strong>&ldquo;Báo cáo vi phạm&rdquo;</strong> trực tiếp trên tin đăng, tài khoản hoặc giao dịch để Ban quản trị nhanh chóng tiếp nhận và điều tra xử lý.
             </p>
           </div>
         </div>
       </section>
 
-      {/* SECTION E: Useful Quick Navigation */}
+      {/* SECTION E: Direct Admin Support Request Entry Point */}
+      <section
+        aria-labelledby="contact-support-heading"
+        className="p-8 sm:p-10 rounded-3xl bg-gradient-to-br from-emerald-600 via-teal-700 to-emerald-800 text-white shadow-md relative overflow-hidden"
+      >
+        <div className="relative z-10 flex flex-col md:flex-row items-start md:items-center justify-between gap-6">
+          <div className="space-y-2 max-w-xl">
+            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-white/20 text-white text-xs font-semibold backdrop-blur-xs">
+              <LifeBuoy className="w-3.5 h-3.5" aria-hidden="true" />
+              <span>Hỗ trợ trực tiếp 24/7</span>
+            </div>
+            <h2 id="contact-support-heading" className="text-2xl sm:text-3xl font-extrabold tracking-tight">
+              Cần liên hệ với Ban quản trị?
+            </h2>
+            <p className="text-sm sm:text-base text-emerald-100 leading-relaxed">
+              Nếu câu hỏi của bạn chưa có trong danh mục FAQ hoặc bạn cần trợ giúp xử lý giao dịch, tài khoản hay an toàn, hãy gửi yêu cầu để đội ngũ ShareLoop hỗ trợ bạn.
+            </p>
+          </div>
+
+          <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 w-full md:w-auto shrink-0">
+            <Button
+              type="button"
+              variant="secondary"
+              size="lg"
+              onClick={handleOpenSupport}
+              leftIcon={<LifeBuoy className="w-5 h-5 text-emerald-700" aria-hidden="true" />}
+              className="bg-white text-emerald-800 hover:bg-emerald-50 border-0 font-bold shadow-md cursor-pointer"
+            >
+              Gửi yêu cầu hỗ trợ
+            </Button>
+            {isAuthenticated && (
+              <Link
+                to="/profile?tab=support"
+                className="inline-flex items-center justify-center px-4 py-2.5 rounded-xl bg-white/10 hover:bg-white/20 text-white text-sm font-semibold transition-colors text-center"
+              >
+                Yêu cầu của tôi
+              </Link>
+            )}
+          </div>
+        </div>
+      </section>
+
+      {/* SECTION F: Useful Quick Navigation */}
       <section
         aria-labelledby="quick-nav-heading"
         className="p-8 rounded-3xl bg-slate-900 text-white space-y-6"
@@ -554,6 +608,12 @@ export function AboutPage() {
           </Link>
         </div>
       </section>
+
+      {/* Support Request Modal */}
+      <CreateSupportRequestModal
+        isOpen={isSupportModalOpen}
+        onClose={() => setIsSupportModalOpen(false)}
+      />
     </div>
   );
 }

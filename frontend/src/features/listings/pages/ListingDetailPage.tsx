@@ -18,6 +18,7 @@ import {
   User,
   X,
   MessageSquare,
+  ShieldAlert,
 } from 'lucide-react';
 import { Badge } from '@/components/ui/Badge';
 import { Button } from '@/components/ui/Button';
@@ -28,6 +29,7 @@ import { OwnerRatingBadge, OwnerReputationSection } from '@/features/reviews';
 import { useAuth } from '@/features/auth';
 import { CreateRequestModal, ListingRequestsManager, useMyRequests } from '@/features/requests';
 import { StartChatModal } from '@/features/chat';
+import { CreateReportModal } from '@/features/reports';
 import type { ListingStatus, ListingType } from '@/types/listing';
 
 const listingTypeConfig: Record<
@@ -62,6 +64,7 @@ export function ListingDetailPage() {
   const [imageErrorMap, setImageErrorMap] = useState<Record<number, boolean>>({});
   const [isRequestModalOpen, setIsRequestModalOpen] = useState(false);
   const [isChatModalOpen, setIsChatModalOpen] = useState(false);
+  const [isReportModalOpen, setIsReportModalOpen] = useState(false);
   const [requestSuccessBanner, setRequestSuccessBanner] = useState<string | null>(null);
   const [hasConflictPendingRequest, setHasConflictPendingRequest] = useState(false);
 
@@ -623,6 +626,23 @@ export function ListingDetailPage() {
                   <MessageSquare className="w-4 h-4 text-emerald-600 shrink-0" aria-hidden="true" />
                   <span>Nhắn tin cho người đăng</span>
                 </Button>
+
+                <div className="pt-2 text-center">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      if (!isAuthenticated) {
+                        navigate('/login', { state: { from: location } });
+                      } else {
+                        setIsReportModalOpen(true);
+                      }
+                    }}
+                    className="inline-flex items-center gap-1.5 text-xs text-slate-400 hover:text-red-600 transition-colors cursor-pointer py-1 px-2 rounded-lg hover:bg-red-50/50"
+                  >
+                    <ShieldAlert className="w-3.5 h-3.5" aria-hidden="true" />
+                    <span>Báo cáo tin đăng này</span>
+                  </button>
+                </div>
               </div>
             )}
           </div>
@@ -704,6 +724,17 @@ export function ListingDetailPage() {
           listingTitle={listing.title}
           ownerName={listing.owner.displayName || 'Người đăng'}
           listingRequestId={activeListingRequestId}
+        />
+      )}
+
+      {/* Violation Report Modal */}
+      {listing && !isOwner && (
+        <CreateReportModal
+          isOpen={isReportModalOpen}
+          onClose={() => setIsReportModalOpen(false)}
+          targetType="LISTING"
+          targetId={listing.id}
+          targetTitle={listing.title}
         />
       )}
     </div>
