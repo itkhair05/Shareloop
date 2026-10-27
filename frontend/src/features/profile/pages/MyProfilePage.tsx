@@ -116,14 +116,14 @@ export function MyProfilePage() {
             Xem và quản lý thông tin tài khoản, độ tin cậy và các hoạt động chia sẻ trên ShareLoop.
           </p>
         </div>
-        <div className="flex items-center gap-3">
+        <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 shrink-0">
           <Button
             type="button"
             variant="outline"
             size="md"
             onClick={() => setIsEditModalOpen(true)}
-            leftIcon={<Pencil className="w-4 h-4" aria-hidden="true" />}
-            className="shadow-2xs"
+            leftIcon={<Pencil className="w-4 h-4 shrink-0" aria-hidden="true" />}
+            className="shadow-2xs whitespace-nowrap"
           >
             Chỉnh sửa hồ sơ
           </Button>
@@ -131,8 +131,8 @@ export function MyProfilePage() {
             variant="primary"
             size="md"
             onClick={() => navigate('/listings/new')}
-            leftIcon={<Plus className="w-4 h-4" />}
-            className="shadow-sm"
+            leftIcon={<Plus className="w-4 h-4 shrink-0" />}
+            className="shadow-sm whitespace-nowrap"
           >
             Đăng tin mới
           </Button>
@@ -168,45 +168,46 @@ export function MyProfilePage() {
         onEditProfile={() => setIsEditModalOpen(true)}
       />
 
-      {/* Tabs Navigation */}
+      {/* Tabs Navigation - ĐÃ SỬA ĐỂ CUỘN NGANG TRÊN MOBILE */}
       <div className="border-b border-slate-200">
-        <nav className="flex space-x-2 sm:space-x-8" aria-label="Tabs hồ sơ cá nhân">
+        {/* Thêm overflow-x-auto để cuộn ngang nếu các tab quá dài, scrollbar-hide để ẩn thanh cuộn */}
+        <nav className="flex overflow-x-auto scrollbar-hide -mb-px" aria-label="Tabs hồ sơ cá nhân">
           <button
             type="button"
             onClick={() => handleTabChange('overview')}
-            className={`flex items-center gap-2 py-4 px-1 border-b-2 font-semibold text-sm transition-colors cursor-pointer ${
+            className={`flex items-center gap-2 py-4 px-4 border-b-2 font-semibold text-sm transition-colors cursor-pointer whitespace-nowrap shrink-0 ${
               activeTab === 'overview'
                 ? 'border-emerald-600 text-emerald-600'
                 : 'border-transparent text-slate-500 hover:text-slate-700 hover:border-slate-300'
             }`}
           >
-            <UserIcon className="w-4 h-4" aria-hidden="true" />
+            <UserIcon className="w-4 h-4 shrink-0" aria-hidden="true" />
             <span>Tổng quan & Tin đăng</span>
           </button>
 
           <button
             type="button"
             onClick={() => handleTabChange('support')}
-            className={`flex items-center gap-2 py-4 px-1 border-b-2 font-semibold text-sm transition-colors cursor-pointer ${
+            className={`flex items-center gap-2 py-4 px-4 border-b-2 font-semibold text-sm transition-colors cursor-pointer whitespace-nowrap shrink-0 ${
               activeTab === 'support'
                 ? 'border-emerald-600 text-emerald-600'
                 : 'border-transparent text-slate-500 hover:text-slate-700 hover:border-slate-300'
             }`}
           >
-            <LifeBuoy className="w-4 h-4" aria-hidden="true" />
+            <LifeBuoy className="w-4 h-4 shrink-0" aria-hidden="true" />
             <span>Yêu cầu hỗ trợ của tôi</span>
           </button>
 
           <button
             type="button"
             onClick={() => handleTabChange('reports')}
-            className={`flex items-center gap-2 py-4 px-1 border-b-2 font-semibold text-sm transition-colors cursor-pointer ${
+            className={`flex items-center gap-2 py-4 px-4 border-b-2 font-semibold text-sm transition-colors cursor-pointer whitespace-nowrap shrink-0 ${
               activeTab === 'reports'
                 ? 'border-red-600 text-red-600'
                 : 'border-transparent text-slate-500 hover:text-slate-700 hover:border-slate-300'
             }`}
           >
-            <ShieldAlert className="w-4 h-4" aria-hidden="true" />
+            <ShieldAlert className="w-4 h-4 shrink-0" aria-hidden="true" />
             <span>Báo cáo vi phạm của tôi</span>
           </button>
         </nav>
@@ -228,10 +229,10 @@ export function MyProfilePage() {
           <section aria-labelledby="my-listings-heading" className="space-y-4">
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 sm:gap-4 mb-4">
               <div className="flex items-center gap-2.5 flex-wrap">
-                <h2 id="my-listings-heading" className="text-xl font-bold text-slate-900 tracking-tight">
+                <h2 id="my-listings-heading" className="text-xl font-bold text-slate-900 tracking-tight whitespace-nowrap">
                   Tin đăng gần đây
                 </h2>
-                <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200 w-fit">
+                <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200 w-fit whitespace-nowrap">
                   {totalListings} món đồ
                 </span>
               </div>
@@ -239,10 +240,10 @@ export function MyProfilePage() {
               {totalListings > 0 && (
                 <Link
                   to="/my-listings"
-                  className="inline-flex items-center gap-1.5 text-sm font-semibold text-emerald-600 hover:text-emerald-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 rounded px-1.5 py-0.5 w-fit"
+                  className="inline-flex items-center gap-1.5 text-sm font-semibold text-emerald-600 hover:text-emerald-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 rounded px-1.5 py-0.5 w-fit whitespace-nowrap shrink-0"
                 >
                   <span>Xem tất cả ({totalListings})</span>
-                  <ArrowRight className="w-4 h-4" aria-hidden="true" />
+                  <ArrowRight className="w-4 h-4 shrink-0" aria-hidden="true" />
                 </Link>
               )}
             </div>
@@ -280,11 +281,11 @@ export function MyProfilePage() {
           {/* Section 2: Reputation & Reviews */}
           <section aria-labelledby="my-reviews-heading" className="space-y-4">
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 sm:gap-4 mb-4">
-              <h2 id="my-reviews-heading" className="text-xl font-bold text-slate-900 tracking-tight">
+              <h2 id="my-reviews-heading" className="text-xl font-bold text-slate-900 tracking-tight whitespace-nowrap">
                 Đánh giá & Uy tín cộng đồng
               </h2>
-              <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-amber-50 text-amber-800 border border-amber-200 w-fit">
-                <Sparkles className="w-3 h-3 text-amber-600" aria-hidden="true" />
+              <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-amber-50 text-amber-800 border border-amber-200 w-fit whitespace-nowrap shrink-0">
+                <Sparkles className="w-3 h-3 text-amber-600 shrink-0" aria-hidden="true" />
                 <span>Phản hồi thực tế</span>
               </span>
             </div>

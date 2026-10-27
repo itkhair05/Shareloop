@@ -26,7 +26,7 @@ export const Button = forwardRef<HTMLButtonElement, ButtonProps>(
     ref
   ) => {
     const baseStyles =
-      'inline-flex items-center justify-center font-medium rounded-lg transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 disabled:opacity-50 disabled:pointer-events-none cursor-pointer';
+      'inline-flex items-center justify-center font-medium rounded-lg transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 disabled:opacity-50 disabled:pointer-events-none cursor-pointer whitespace-nowrap shrink-0';
 
     const sizeStyles = {
       sm: 'text-xs px-3 py-1.5 gap-1.5',
@@ -55,11 +55,11 @@ export const Button = forwardRef<HTMLButtonElement, ButtonProps>(
         {...props}
       >
         {isLoading ? (
-          <Loader2 className="w-4 h-4 animate-spin" aria-hidden="true" />
+          <Loader2 className="w-4 h-4 animate-spin shrink-0" aria-hidden="true" />
         ) : (
           leftIcon
         )}
-        <span>{children}</span>
+        <span className="whitespace-nowrap">{children}</span>
         {!isLoading && rightIcon}
       </button>
     );

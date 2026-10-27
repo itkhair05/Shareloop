@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Link, NavLink, Outlet } from 'react-router-dom';
+import { Link, NavLink, Outlet, useNavigate } from 'react-router-dom';
 import {
   ShieldAlert,
   FolderTree,
@@ -8,14 +8,21 @@ import {
   ArrowLeft,
   Menu,
   X,
+  LogOut,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Badge } from '@/components/ui/Badge';
 import { useAuth } from '@/features/auth';
 
 export function AdminLayout() {
-  const { user } = useAuth();
+  const { user, logout } = useAuth();
+  const navigate = useNavigate();
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+
+  const handleLogout = () => {
+    logout();
+    navigate('/login');
+  };
 
   const adminNavItems = [
     {
@@ -41,7 +48,7 @@ export function AdminLayout() {
   return (
     <div className="min-h-screen flex flex-col md:flex-row bg-slate-100 text-slate-900 antialiased">
       {/* Mobile Top Bar */}
-      <div className="md:hidden bg-slate-900 text-white px-4 py-3 flex items-center justify-between border-b border-slate-800">
+      <div className="md:hidden bg-slate-900 text-white px-4 py-3 flex items-center justify-between border-b border-slate-800 sticky top-0 z-50">
         <div className="flex items-center gap-2">
           <ShieldAlert className="w-5 h-5 text-amber-400" />
           <span className="font-bold text-sm tracking-wide">Quản trị ShareLoop</span>
@@ -56,15 +63,16 @@ export function AdminLayout() {
         </button>
       </div>
 
-      {/* Sidebar Navigation */}
+      {/* SIDEBAR - Cố định (Fixed) trên màn hình Desktop */}
       <aside
         className={cn(
-          'bg-slate-900 text-slate-100 w-full md:w-64 shrink-0 flex flex-col border-r border-slate-800 transition-all',
-          isSidebarOpen ? 'block' : 'hidden md:flex'
+          'bg-slate-900 text-slate-100 w-full md:w-64 shrink-0 flex-col border-r border-slate-800 transition-all z-40',
+          'md:fixed md:inset-y-0 md:left-0 md:h-screen md:flex', // Cố định sidebar trên desktop
+          isSidebarOpen ? 'flex fixed inset-0 h-screen z-50' : 'hidden md:flex'
         )}
       >
         {/* Sidebar Brand Header */}
-        <div className="p-5 border-b border-slate-800 flex items-center justify-between">
+        <div className="p-5 border-b border-slate-800 flex items-center justify-between shrink-0">
           <div className="flex items-center gap-2.5">
             <div className="w-8 h-8 rounded-lg bg-emerald-600 flex items-center justify-center text-white">
               <ShieldAlert className="w-4 h-4 text-white" />
@@ -78,10 +86,18 @@ export function AdminLayout() {
               </span>
             </div>
           </div>
+          {/* Nút đóng menu trên Mobile */}
+          <button
+            type="button"
+            onClick={() => setIsSidebarOpen(false)}
+            className="md:hidden p-1.5 text-slate-400 hover:text-white"
+          >
+            <X className="w-5 h-5" />
+          </button>
         </div>
 
-        {/* Navigation Items */}
-        <nav className="p-3 space-y-1 flex-1">
+        {/* Navigation Items (Có thể cuộn nếu quá dài) */}
+        <nav className="p-3 space-y-1 flex-1 overflow-y-auto">
           {adminNavItems.map((item) => (
             <NavLink
               key={item.to}
@@ -97,30 +113,42 @@ export function AdminLayout() {
                 )
               }
             >
-              <item.icon className="w-4 h-4" />
+              <item.icon className="w-4 h-4 shrink-0" />
               <span>{item.label}</span>
             </NavLink>
           ))}
         </nav>
 
-        {/* Sidebar Footer — Return to Public Application */}
-        <div className="p-4 border-t border-slate-800 space-y-3">
+        {/* Sidebar Footer — CỐ ĐỊNH DƯỚI CÙNG, KHÔNG BỊ TRÔI */}
+        <div className="p-4 border-t border-slate-800 shrink-0 space-y-3 bg-slate-900">
           <Badge variant="warning" className="w-full justify-center">
             Vai trò: Quản trị viên
           </Badge>
+          
+          {/* Nút Đăng xuất nhanh */}
+          <button
+            type="button"
+            onClick={handleLogout}
+            className="w-full flex items-center justify-center gap-2 px-3 py-2 rounded-lg text-sm font-medium text-red-400 bg-red-500/10 hover:bg-red-500/20 hover:text-red-300 transition-colors cursor-pointer"
+          >
+            <LogOut className="w-4 h-4 shrink-0" />
+            <span>Đăng xuất tài khoản</span>
+          </button>
+
+          {/* Nút Quay lại ứng dụng chính */}
           <Link
             to="/"
-            className="flex items-center gap-2 text-xs text-slate-400 hover:text-white transition-colors p-1 rounded-md"
+            className="flex items-center justify-center gap-2 px-3 py-2 rounded-lg text-sm font-medium text-slate-400 hover:text-white hover:bg-slate-800 transition-colors border border-slate-700/50"
           >
-            <ArrowLeft className="w-3.5 h-3.5" />
+            <ArrowLeft className="w-4 h-4 shrink-0" />
             <span>Quay lại ứng dụng chính</span>
           </Link>
         </div>
       </aside>
 
-      {/* Main Admin Content Area */}
-      <div className="flex-1 flex flex-col min-w-0 overflow-y-auto">
-        <header className="bg-white border-b border-slate-200 px-6 py-3.5 flex items-center justify-between">
+      {/* MAIN CONTENT AREA */}
+      <div className="flex-1 flex flex-col min-w-0 md:ml-64 transition-all">
+        <header className="bg-white border-b border-slate-200 px-6 py-3.5 flex items-center justify-between sticky top-0 z-30">
           <div>
             <h2 className="text-base font-bold text-slate-900 tracking-tight">Bảng điều khiển quản trị</h2>
             <p className="text-xs text-slate-500 mt-0.5">

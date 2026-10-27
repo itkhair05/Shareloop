@@ -221,14 +221,14 @@ export function AdminOverviewPage() {
             <CardHeader className="pb-3">
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2">
-                  <div className="w-8 h-8 rounded-lg bg-emerald-50 text-emerald-700 flex items-center justify-center">
+                  <div className="w-8 h-8 rounded-lg bg-emerald-50 text-emerald-700 flex items-center justify-center shrink-0">
                     <FolderTree className="w-4 h-4" aria-hidden="true" />
                   </div>
                   <CardTitle className="text-base text-slate-900">
                     Quản lý phân cấp danh mục
                   </CardTitle>
                 </div>
-                <span className="text-xs font-mono font-bold text-slate-500">
+                <span className="text-xs font-mono font-bold text-slate-500 whitespace-nowrap shrink-0">
                   {data.totalCategories} danh mục
                 </span>
               </div>
@@ -237,11 +237,12 @@ export function AdminOverviewPage() {
               <p className="text-xs sm:text-sm text-slate-600 leading-relaxed">
                 Xem danh sách phân loại đồ dùng, cấu hình thứ tự hiển thị và kiểm tra trạng thái kích hoạt của từng danh mục.
               </p>
-              <Link to="/admin/categories" className="inline-block w-full">
-                <Button variant="outline" size="sm" className="w-full justify-between group cursor-pointer">
-                  <span>Mở giao diện quản trị danh mục</span>
-                  <ArrowRight className="w-3.5 h-3.5 group-hover:translate-x-0.5 transition-transform" />
-                </Button>
+              <Link to="/admin/categories" className="w-full inline-block">
+                {/* Thay component Button bằng thẻ Link bọc ngoài với class flex */}
+                <div className="w-full inline-flex flex-row items-center justify-between h-9 px-3 text-sm font-medium text-slate-700 bg-white border border-slate-300 hover:bg-slate-50 rounded-lg transition-colors cursor-pointer group whitespace-nowrap shrink-0">
+                  <span className="whitespace-nowrap">Mở giao diện quản trị danh mục</span>
+                  <ArrowRight className="w-3.5 h-3.5 shrink-0 group-hover:translate-x-0.5 transition-transform" />
+                </div>
               </Link>
             </CardContent>
           </Card>
@@ -250,14 +251,14 @@ export function AdminOverviewPage() {
             <CardHeader className="pb-3">
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2">
-                  <div className="w-8 h-8 rounded-lg bg-amber-50 text-amber-700 flex items-center justify-center">
+                  <div className="w-8 h-8 rounded-lg bg-amber-50 text-amber-700 flex items-center justify-center shrink-0">
                     <MessageSquareWarning className="w-4 h-4" aria-hidden="true" />
                   </div>
                   <CardTitle className="text-base text-slate-900">
                     Kiểm duyệt phản hồi đánh giá
                   </CardTitle>
                 </div>
-                <span className="text-xs font-mono font-bold text-slate-500">
+                <span className="text-xs font-mono font-bold text-slate-500 whitespace-nowrap shrink-0">
                   {data.pendingReports} báo cáo
                 </span>
               </div>
@@ -266,11 +267,12 @@ export function AdminOverviewPage() {
               <p className="text-xs sm:text-sm text-slate-600 leading-relaxed">
                 Kiểm tra các đánh giá giao dịch bị cộng đồng phản ánh vi phạm, áp dụng biện pháp ẩn đánh giá hoặc khôi phục an toàn.
               </p>
-              <Link to="/admin/reviews" className="inline-block w-full">
-                <Button variant="outline" size="sm" className="w-full justify-between group cursor-pointer">
-                  <span>Mở hàng đợi kiểm duyệt</span>
-                  <ArrowRight className="w-3.5 h-3.5 group-hover:translate-x-0.5 transition-transform" />
-                </Button>
+              <Link to="/admin/reviews" className="w-full inline-block">
+                {/* Thay component Button bằng thẻ Link bọc ngoài với class flex */}
+                <div className="w-full inline-flex flex-row items-center justify-between h-9 px-3 text-sm font-medium text-slate-700 bg-white border border-slate-300 hover:bg-slate-50 rounded-lg transition-colors cursor-pointer group whitespace-nowrap shrink-0">
+                  <span className="whitespace-nowrap">Mở hàng đợi kiểm duyệt</span>
+                  <ArrowRight className="w-3.5 h-3.5 shrink-0 group-hover:translate-x-0.5 transition-transform" />
+                </div>
               </Link>
             </CardContent>
           </Card>

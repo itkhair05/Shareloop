@@ -31,4 +31,18 @@ describe('Button component', () => {
     rerender(<Button variant="outline">Cancel</Button>);
     expect(screen.getByRole('button')).toHaveClass('border');
   });
+
+  it('applies horizontal layout classes whitespace-nowrap and shrink-0 to prevent label wrapping', () => {
+    render(<Button>Tạm ngưng</Button>);
+    const button = screen.getByRole('button', { name: /tạm ngưng/i });
+    expect(button).toHaveClass('whitespace-nowrap', 'shrink-0', 'inline-flex', 'items-center');
+    const labelSpan = button.querySelector('span');
+    expect(labelSpan).toHaveClass('whitespace-nowrap');
+  });
+
+  it('merges caller provided classes cleanly without discarding layout defaults', () => {
+    render(<Button className="h-7 px-2.5 text-xs">Sửa</Button>);
+    const button = screen.getByRole('button', { name: /sửa/i });
+    expect(button).toHaveClass('whitespace-nowrap', 'shrink-0', 'h-7', 'px-2.5', 'text-xs');
+  });
 });

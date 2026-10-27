@@ -33,12 +33,14 @@ export interface CreateCategoryRequest {
   name: string;
   slug: string;
   description?: string | null;
+  isActive?: boolean;
 }
 
 export interface UpdateCategoryRequest {
   name?: string;
   slug?: string;
   description?: string | null;
+  isActive?: boolean;
 }
 
 export interface UpdateCategoryStatusRequest {

@@ -1,5 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { screen } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 import { RouterProvider, createMemoryRouter } from 'react-router-dom';
 import { renderWithProviders } from '@/test/test-utils';
 import { MainLayout } from '@/components/layout/MainLayout';
@@ -78,14 +79,14 @@ describe('Application Routing', () => {
     expect(screen.getByText(/quay lại ứng dụng chính/i)).toBeInTheDocument();
   });
 
-  it('renders Admin Category Catalog placeholder at /admin/categories', () => {
+  it('renders Admin Categories page at /admin/categories', () => {
     const memoryRouter = createMemoryRouter(testRoutes, {
       initialEntries: ['/admin/categories'],
     });
 
     renderWithProviders(<RouterProvider router={memoryRouter} />, { withRouter: false });
     expect(screen.getByRole('heading', { name: 'Quản trị danh mục ngành hàng' })).toBeInTheDocument();
-    expect(screen.getByText(/POST\/PUT\/PATCH \/api\/v1\/admin\/categories/i)).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /thêm danh mục/i })).toBeInTheDocument();
   });
 
   it('renders Admin Review Moderation placeholder at /admin/reviews', () => {
@@ -96,5 +97,24 @@ describe('Application Routing', () => {
     renderWithProviders(<RouterProvider router={memoryRouter} />, { withRouter: false });
     expect(screen.getByRole('heading', { name: 'Kiểm duyệt đánh giá' })).toBeInTheDocument();
     expect(screen.getByText(/DELETE \/api\/v1\/admin\/reviews\/\{reviewId\}/i)).toBeInTheDocument();
+  });
+
+  it('cleanly transitions from Admin to Public Home layout without retaining admin sidebar or headers', async () => {
+    const user = userEvent.setup();
+    const memoryRouter = createMemoryRouter(testRoutes, {
+      initialEntries: ['/admin'],
+    });
+
+    renderWithProviders(<RouterProvider router={memoryRouter} />, { withRouter: false });
+    expect(screen.getByRole('heading', { name: 'Bảng điều khiển quản trị' })).toBeInTheDocument();
+
+    // Click "Quay lại ứng dụng chính" in AdminLayout sidebar
+    const backLink = screen.getByRole('link', { name: /quay lại ứng dụng chính/i });
+    await user.click(backLink);
+
+    // Verify Public Home and Navbar are rendered, and AdminLayout elements are gone
+    expect(screen.getByRole('heading', { level: 1, name: /ShareLoop/i })).toBeInTheDocument();
+    expect(screen.queryByRole('heading', { name: 'Bảng điều khiển quản trị' })).not.toBeInTheDocument();
+    expect(screen.queryByText('Quản lý phân cấp danh mục')).not.toBeInTheDocument();
   });
 });

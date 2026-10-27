@@ -172,4 +172,39 @@ describe('Navbar Authentication and Role-Aware Navigation', () => {
     await user.click(profileLinks[1]);
     expect(screen.queryByRole('button', { name: /đóng menu điều hướng/i })).not.toBeInTheDocument();
   });
+
+  it('applies horizontal layout classes to prevent overlapping in navbar header', () => {
+    const adminUser: UserProfile = {
+      id: 'adm-2',
+      displayName: 'Admin User',
+      email: 'admin2@shareloop.org',
+      role: 'ADMIN',
+      status: 'ACTIVE',
+      createdAt: '2026-10-22T00:00:00Z',
+      updatedAt: '2026-10-22T00:00:00Z',
+    };
+
+    vi.mocked(useAuth).mockReturnValue({
+      user: adminUser,
+      isAuthenticated: true,
+      isLoading: false,
+      error: null,
+      login: vi.fn(),
+      register: vi.fn(),
+      logout: vi.fn(),
+      clearError: vi.fn(),
+      refreshUser: vi.fn(),
+    });
+
+    renderWithProviders(<Navbar />);
+
+    const brandLink = screen.getByRole('link', { name: /shareloop/i });
+    expect(brandLink).toHaveClass('whitespace-nowrap', 'shrink-0');
+
+    const adminConsoleLink = screen.getByRole('link', { name: /bảng quản trị/i });
+    expect(adminConsoleLink).toHaveClass('whitespace-nowrap', 'shrink-0');
+
+    const logoutButton = screen.getByRole('button', { name: /đăng xuất/i });
+    expect(logoutButton).toHaveClass('whitespace-nowrap', 'shrink-0');
+  });
 });
