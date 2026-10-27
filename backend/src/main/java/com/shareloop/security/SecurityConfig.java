@@ -120,6 +120,8 @@ public class SecurityConfig {
                                 "/api/v1/users/{userId}/reviews",
                                 "/api/v1/users/{userId}/rating-summary"
                         ).permitAll()
+                        // Support requests and violation reports require authentication
+                        .requestMatchers("/api/v1/support-requests/**", "/api/v1/reports/**").authenticated()
                         // Admin endpoints restricted to ADMIN role
                         .requestMatchers("/api/v1/admin/**").hasRole("ADMIN")
                         // All other endpoints require authentication

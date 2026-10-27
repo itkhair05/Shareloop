@@ -1333,4 +1333,116 @@ class DatabaseSchemaConstraintIntegrationTest {
             )).isInstanceOf(DataIntegrityViolationException.class);
         }
     }
+
+    @Nested
+    @DisplayName("Migration V10 - Support Requests Constraints")
+    class SupportRequestConstraintTests {
+
+        @Test
+        @DisplayName("Valid support request can be inserted")
+        void validSupportRequest_Success() {
+            UUID userId = createTestUser("sup_user_" + UUID.randomUUID());
+            UUID srId = UUID.randomUUID();
+
+            int rows = jdbcTemplate.update(
+                    "INSERT INTO support_requests (id, requester_id, category, subject, description, status) VALUES (?, ?, 'ACCOUNT_ISSUE', 'Help subject', 'Help description', 'PENDING')",
+                    srId, userId
+            );
+            assertThat(rows).isEqualTo(1);
+        }
+
+        @Test
+        @DisplayName("Invalid category violates chk_support_requests_category")
+        void invalidCategory_ViolatesConstraint() {
+            UUID userId = createTestUser("sup_cat_" + UUID.randomUUID());
+            UUID srId = UUID.randomUUID();
+
+            assertThatThrownBy(() -> jdbcTemplate.update(
+                    "INSERT INTO support_requests (id, requester_id, category, subject, description, status) VALUES (?, ?, 'INVALID_CAT', 'Subject', 'Description', 'PENDING')",
+                    srId, userId
+            )).isInstanceOf(DataIntegrityViolationException.class);
+        }
+
+        @Test
+        @DisplayName("Blank subject violates chk_support_requests_subject_not_blank")
+        void blankSubject_ViolatesConstraint() {
+            UUID userId = createTestUser("sup_subj_" + UUID.randomUUID());
+            UUID srId = UUID.randomUUID();
+
+            assertThatThrownBy(() -> jdbcTemplate.update(
+                    "INSERT INTO support_requests (id, requester_id, category, subject, description, status) VALUES (?, ?, 'OTHER', '   ', 'Description', 'PENDING')",
+                    srId, userId
+            )).isInstanceOf(DataIntegrityViolationException.class);
+        }
+    }
+
+    @Nested
+    @DisplayName("Migration V10 - Reports Constraints & Partial Unique Index")
+    class ReportConstraintTests {
+
+        @Test
+        @DisplayName("Valid report can be inserted")
+        void validReport_Success() {
+            UUID reporterId = createTestUser("rep_reporter_" + UUID.randomUUID());
+            UUID targetUserId = createTestUser("rep_target_" + UUID.randomUUID());
+            UUID reportId = UUID.randomUUID();
+
+            int rows = jdbcTemplate.update(
+                    "INSERT INTO reports (id, reporter_id, target_type, target_id, category, description, status) VALUES (?, ?, 'USER', ?, 'HARASSMENT', 'Abuse in chat', 'PENDING')",
+                    reportId, reporterId, targetUserId
+            );
+            assertThat(rows).isEqualTo(1);
+        }
+
+        @Test
+        @DisplayName("Self reporting as USER violates chk_reports_no_self_user_report constraint")
+        void selfUserReport_ViolatesConstraint() {
+            UUID userId = createTestUser("rep_self_" + UUID.randomUUID());
+            UUID reportId = UUID.randomUUID();
+
+            assertThatThrownBy(() -> jdbcTemplate.update(
+                    "INSERT INTO reports (id, reporter_id, target_type, target_id, category, description, status) VALUES (?, ?, 'USER', ?, 'HARASSMENT', 'Reporting myself', 'PENDING')",
+                    reportId, userId, userId
+            )).isInstanceOf(DataIntegrityViolationException.class);
+        }
+
+        @Test
+        @DisplayName("Duplicate active reports violate partial unique index idx_unique_active_report_per_target")
+        void duplicateActiveReports_ViolatePartialUniqueIndex() {
+            UUID reporterId = createTestUser("rep_dup1_" + UUID.randomUUID());
+            UUID targetUserId = createTestUser("rep_dup2_" + UUID.randomUUID());
+            UUID report1Id = UUID.randomUUID();
+            UUID report2Id = UUID.randomUUID();
+
+            jdbcTemplate.update(
+                    "INSERT INTO reports (id, reporter_id, target_type, target_id, category, description, status) VALUES (?, ?, 'USER', ?, 'FRAUD_OR_SCAM', 'First active', 'PENDING')",
+                    report1Id, reporterId, targetUserId
+            );
+
+            assertThatThrownBy(() -> jdbcTemplate.update(
+                    "INSERT INTO reports (id, reporter_id, target_type, target_id, category, description, status) VALUES (?, ?, 'USER', ?, 'FRAUD_OR_SCAM', 'Second active', 'INVESTIGATING')",
+                    report2Id, reporterId, targetUserId
+            )).isInstanceOf(DataIntegrityViolationException.class);
+        }
+
+        @Test
+        @DisplayName("Allows second report when earlier report is RESOLVED")
+        void allowsSecondReportWhenFirstResolved() {
+            UUID reporterId = createTestUser("rep_res1_" + UUID.randomUUID());
+            UUID targetUserId = createTestUser("rep_res2_" + UUID.randomUUID());
+            UUID report1Id = UUID.randomUUID();
+            UUID report2Id = UUID.randomUUID();
+
+            jdbcTemplate.update(
+                    "INSERT INTO reports (id, reporter_id, target_type, target_id, category, description, status) VALUES (?, ?, 'USER', ?, 'FRAUD_OR_SCAM', 'First resolved', 'RESOLVED')",
+                    report1Id, reporterId, targetUserId
+            );
+
+            int rows = jdbcTemplate.update(
+                    "INSERT INTO reports (id, reporter_id, target_type, target_id, category, description, status) VALUES (?, ?, 'USER', ?, 'FRAUD_OR_SCAM', 'Second active', 'PENDING')",
+                    report2Id, reporterId, targetUserId
+            );
+            assertThat(rows).isEqualTo(1);
+        }
+    }
 }
