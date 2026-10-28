@@ -25,6 +25,7 @@ import { AdminUsersPage } from '@/features/admin/AdminUsersPage';
 import { AdminCategoriesPage } from '@/features/admin/AdminCategoriesPage';
 import { AdminReviewsPage } from '@/features/admin/AdminReviewsPage';
 import { AdminReportsPage } from '@/features/admin/AdminReportsPage';
+import { AdminSupportPage } from '@/features/admin/AdminSupportPage';
 import { NotFoundPage } from '@/features/not-found/NotFoundPage';
 
 export const router = createBrowserRouter([
@@ -172,6 +173,10 @@ export const router = createBrowserRouter([
       {
         path: 'reports',
         element: <AdminReportsPage />,
+      },
+      {
+        path: 'support-requests',
+        element: <AdminSupportPage />,
       },
       {
         path: '*',

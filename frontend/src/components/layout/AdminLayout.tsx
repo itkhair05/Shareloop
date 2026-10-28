@@ -6,6 +6,7 @@ import {
   MessageSquareWarning,
   LayoutDashboard,
   Users,
+  LifeBuoy,
   ArrowLeft,
   Menu,
   X,
@@ -54,6 +55,12 @@ export function AdminLayout() {
       to: '/admin/reports',
       label: 'Báo cáo vi phạm',
       icon: ShieldAlert,
+      end: false,
+    },
+    {
+      to: '/admin/support-requests',
+      label: 'Hỗ trợ người dùng',
+      icon: LifeBuoy,
       end: false,
     },
   ];
