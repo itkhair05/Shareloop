@@ -1,4 +1,5 @@
-import { useState } from 'react';
+import { useState, useRef } from 'react';
+import { createPortal } from 'react-dom';
 import { Bell } from 'lucide-react';
 import { useAuth } from '@/features/auth';
 import { useUnreadNotificationCount } from '../hooks/use-notifications';
@@ -11,11 +12,12 @@ export interface NotificationBellProps {
 
 export function NotificationBell({ className }: NotificationBellProps) {
   const [isOpen, setIsOpen] = useState(false);
+  const bellRef = useRef<HTMLButtonElement>(null);
   const { isAuthenticated } = useAuth();
 
   const { data: countData } = useUnreadNotificationCount({
     enabled: isAuthenticated,
-    refetchInterval: isAuthenticated ? 30000 : false, // 30s background polling for authenticated users
+    refetchInterval: isAuthenticated ? 30000 : false,
   });
 
   const unreadCount = countData?.unreadCount ?? 0;
@@ -28,6 +30,7 @@ export function NotificationBell({ className }: NotificationBellProps) {
   return (
     <div className={cn('relative inline-flex items-center', className)}>
       <button
+        ref={bellRef}
         type="button"
         onClick={() => setIsOpen((prev) => !prev)}
         className={cn(
@@ -54,7 +57,16 @@ export function NotificationBell({ className }: NotificationBellProps) {
         )}
       </button>
 
-      <NotificationDropdown isOpen={isOpen} onClose={() => setIsOpen(false)} />
+      {isOpen &&
+        typeof document !== 'undefined' &&
+        createPortal(
+          <NotificationDropdown
+            isOpen={isOpen}
+            onClose={() => setIsOpen(false)}
+            triggerRef={bellRef}
+          />,
+          document.body
+        )}
     </div>
   );
 }

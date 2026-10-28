@@ -51,8 +51,8 @@ export function RatingSummaryCard({
             variant="outline"
             size="sm"
             onClick={onRetry}
-            leftIcon={<RotateCw className="w-3.5 h-3.5" />}
-            className="text-xs border-red-200 text-red-800 hover:bg-red-100"
+            leftIcon={<RotateCw className="w-3.5 h-3.5 shrink-0" />}
+            className="text-xs border-red-200 text-red-800 hover:bg-red-100 whitespace-nowrap shrink-0"
           >
             Thử lại
           </Button>
@@ -67,9 +67,10 @@ export function RatingSummaryCard({
 
   return (
     <div className={`p-6 bg-white rounded-2xl border border-slate-200/90 shadow-xs space-y-6 ${className}`}>
-      <div className="flex items-center justify-between">
-        <div>
-          <h3 className="text-base font-bold text-slate-900">
+      {/* FIX: Thêm flex-wrap cho header và whitespace-nowrap shrink-0 cho huy hiệu */}
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <div className="min-w-0 flex-1">
+          <h3 className="text-base font-bold text-slate-900 whitespace-nowrap">
             Điểm uy tín người dùng
           </h3>
           <p className="text-xs text-slate-500 mt-0.5">
@@ -77,7 +78,7 @@ export function RatingSummaryCard({
           </p>
         </div>
         {totalReviews > 0 && (
-          <span className="text-xs font-semibold px-2.5 py-1 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-100">
+          <span className="text-xs font-semibold px-2.5 py-1 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-100 whitespace-nowrap shrink-0">
             {totalReviews} đánh giá
           </span>
         )}
@@ -86,7 +87,7 @@ export function RatingSummaryCard({
       {totalReviews === 0 ? (
         <div className="py-6 text-center space-y-2 bg-slate-50/60 rounded-xl border border-dashed border-slate-200 p-4">
           <div className="w-10 h-10 rounded-full bg-amber-50 text-amber-500 flex items-center justify-center mx-auto">
-            <Star className="w-5 h-5 fill-amber-400 stroke-amber-400" aria-hidden="true" />
+            <Star className="w-5 h-5 fill-amber-400 stroke-amber-400 shrink-0" aria-hidden="true" />
           </div>
           <div className="font-semibold text-slate-800 text-sm">Chưa có đánh giá nào</div>
           <p className="text-xs text-slate-500 max-w-sm mx-auto leading-relaxed">
@@ -97,7 +98,7 @@ export function RatingSummaryCard({
         <div className="grid grid-cols-1 sm:grid-cols-12 gap-6 items-center">
           {/* Left Column: Big Average Score */}
           <div className="sm:col-span-5 flex flex-col items-center sm:items-start text-center sm:text-left justify-center sm:border-r border-slate-100 sm:pr-6 space-y-2">
-            <div className="flex items-baseline gap-1">
+            <div className="flex items-baseline gap-1 whitespace-nowrap">
               <span className="text-4xl sm:text-5xl font-black text-slate-900 tracking-tight">
                 {averageRating.toFixed(1)}
               </span>
@@ -106,7 +107,7 @@ export function RatingSummaryCard({
 
             <StarRating rating={averageRating} size="lg" />
 
-            <div className="text-xs text-slate-500 pt-1">
+            <div className="text-xs text-slate-500 pt-1 whitespace-nowrap">
               Tổng cộng <strong>{totalReviews}</strong> lượt đánh giá
             </div>
           </div>

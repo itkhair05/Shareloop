@@ -1,4 +1,4 @@
-import { useRef, useEffect } from 'react';
+import { useRef, useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { Bell, CheckCheck, Loader2, ArrowRight } from 'lucide-react';
 import {
@@ -12,10 +12,12 @@ import { Button } from '@/components/ui/Button';
 export interface NotificationDropdownProps {
   isOpen: boolean;
   onClose: () => void;
+  triggerRef?: React.RefObject<HTMLElement | null>;
 }
 
-export function NotificationDropdown({ isOpen, onClose }: NotificationDropdownProps) {
+export function NotificationDropdown({ isOpen, onClose, triggerRef }: NotificationDropdownProps) {
   const dropdownRef = useRef<HTMLDivElement>(null);
+  const [position, setPosition] = useState<{ top: number; left: number }>({ top: 64, left: 16 });
   const { data: countData } = useUnreadNotificationCount({ enabled: isOpen });
   const {
     data: notificationsData,
@@ -27,6 +29,40 @@ export function NotificationDropdown({ isOpen, onClose }: NotificationDropdownPr
   const markAllMutation = useMarkAllNotificationsAsRead();
   const unreadCount = countData?.unreadCount ?? 0;
   const notifications = notificationsData?.content ?? [];
+
+  // Calculate dynamic fixed position relative to the trigger button
+  useEffect(() => {
+    if (!isOpen) return;
+
+    function updatePosition() {
+      if (!triggerRef?.current) return;
+      const rect = triggerRef.current.getBoundingClientRect();
+      const isMobile = window.innerWidth < 640;
+      const dropdownWidth = isMobile ? Math.min(320, window.innerWidth - 24) : 384;
+
+      let left = rect.right - dropdownWidth;
+      if (left < 12) {
+        left = 12;
+      }
+      if (left + dropdownWidth > window.innerWidth - 12) {
+        left = window.innerWidth - 12 - dropdownWidth;
+      }
+
+      setPosition({
+        top: rect.bottom + 8,
+        left,
+      });
+    }
+
+    updatePosition();
+    window.addEventListener('resize', updatePosition);
+    window.addEventListener('scroll', updatePosition, true);
+
+    return () => {
+      window.removeEventListener('resize', updatePosition);
+      window.removeEventListener('scroll', updatePosition, true);
+    };
+  }, [isOpen, triggerRef]);
 
   // Close on outside click or Escape key
   useEffect(() => {
@@ -44,7 +80,9 @@ export function NotificationDropdown({ isOpen, onClose }: NotificationDropdownPr
         dropdownRef.current &&
         !dropdownRef.current.contains(target as Node)
       ) {
-        // If click is on the bell trigger button, let the button's onClick handle toggle
+        if (triggerRef?.current && triggerRef.current.contains(target as Node)) {
+          return;
+        }
         if (target?.closest('[aria-haspopup="dialog"]')) {
           return;
         }
@@ -59,14 +97,18 @@ export function NotificationDropdown({ isOpen, onClose }: NotificationDropdownPr
       document.removeEventListener('keydown', handleKeyDown);
       document.removeEventListener('mousedown', handleClickOutside);
     };
-  }, [isOpen, onClose]);
+  }, [isOpen, onClose, triggerRef]);
 
   if (!isOpen) return null;
 
   return (
     <div
       ref={dropdownRef}
-      className="absolute right-0 top-full mt-2 w-80 sm:w-96 bg-white rounded-2xl shadow-xl border border-slate-200 z-50 overflow-hidden animate-in fade-in zoom-in-95 duration-150"
+      style={{
+        top: `${position.top}px`,
+        left: `${position.left}px`,
+      }}
+      className="fixed z-[9999] w-80 sm:w-96 max-w-[calc(100vw-24px)] bg-white rounded-2xl shadow-2xl border border-slate-200 overflow-hidden animate-in fade-in zoom-in-95 duration-150"
       role="dialog"
       aria-label="Hộp thông báo"
     >

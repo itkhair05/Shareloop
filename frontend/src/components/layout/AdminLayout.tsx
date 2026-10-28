@@ -50,6 +50,12 @@ export function AdminLayout() {
       icon: MessageSquareWarning,
       end: false,
     },
+    {
+      to: '/admin/reports',
+      label: 'Báo cáo vi phạm',
+      icon: ShieldAlert,
+      end: false,
+    },
   ];
 
   return (

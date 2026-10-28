@@ -95,12 +95,12 @@ export function TransactionsPage() {
       {/* Top Header Banner */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-6 border-b border-slate-200">
         <div>
-          <div className="flex items-center gap-3">
-            <h1 className="text-2xl sm:text-3xl font-extrabold text-slate-900 tracking-tight">
+          <div className="flex items-center gap-3 flex-wrap">
+            <h1 className="text-2xl sm:text-3xl font-extrabold text-slate-900 tracking-tight whitespace-nowrap">
               Giao dịch của tôi
             </h1>
             {!isLoading && (
-              <Badge variant="neutral" className="text-xs">
+              <Badge variant="neutral" className="text-xs shrink-0 whitespace-nowrap">
                 {totalElements} giao dịch
               </Badge>
             )}
@@ -115,8 +115,8 @@ export function TransactionsPage() {
           size="sm"
           onClick={() => refetch()}
           disabled={isFetching}
-          leftIcon={<RotateCw className={`w-3.5 h-3.5 ${isFetching ? 'animate-spin' : ''}`} />}
-          className="self-start sm:self-auto"
+          leftIcon={<RotateCw className={`w-3.5 h-3.5 shrink-0 ${isFetching ? 'animate-spin' : ''}`} />}
+          className="self-start sm:self-auto whitespace-nowrap shrink-0"
         >
           {isFetching ? 'Đang cập nhật...' : 'Làm mới'}
         </Button>
@@ -133,7 +133,7 @@ export function TransactionsPage() {
                 key={tab.label}
                 type="button"
                 onClick={() => handleStatusChange(tab.value)}
-                className={`px-3 py-1.5 rounded-lg text-xs font-semibold whitespace-nowrap transition-colors cursor-pointer ${
+                className={`px-3 py-1.5 rounded-lg text-xs font-semibold whitespace-nowrap shrink-0 transition-colors cursor-pointer ${
                   isActive
                     ? 'bg-emerald-700 text-white shadow-xs'
                     : 'text-slate-600 hover:text-slate-900 hover:bg-slate-200/60'
@@ -146,9 +146,9 @@ export function TransactionsPage() {
           })}
         </div>
 
-        {/* Role Filter Buttons */}
-        <div className="flex items-center gap-1.5 border-t md:border-t-0 md:border-l border-slate-200 pt-2.5 md:pt-0 md:pl-4 shrink-0">
-          <span className="text-xs font-medium text-slate-500 mr-1 hidden sm:inline">
+        {/* Role Filter Buttons - FIXED: Thêm flex-wrap để các nút xuống dòng nguyên khối */}
+        <div className="flex flex-wrap items-center gap-1.5 border-t md:border-t-0 md:border-l border-slate-200 pt-2.5 md:pt-0 md:pl-4 shrink-0">
+          <span className="text-xs font-medium text-slate-500 mr-1 hidden sm:inline whitespace-nowrap shrink-0">
             Vai trò:
           </span>
           {roleTabs.map((role) => {
@@ -158,7 +158,7 @@ export function TransactionsPage() {
                 key={role.label}
                 type="button"
                 onClick={() => handleRoleChange(role.value)}
-                className={`px-2.5 py-1 rounded-md text-xs font-medium transition-colors cursor-pointer ${
+                className={`px-2.5 py-1 rounded-md text-xs font-medium transition-colors cursor-pointer whitespace-nowrap shrink-0 ${
                   isActive
                     ? 'bg-slate-900 text-white'
                     : 'bg-white border border-slate-200 text-slate-600 hover:bg-slate-100 hover:text-slate-900'
@@ -240,7 +240,7 @@ export function TransactionsPage() {
           aria-label="Phân trang giao dịch"
           className="flex items-center justify-between pt-6 border-t border-slate-200"
         >
-          <div className="text-xs text-slate-500 font-medium">
+          <div className="text-xs text-slate-500 font-medium whitespace-nowrap">
             Trang {currentPage + 1} / {totalPages} (Tổng số {totalElements} giao dịch)
           </div>
 
@@ -250,8 +250,9 @@ export function TransactionsPage() {
               size="sm"
               onClick={() => setCurrentPage((p) => Math.max(0, p - 1))}
               disabled={currentPage === 0 || isFetching}
-              leftIcon={<ChevronLeft className="w-4 h-4" />}
+              leftIcon={<ChevronLeft className="w-4 h-4 shrink-0" />}
               aria-label="Trang trước"
+              className="whitespace-nowrap shrink-0"
             >
               Trang trước
             </Button>
@@ -260,8 +261,9 @@ export function TransactionsPage() {
               size="sm"
               onClick={() => setCurrentPage((p) => Math.min(totalPages - 1, p + 1))}
               disabled={currentPage >= totalPages - 1 || isFetching}
-              rightIcon={<ChevronRight className="w-4 h-4" />}
+              rightIcon={<ChevronRight className="w-4 h-4 shrink-0" />}
               aria-label="Trang kế tiếp"
+              className="whitespace-nowrap shrink-0"
             >
               Trang kế tiếp
             </Button>
@@ -300,21 +302,21 @@ function TransactionCard({ transaction }: { transaction: TransactionResponse }) 
       {/* Card Header: Badges & Creation Date */}
       <div className="flex flex-wrap items-center justify-between gap-2.5 pb-3 border-b border-slate-100">
         <div className="flex flex-wrap items-center gap-2">
-          <Badge variant={statusConfig.variant} className="text-xs font-semibold px-2.5 py-0.5">
+          <Badge variant={statusConfig.variant} className="text-xs font-semibold px-2.5 py-0.5 whitespace-nowrap shrink-0">
             {statusConfig.label}
           </Badge>
-          <Badge variant="neutral" className="text-xs px-2 py-0.5 font-medium">
+          <Badge variant="neutral" className="text-xs px-2 py-0.5 font-medium whitespace-nowrap shrink-0">
             {roleBadgeText}
           </Badge>
           <Badge
             variant={listing.listingType === 'GIVEAWAY' ? 'success' : 'warning'}
-            className="text-[11px] px-2 py-0.5"
+            className="text-[11px] px-2 py-0.5 whitespace-nowrap shrink-0"
           >
             {listing.listingType === 'GIVEAWAY' ? 'Cho tặng' : 'Thanh lý'}
           </Badge>
         </div>
 
-        <div className="flex items-center gap-1.5 text-xs text-slate-400 font-medium">
+        <div className="flex items-center gap-1.5 text-xs text-slate-400 font-medium whitespace-nowrap shrink-0">
           <Calendar className="w-3.5 h-3.5 shrink-0" aria-hidden="true" />
           <span>Tạo ngày: {formatDateTime(transaction.createdAt)}</span>
         </div>
@@ -344,12 +346,12 @@ function TransactionCard({ transaction }: { transaction: TransactionResponse }) 
                 )}
                 {listing.city && (
                   <span className="flex items-center gap-1">
-                    <MapPin className="w-3 h-3 text-slate-400" aria-hidden="true" />
+                    <MapPin className="w-3 h-3 text-slate-400 shrink-0" aria-hidden="true" />
                     <span>{listing.city}</span>
                   </span>
                 )}
                 <span className="text-slate-400">•</span>
-                <span>Mã giao dịch: {transaction.id.slice(0, 8)}...</span>
+                <span className="whitespace-nowrap">Mã giao dịch: {transaction.id.slice(0, 8)}...</span>
               </div>
             </div>
           </div>
@@ -370,15 +372,15 @@ function TransactionCard({ transaction }: { transaction: TransactionResponse }) 
                   Người cho/bán: <strong className="text-slate-800">{owner.displayName}</strong>
                 </span>
               </div>
-              <div className="shrink-0">
+              <div className="shrink-0 whitespace-nowrap">
                 {transaction.ownerCompleted ? (
                   <span className="inline-flex items-center gap-1 text-emerald-700 font-semibold">
-                    <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" aria-hidden="true" />
+                    <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600 shrink-0" aria-hidden="true" />
                     <span>Đã xác nhận</span>
                   </span>
                 ) : (
                   <span className="inline-flex items-center gap-1 text-slate-400">
-                    <Clock className="w-3.5 h-3.5" aria-hidden="true" />
+                    <Clock className="w-3.5 h-3.5 shrink-0" aria-hidden="true" />
                     <span>Chờ xác nhận</span>
                   </span>
                 )}
@@ -394,15 +396,15 @@ function TransactionCard({ transaction }: { transaction: TransactionResponse }) 
                   <strong className="text-slate-800">{requester.displayName}</strong>
                 </span>
               </div>
-              <div className="shrink-0">
+              <div className="shrink-0 whitespace-nowrap">
                 {transaction.requesterCompleted ? (
                   <span className="inline-flex items-center gap-1 text-emerald-700 font-semibold">
-                    <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" aria-hidden="true" />
+                    <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600 shrink-0" aria-hidden="true" />
                     <span>Đã xác nhận</span>
                   </span>
                 ) : (
                   <span className="inline-flex items-center gap-1 text-slate-400">
-                    <Clock className="w-3.5 h-3.5" aria-hidden="true" />
+                    <Clock className="w-3.5 h-3.5 shrink-0" aria-hidden="true" />
                     <span>Chờ xác nhận</span>
                   </span>
                 )}
@@ -459,20 +461,20 @@ function TransactionCard({ transaction }: { transaction: TransactionResponse }) 
         </div>
 
         {/* Action Links */}
-        <div className="shrink-0 flex items-center gap-2 sm:gap-3">
+        <div className="shrink-0 flex items-center gap-2 sm:gap-3 whitespace-nowrap">
           <Link
             to={`/listings/${listing.id}`}
-            className="inline-flex items-center gap-1 text-xs font-medium text-slate-600 hover:text-slate-900 hover:underline"
+            className="inline-flex items-center gap-1 text-xs font-medium text-slate-600 hover:text-slate-900 hover:underline whitespace-nowrap shrink-0"
           >
             <span>Xem bài đăng</span>
-            <ExternalLink className="w-3.5 h-3.5 text-slate-400" aria-hidden="true" />
+            <ExternalLink className="w-3.5 h-3.5 text-slate-400 shrink-0" aria-hidden="true" />
           </Link>
           <Link
             to={`/transactions/${transaction.id}`}
-            className="inline-flex items-center gap-1 text-xs font-semibold px-2.5 py-1.5 rounded-lg bg-emerald-50 text-emerald-800 hover:bg-emerald-100 transition-colors"
+            className="inline-flex items-center gap-1 text-xs font-semibold px-2.5 py-1.5 rounded-lg bg-emerald-50 text-emerald-800 hover:bg-emerald-100 transition-colors whitespace-nowrap shrink-0"
           >
             <span>Chi tiết giao dịch</span>
-            <ChevronRight className="w-3.5 h-3.5 text-emerald-600" aria-hidden="true" />
+            <ChevronRight className="w-3.5 h-3.5 text-emerald-600 shrink-0" aria-hidden="true" />
           </Link>
         </div>
       </div>
