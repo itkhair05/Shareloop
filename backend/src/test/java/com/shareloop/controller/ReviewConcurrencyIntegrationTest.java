@@ -13,6 +13,7 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.test.context.ActiveProfiles;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -31,6 +32,7 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 
 @SpringBootTest
 @AutoConfigureMockMvc
+@ActiveProfiles("test")
 class ReviewConcurrencyIntegrationTest {
 
     @Autowired
@@ -56,6 +58,9 @@ class ReviewConcurrencyIntegrationTest {
 
     @Autowired
     private ReviewRepository reviewRepository;
+
+    @Autowired
+    private NotificationRepository notificationRepository;
 
     @Autowired
     private PasswordEncoder passwordEncoder;
@@ -98,6 +103,7 @@ class ReviewConcurrencyIntegrationTest {
 
     @AfterEach
     void tearDown() {
+        notificationRepository.deleteAll();
         reviewRepository.deleteAll();
         transactionRepository.deleteAll();
         listingRequestRepository.deleteAll();

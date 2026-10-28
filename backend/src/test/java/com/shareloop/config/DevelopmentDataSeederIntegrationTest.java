@@ -27,7 +27,10 @@ import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-@SpringBootTest(properties = "app.seed.enabled=true")
+@SpringBootTest(properties = {
+        "app.seed.enabled=true",
+        "spring.datasource.url=jdbc:postgresql://localhost:5432/shareloop_test_db"
+})
 @ActiveProfiles("dev")
 @Transactional
 class DevelopmentDataSeederIntegrationTest {

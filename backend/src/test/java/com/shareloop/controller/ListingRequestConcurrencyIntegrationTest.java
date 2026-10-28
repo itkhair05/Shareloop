@@ -16,6 +16,7 @@ import com.shareloop.entity.enums.UserStatus;
 import com.shareloop.repository.CategoryRepository;
 import com.shareloop.repository.ListingRepository;
 import com.shareloop.repository.ListingRequestRepository;
+import com.shareloop.repository.NotificationRepository;
 import com.shareloop.repository.ReviewRepository;
 import com.shareloop.repository.TransactionRepository;
 import com.shareloop.repository.UserRepository;
@@ -30,6 +31,7 @@ import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.MvcResult;
 
@@ -44,6 +46,7 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 
 @SpringBootTest
 @AutoConfigureMockMvc
+@ActiveProfiles("test")
 class ListingRequestConcurrencyIntegrationTest {
 
     @Autowired
@@ -69,6 +72,9 @@ class ListingRequestConcurrencyIntegrationTest {
 
     @Autowired
     private ReviewRepository reviewRepository;
+
+    @Autowired
+    private NotificationRepository notificationRepository;
 
     @Autowired
     private PasswordEncoder passwordEncoder;
@@ -120,6 +126,7 @@ class ListingRequestConcurrencyIntegrationTest {
 
     @AfterEach
     void tearDown() {
+        notificationRepository.deleteAll();
         reviewRepository.deleteAll();
         transactionRepository.deleteAll();
         listingRequestRepository.deleteAll();
