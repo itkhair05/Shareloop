@@ -11,7 +11,6 @@ import {
   Search,
   X,
 } from 'lucide-react';
-import { Button } from '@/components/ui/Button';
 import { Badge } from '@/components/ui/Badge';
 import { Card, CardContent } from '@/components/ui/Card';
 import { ConfirmDialog } from '@/components/ui/ConfirmDialog';
@@ -268,10 +267,14 @@ export function AdminCategoriesPage() {
               <p className="text-xs text-slate-500 max-w-md mx-auto">
                 {error?.message || 'Đã có sự cố khi kết nối tới máy chủ. Vui lòng thử lại sau.'}
               </p>
-              <Button type="button" variant="outline" onClick={() => refetch()} className="cursor-pointer">
-                <RotateCcw className="w-4 h-4 mr-1.5 shrink-0" />
-                <span>Thử lại</span>
-              </Button>
+              <button
+                type="button"
+                onClick={() => refetch()}
+                className="inline-flex flex-row items-center justify-center gap-2 h-10 px-4 text-sm font-medium text-slate-700 bg-white border border-slate-300 hover:bg-slate-50 rounded-lg transition-colors cursor-pointer shrink-0 whitespace-nowrap"
+              >
+                <RotateCcw className="w-4 h-4 shrink-0" />
+                <span className="whitespace-nowrap">Thử lại</span>
+              </button>
             </div>
           ) : filteredCategories.length === 0 ? (
             <div className="p-12 text-center space-y-3">
@@ -293,28 +296,26 @@ export function AdminCategoriesPage() {
                   : 'Hãy tạo danh mục đầu tiên để bắt đầu phân loại hàng hóa trên nền tảng ShareLoop.'}
               </p>
               {searchTerm || statusFilter !== 'ALL' ? (
-                <Button
+                <button
                   type="button"
-                  variant="outline"
                   onClick={() => {
                     setSearchTerm('');
                     setStatusFilter('ALL');
                   }}
-                  className="cursor-pointer"
+                  className="inline-flex flex-row items-center justify-center gap-2 h-10 px-4 text-sm font-medium text-slate-700 bg-white border border-slate-300 hover:bg-slate-50 rounded-lg transition-colors cursor-pointer shrink-0 whitespace-nowrap"
                 >
-                  <RotateCcw className="w-4 h-4 mr-1.5 shrink-0" />
-                  <span>Xóa bộ lọc tìm kiếm</span>
-                </Button>
+                  <RotateCcw className="w-4 h-4 shrink-0" />
+                  <span className="whitespace-nowrap">Xóa bộ lọc tìm kiếm</span>
+                </button>
               ) : (
-                <Button
+                <button
                   type="button"
-                  variant="primary"
                   onClick={handleOpenCreateModal}
-                  className="cursor-pointer"
+                  className="inline-flex flex-row items-center justify-center gap-2 h-10 px-4 text-sm font-semibold bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg transition-colors cursor-pointer shrink-0 whitespace-nowrap shadow-sm"
                 >
-                  <Plus className="w-4 h-4 mr-1.5 shrink-0" />
-                  <span>Tạo danh mục đầu tiên</span>
-                </Button>
+                  <Plus className="w-4 h-4 shrink-0" />
+                  <span className="whitespace-nowrap">Tạo danh mục đầu tiên</span>
+                </button>
               )}
             </div>
           ) : (

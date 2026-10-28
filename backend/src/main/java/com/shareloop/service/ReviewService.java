@@ -229,4 +229,113 @@ public class ReviewService {
 
         reviewRepository.saveAndFlush(review);
     }
+
+    private static final java.util.Set<String> ALLOWED_REVIEW_SORT_FIELDS = java.util.Set.of(
+            "createdat",
+            "rating",
+            "ishidden"
+    );
+
+    /**
+     * Admin: Paginated review listing with optional isHidden and rating filters, search, and deterministic sorting.
+     */
+    @Transactional(readOnly = true)
+    public Page<AdminReviewResponse> getAdminReviews(
+            Boolean isHidden,
+            Integer rating,
+            String search,
+            int page,
+            int size,
+            String sortBy,
+            String sortDirection,
+            UserPrincipal principal
+    ) {
+        if (principal == null || principal.getRole() != UserRole.ADMIN) {
+            throw new AccessDeniedException("Administrator role is required to list reviews");
+        }
+
+        validatePagination(page, size);
+
+        if (rating != null && (rating < 1 || rating > 5)) {
+            throw new IllegalArgumentException("Rating filter must be between 1 and 5");
+        }
+
+        String property = resolveSortProperty(sortBy);
+        Sort.Direction direction = "asc".equalsIgnoreCase(sortDirection) ? Sort.Direction.ASC : Sort.Direction.DESC;
+        Sort sort = Sort.by(direction, property).and(Sort.by(Sort.Direction.DESC, "id"));
+        Pageable pageable = PageRequest.of(page, size, sort);
+
+        org.springframework.data.jpa.domain.Specification<Review> spec =
+                com.shareloop.repository.specification.ReviewSpecification.filterAdminReviews(isHidden, rating, search);
+
+        Page<Review> reviews = reviewRepository.findAll(spec, pageable);
+        return reviews.map(AdminReviewResponse::fromEntity);
+    }
+
+    /**
+     * Admin: Retrieve review details by ID including moderation metadata.
+     */
+    @Transactional(readOnly = true)
+    public AdminReviewResponse getAdminReviewDetails(UUID reviewId, UserPrincipal principal) {
+        if (principal == null || principal.getRole() != UserRole.ADMIN) {
+            throw new AccessDeniedException("Administrator role is required to view review details");
+        }
+
+        Review review = reviewRepository.findWithDetailsById(reviewId)
+                .orElseThrow(() -> new ResourceNotFoundException("Review not found with id: " + reviewId));
+
+        return AdminReviewResponse.fromEntity(review);
+    }
+
+    /**
+     * Admin: Restore a hidden review.
+     * Sets isHidden = false and clears moderatedBy, moderatedAt, and moderationReason as required by DB trigger.
+     * Operation is idempotent; restoring an already visible review returns successfully.
+     */
+    @Transactional
+    public AdminReviewResponse restoreReview(UUID reviewId, UserPrincipal principal) {
+        if (principal == null || principal.getRole() != UserRole.ADMIN) {
+            throw new AccessDeniedException("Administrator role is required to restore reviews");
+        }
+
+        Review review = reviewRepository.findWithDetailsById(reviewId)
+                .orElseThrow(() -> new ResourceNotFoundException("Review not found with id: " + reviewId));
+
+        if (!Boolean.TRUE.equals(review.getIsHidden())) {
+            // Already active / visible: return idempotent response
+            return AdminReviewResponse.fromEntity(review);
+        }
+
+        review.setIsHidden(false);
+        review.setModeratedBy(null);
+        review.setModeratedAt(null);
+        review.setModerationReason(null);
+
+        Review savedReview = reviewRepository.saveAndFlush(review);
+        return AdminReviewResponse.fromEntity(savedReview);
+    }
+
+    private void validatePagination(int page, int size) {
+        if (page < 0) {
+            throw new IllegalArgumentException("Page index must not be less than zero");
+        }
+        if (size < 1 || size > 100) {
+            throw new IllegalArgumentException("Page size must be between 1 and 100");
+        }
+    }
+
+    private String resolveSortProperty(String sortBy) {
+        if (sortBy == null || sortBy.isBlank()) {
+            return "createdAt";
+        }
+        String normalized = sortBy.trim().toLowerCase(java.util.Locale.ROOT);
+        if (!ALLOWED_REVIEW_SORT_FIELDS.contains(normalized)) {
+            throw new IllegalArgumentException("Invalid sort field: " + sortBy);
+        }
+        return switch (normalized) {
+            case "rating" -> "rating";
+            case "ishidden" -> "isHidden";
+            default -> "createdAt";
+        };
+    }
 }
