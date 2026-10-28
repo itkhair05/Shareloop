@@ -11,3 +11,4 @@ export * from './notification';
 export * from './support';
 export * from './report';
 export * from './admin';
+export * from './admin-user';

@@ -9,6 +9,7 @@ import { HomePage } from '@/features/home/HomePage';
 import { ExplorePlaceholderPage } from '@/features/explore/ExplorePlaceholderPage';
 import { AboutPage } from '@/features/about/AboutPage';
 import { AdminOverviewPage } from '@/features/admin/AdminOverviewPage';
+import { AdminUsersPage } from '@/features/admin/AdminUsersPage';
 import { AdminCategoriesPage } from '@/features/admin/AdminCategoriesPage';
 import { AdminReviewsPage } from '@/features/admin/AdminReviewsPage';
 import { NotFoundPage } from '@/features/not-found/NotFoundPage';
@@ -29,6 +30,7 @@ const testRoutes = [
     element: <AdminLayout />,
     children: [
       { index: true, element: <AdminOverviewPage /> },
+      { path: 'users', element: <AdminUsersPage /> },
       { path: 'categories', element: <AdminCategoriesPage /> },
       { path: 'reviews', element: <AdminReviewsPage /> },
     ],
@@ -74,9 +76,19 @@ describe('Application Routing', () => {
 
     renderWithProviders(<RouterProvider router={memoryRouter} />, { withRouter: false });
     expect(screen.getByRole('heading', { name: 'Bảng điều khiển quản trị' })).toBeInTheDocument();
+    expect(screen.getByText('Quản lý người dùng')).toBeInTheDocument();
     expect(screen.getByText('Quản lý phân cấp danh mục')).toBeInTheDocument();
     expect(screen.getByText('Kiểm duyệt đánh giá')).toBeInTheDocument();
     expect(screen.getByText(/quay lại ứng dụng chính/i)).toBeInTheDocument();
+  });
+
+  it('renders Admin Users page at /admin/users', () => {
+    const memoryRouter = createMemoryRouter(testRoutes, {
+      initialEntries: ['/admin/users'],
+    });
+
+    renderWithProviders(<RouterProvider router={memoryRouter} />, { withRouter: false });
+    expect(screen.getByRole('heading', { name: 'Quản lý người dùng' })).toBeInTheDocument();
   });
 
   it('renders Admin Categories page at /admin/categories', () => {

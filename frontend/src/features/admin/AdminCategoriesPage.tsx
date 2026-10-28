@@ -407,7 +407,7 @@ export function AdminCategoriesPage() {
                           <button
                             type="button"
                             onClick={() => handleOpenEditModal(cat)}
-                            className="inline-flex flex-row items-center justify-center gap-1.5 h-8 px-2.5 text-xs font-medium text-slate-700 hover:text-slate-900 hover:bg-slate-100 rounded-lg transition-colors cursor-pointer shrink-0"
+                            className="inline-flex flex-row items-center justify-center gap-1.5 h-8 px-2.5 text-xs font-medium text-slate-700 hover:text-slate-900 hover:bg-slate-100 rounded-lg transition-colors cursor-pointer shrink-0 whitespace-nowrap"
                             aria-label={`Chỉnh sửa danh mục ${cat.name}`}
                           >
                             <Pencil className="w-3.5 h-3.5 shrink-0" />
@@ -418,7 +418,7 @@ export function AdminCategoriesPage() {
                           <button
                             type="button"
                             onClick={() => setCategoryToToggle(cat)}
-                            className={`inline-flex flex-row items-center justify-center gap-1.5 h-8 px-2.5 text-xs font-medium rounded-lg transition-colors cursor-pointer shrink-0 ${
+                            className={`inline-flex flex-row items-center justify-center gap-1.5 h-8 px-2.5 text-xs font-medium rounded-lg transition-colors cursor-pointer shrink-0 whitespace-nowrap ${
                               cat.isActive
                                 ? 'text-amber-700 hover:text-amber-800 hover:bg-amber-50'
                                 : 'text-emerald-700 hover:text-emerald-800 hover:bg-emerald-50 border border-emerald-300'

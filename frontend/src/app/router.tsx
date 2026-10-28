@@ -21,6 +21,7 @@ import { LoginPage } from '@/features/auth/pages/LoginPage';
 import { RegisterPage } from '@/features/auth/pages/RegisterPage';
 import { ProtectedRoute } from '@/features/auth/components/ProtectedRoute';
 import { AdminOverviewPage } from '@/features/admin/AdminOverviewPage';
+import { AdminUsersPage } from '@/features/admin/AdminUsersPage';
 import { AdminCategoriesPage } from '@/features/admin/AdminCategoriesPage';
 import { AdminReviewsPage } from '@/features/admin/AdminReviewsPage';
 import { NotFoundPage } from '@/features/not-found/NotFoundPage';
@@ -154,6 +155,10 @@ export const router = createBrowserRouter([
       {
         index: true,
         element: <AdminOverviewPage />,
+      },
+      {
+        path: 'users',
+        element: <AdminUsersPage />,
       },
       {
         path: 'categories',

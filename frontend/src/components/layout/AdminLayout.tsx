@@ -5,6 +5,7 @@ import {
   FolderTree,
   MessageSquareWarning,
   LayoutDashboard,
+  Users,
   ArrowLeft,
   Menu,
   X,
@@ -30,6 +31,12 @@ export function AdminLayout() {
       label: 'Tổng quan quản trị',
       icon: LayoutDashboard,
       end: true,
+    },
+    {
+      to: '/admin/users',
+      label: 'Quản lý người dùng',
+      icon: Users,
+      end: false,
     },
     {
       to: '/admin/categories',
