@@ -19,6 +19,8 @@ import { MessagesPage } from '@/features/chat';
 import { MyProfilePage, PublicProfilePage } from '@/features/profile';
 import { LoginPage } from '@/features/auth/pages/LoginPage';
 import { RegisterPage } from '@/features/auth/pages/RegisterPage';
+import { ForgotPasswordPage } from '@/features/auth/pages/ForgotPasswordPage';
+import { ResetPasswordPage } from '@/features/auth/pages/ResetPasswordPage';
 import { ProtectedRoute } from '@/features/auth/components/ProtectedRoute';
 import { AdminOverviewPage } from '@/features/admin/AdminOverviewPage';
 import { AdminListingsPage } from '@/features/admin/AdminListingsPage';
@@ -135,6 +137,14 @@ export const router = createBrowserRouter([
       {
         path: 'register',
         element: <RegisterPage />,
+      },
+      {
+        path: 'forgot-password',
+        element: <ForgotPasswordPage />,
+      },
+      {
+        path: 'reset-password',
+        element: <ResetPasswordPage />,
       },
       {
         path: '404',

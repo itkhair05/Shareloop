@@ -3,4 +3,6 @@ export { AuthProvider, AuthContext, useAuth, type AuthContextValue } from './con
 export { ProtectedRoute, type ProtectedRouteProps } from './components/ProtectedRoute';
 export { LoginPage } from './pages/LoginPage';
 export { RegisterPage } from './pages/RegisterPage';
+export { ForgotPasswordPage } from './pages/ForgotPasswordPage';
+export { ResetPasswordPage } from './pages/ResetPasswordPage';
 export * from './schemas/auth-schemas';

@@ -1,5 +1,13 @@
 import { apiClient } from '@/lib/api-client';
-import type { AuthResponse, LoginRequest, RegisterRequest, UserProfile } from '@/types/auth';
+import type {
+  AuthResponse,
+  ForgotPasswordRequest,
+  LoginRequest,
+  MessageResponse,
+  RegisterRequest,
+  ResetPasswordRequest,
+  UserProfile,
+} from '@/types/auth';
 
 /**
  * Authentication API Service
@@ -25,6 +33,20 @@ export const authApi = {
    */
   async getCurrentUser(): Promise<UserProfile> {
     return apiClient.get<UserProfile>('/api/v1/auth/me');
+  },
+
+  /**
+   * Request password reset link to be sent via email
+   */
+  async forgotPassword(data: ForgotPasswordRequest): Promise<MessageResponse> {
+    return apiClient.post<MessageResponse, ForgotPasswordRequest>('/api/v1/auth/forgot-password', data);
+  },
+
+  /**
+   * Reset user password using the one-time token
+   */
+  async resetPassword(data: ResetPasswordRequest): Promise<MessageResponse> {
+    return apiClient.post<MessageResponse, ResetPasswordRequest>('/api/v1/auth/reset-password', data);
   },
 };
 

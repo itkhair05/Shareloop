@@ -148,6 +148,16 @@ export function LoginPage() {
                 {...register('password')}
               />
 
+              {/* Forgot Password Link */}
+              <div className="flex items-center justify-end">
+                <Link
+                  to="/forgot-password"
+                  className="text-xs font-medium text-emerald-600 hover:text-emerald-700 hover:underline focus:outline-none focus:ring-2 focus:ring-emerald-500 rounded"
+                >
+                  Quên mật khẩu?
+                </Link>
+              </div>
+
               {/* Submit Button */}
               <Button
                 type="submit"

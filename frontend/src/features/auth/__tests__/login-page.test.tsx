@@ -31,6 +31,7 @@ describe('LoginPage', () => {
     expect(screen.getByLabelText(/^mật khẩu$/i)).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /đăng nhập/i })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /hiện mật khẩu/i })).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: /quên mật khẩu\?/i })).toHaveAttribute('href', '/forgot-password');
     expect(screen.getByRole('link', { name: /đăng ký tài khoản mới/i })).toHaveAttribute('href', '/register');
   });
 

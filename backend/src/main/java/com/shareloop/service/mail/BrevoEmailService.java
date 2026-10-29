@@ -2,6 +2,7 @@ package com.shareloop.service.mail;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatusCode;
@@ -25,23 +26,27 @@ public class BrevoEmailService implements EmailService {
     private final MailProperties mailProperties;
     private final RestClient restClient;
 
-    public BrevoEmailService(MailProperties mailProperties, RestClient.Builder restClientBuilder) {
-        this(mailProperties, createDefaultRestClient(mailProperties, restClientBuilder));
+    // Constructor 1: Dành cho Spring Boot (chỉ cần MailProperties)
+    @Autowired
+    public BrevoEmailService(MailProperties mailProperties) {
+        this.mailProperties = mailProperties;
+        this.restClient = createDefaultRestClient(mailProperties);
     }
 
+    // Constructor 2: Dành riêng cho Unit Test (package-private, không public)
     BrevoEmailService(MailProperties mailProperties, RestClient restClient) {
         this.mailProperties = mailProperties;
         this.restClient = restClient;
     }
 
-    private static RestClient createDefaultRestClient(MailProperties mailProperties, RestClient.Builder restClientBuilder) {
+    private static RestClient createDefaultRestClient(MailProperties mailProperties) {
         int timeoutSeconds = Math.max(1, mailProperties.getBrevo().getTimeoutSeconds());
         SimpleClientHttpRequestFactory requestFactory = new SimpleClientHttpRequestFactory();
         requestFactory.setConnectTimeout(Duration.ofSeconds(timeoutSeconds));
         requestFactory.setReadTimeout(Duration.ofSeconds(timeoutSeconds));
 
         String apiUrl = mailProperties.getBrevo().getApiUrl();
-        return restClientBuilder
+        return RestClient.builder()
                 .baseUrl(apiUrl != null && !apiUrl.isBlank() ? apiUrl : "https://api.brevo.com/v3/smtp/email")
                 .requestFactory(requestFactory)
                 .defaultHeader(HttpHeaders.CONTENT_TYPE, MediaType.APPLICATION_JSON_VALUE)
@@ -71,8 +76,7 @@ public class BrevoEmailService implements EmailService {
                 List.of(new BrevoRecipient(safeName, toEmail)),
                 RESET_PASSWORD_SUBJECT,
                 htmlContent,
-                textContent
-        );
+                textContent);
 
         try {
             restClient.post()
@@ -81,14 +85,16 @@ public class BrevoEmailService implements EmailService {
                     .retrieve()
                     .onStatus(HttpStatusCode::isError, (request, response) -> {
                         int status = response.getStatusCode().value();
-                        log.error("Brevo transactional email API returned error status: {} for recipient domain {}", status, safeDomain);
+                        log.error("Brevo transactional email API returned error status: {} for recipient domain {}",
+                                status, safeDomain);
                         throw new RuntimeException("Brevo API returned error HTTP status: " + status);
                     })
                     .toBodilessEntity();
 
             log.info("Successfully dispatched password reset email via Brevo API for recipient domain {}", safeDomain);
         } catch (Exception e) {
-            log.error("Failed to deliver transactional password reset email via Brevo for domain {}: {}", safeDomain, e.getMessage());
+            log.error("Failed to deliver transactional password reset email via Brevo for domain {}: {}", safeDomain,
+                    e.getMessage());
             throw new RuntimeException("Email delivery failed via Brevo", e);
         }
     }
@@ -172,7 +178,8 @@ public class BrevoEmailService implements EmailService {
     }
 
     private String escapeHtml(String input) {
-        if (input == null) return "";
+        if (input == null)
+            return "";
         return input.replace("&", "&amp;")
                 .replace("<", "&lt;")
                 .replace(">", "&gt;")
@@ -193,9 +200,12 @@ public class BrevoEmailService implements EmailService {
             List<BrevoRecipient> to,
             String subject,
             String htmlContent,
-            String textContent
-    ) {}
+            String textContent) {
+    }
 
-    record BrevoSender(String name, String email) {}
-    record BrevoRecipient(String name, String email) {}
+    record BrevoSender(String name, String email) {
+    }
+
+    record BrevoRecipient(String name, String email) {
+    }
 }

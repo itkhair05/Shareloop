@@ -40,3 +40,31 @@ export const registerSchema = z
   });
 
 export type RegisterFormData = z.infer<typeof registerSchema>;
+
+export const forgotPasswordSchema = z.object({
+  email: z
+    .string()
+    .min(1, 'Vui lòng nhập địa chỉ email')
+    .email('Vui lòng nhập địa chỉ email hợp lệ')
+    .max(255, 'Email không được vượt quá 255 ký tự'),
+});
+
+export type ForgotPasswordFormData = z.infer<typeof forgotPasswordSchema>;
+
+export const resetPasswordSchema = z
+  .object({
+    password: z
+      .string()
+      .min(1, 'Vui lòng nhập mật khẩu mới')
+      .min(8, 'Mật khẩu phải có ít nhất 8 ký tự')
+      .max(100, 'Mật khẩu không được vượt quá 100 ký tự'),
+    confirmPassword: z
+      .string()
+      .min(1, 'Vui lòng xác nhận mật khẩu mới'),
+  })
+  .refine((data) => data.password === data.confirmPassword, {
+    message: 'Mật khẩu xác nhận không khớp',
+    path: ['confirmPassword'],
+  });
+
+export type ResetPasswordFormData = z.infer<typeof resetPasswordSchema>;
