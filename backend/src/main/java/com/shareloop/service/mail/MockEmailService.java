@@ -20,6 +20,7 @@ public class MockEmailService implements EmailService {
     private final MailProperties mailProperties;
     private final List<SentResetEmail> sentEmails = new CopyOnWriteArrayList<>();
     private volatile boolean shouldFail = false;
+    private volatile java.util.function.Consumer<String> onBeforeSendCallback = null;
 
     public MockEmailService(MailProperties mailProperties) {
         this.mailProperties = mailProperties;
@@ -27,13 +28,22 @@ public class MockEmailService implements EmailService {
 
     @Override
     public void sendPasswordResetEmail(String toEmail, String recipientName, String resetToken) {
+        sendPasswordResetEmail(toEmail, recipientName, resetToken, 15);
+    }
+
+    @Override
+    public void sendPasswordResetEmail(String toEmail, String recipientName, String resetToken, int expirationMinutes) {
+        if (onBeforeSendCallback != null) {
+            onBeforeSendCallback.accept(toEmail);
+        }
+
         if (shouldFail) {
             log.error("Simulated email delivery failure for recipient domain {}", getDomain(toEmail));
             throw new RuntimeException("Simulated email service delivery failure");
         }
 
         String resetUrl = mailProperties.getFrontendBaseUrl() + "/reset-password?token=" + resetToken;
-        SentResetEmail record = new SentResetEmail(toEmail, recipientName, resetToken, resetUrl, Instant.now());
+        SentResetEmail record = new SentResetEmail(toEmail, recipientName, resetToken, resetUrl, expirationMinutes, Instant.now());
         sentEmails.add(record);
 
         // Intentionally do NOT log raw resetToken or resetUrl at INFO/WARN
@@ -61,10 +71,15 @@ public class MockEmailService implements EmailService {
     public void clear() {
         sentEmails.clear();
         shouldFail = false;
+        onBeforeSendCallback = null;
     }
 
     public void setShouldFail(boolean shouldFail) {
         this.shouldFail = shouldFail;
+    }
+
+    public void setOnBeforeSendCallback(java.util.function.Consumer<String> onBeforeSendCallback) {
+        this.onBeforeSendCallback = onBeforeSendCallback;
     }
 
     public record SentResetEmail(
@@ -72,6 +87,7 @@ public class MockEmailService implements EmailService {
             String recipientName,
             String resetToken,
             String resetUrl,
+            int expirationMinutes,
             Instant sentAt
     ) {
     }

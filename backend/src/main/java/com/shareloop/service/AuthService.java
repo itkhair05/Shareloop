@@ -58,7 +58,7 @@ public class AuthService {
     private final ForgotPasswordRateLimiter forgotPasswordRateLimiter;
     private final RateLimitProperties rateLimitProperties;
     private final Clock clock;
-    private final SecureRandom secureRandom = new SecureRandom();
+    private final PasswordResetTokenService passwordResetTokenService;
 
     public AuthService(
             UserRepository userRepository,
@@ -68,7 +68,8 @@ public class AuthService {
             EmailService emailService,
             ForgotPasswordRateLimiter forgotPasswordRateLimiter,
             RateLimitProperties rateLimitProperties,
-            Clock clock
+            Clock clock,
+            PasswordResetTokenService passwordResetTokenService
     ) {
         this.userRepository = userRepository;
         this.passwordEncoder = passwordEncoder;
@@ -78,6 +79,7 @@ public class AuthService {
         this.forgotPasswordRateLimiter = forgotPasswordRateLimiter;
         this.rateLimitProperties = rateLimitProperties;
         this.clock = clock;
+        this.passwordResetTokenService = passwordResetTokenService;
     }
 
     @Transactional
@@ -188,8 +190,8 @@ public class AuthService {
     /**
      * Handles forgot password requests with IP/Email rate limiting and privacy-safe generic response.
      * Enforces single-use token lifecycle: issuing a new token invalidates previous unused tokens for the user.
+     * Token preparation is committed in a short transaction before the external email delivery call.
      */
-    @Transactional
     public MessageResponse forgotPassword(ForgotPasswordRequest request, String clientIp) {
         // 1. Normalize target email
         String normalizedEmail = request != null && request.getEmail() != null
@@ -199,49 +201,29 @@ public class AuthService {
         // 2. Enforce IP rate limit and email rate limit atomically before any DB account lookup or email provider execution
         forgotPasswordRateLimiter.checkRateLimitAndRecord(clientIp, normalizedEmail);
 
-        // 3. Look up account
-        Optional<User> userOpt = userRepository.findByEmail(normalizedEmail);
-        if (userOpt.isEmpty()) {
-            // Non-existent email: return identical generic response
+        // 3. Prepare token in a short committed transaction (user row locked only during this preparation)
+        Optional<PasswordResetTokenService.PreparedResetToken> preparedOpt =
+                passwordResetTokenService.preparePasswordResetToken(normalizedEmail);
+
+        if (preparedOpt.isEmpty()) {
+            // Non-existent email or inactive account: return identical generic response
             return new MessageResponse(FORGOT_PASSWORD_GENERIC_MESSAGE);
         }
 
-        User user = userOpt.get();
+        PasswordResetTokenService.PreparedResetToken prepared = preparedOpt.get();
 
-        // 5. Check account status: do not leak status via response, but do not send reset link if suspended/deactivated
-        if (user.getStatus() != UserStatus.ACTIVE) {
-            log.warn("Forgot password requested for inactive user id '{}' with status '{}'", user.getId(), user.getStatus());
-            return new MessageResponse(FORGOT_PASSWORD_GENERIC_MESSAGE);
-        }
-
-        // 6. Lock user row to serialize concurrent reset requests for the same account
-        User lockedUser = userRepository.findByIdForUpdate(user.getId()).orElse(user);
-
-        // 7. Invalidate prior unused tokens for this account
-        Instant now = clock.instant();
-        passwordResetTokenRepository.invalidatePreviousTokensForUser(lockedUser.getId(), now);
-
-        // 8. Generate 32 cryptographically secure random bytes encoded as URL-safe Base64
-        byte[] randomBytes = new byte[32];
-        secureRandom.nextBytes(randomBytes);
-        String rawToken = Base64.getUrlEncoder().withoutPadding().encodeToString(randomBytes);
-        String tokenHash = hashToken(rawToken);
-
-        int expirationMinutes = rateLimitProperties != null && rateLimitProperties.getResetTokenExpirationMinutes() > 0
-                ? rateLimitProperties.getResetTokenExpirationMinutes()
-                : 15;
-        Instant expiresAt = now.plus(expirationMinutes, ChronoUnit.MINUTES);
-
-        PasswordResetToken resetToken = new PasswordResetToken(lockedUser, tokenHash, expiresAt, now);
-        passwordResetTokenRepository.saveAndFlush(resetToken);
-
-        // 9. Dispatch reset email via email provider abstraction
+        // 4. Dispatch reset email outside database transaction and without holding user row lock
         try {
-            emailService.sendPasswordResetEmail(lockedUser.getEmail(), lockedUser.getDisplayName(), rawToken);
+            emailService.sendPasswordResetEmail(
+                    prepared.email(),
+                    prepared.displayName(),
+                    prepared.rawToken(),
+                    prepared.expirationMinutes()
+            );
         } catch (Exception e) {
             log.error("Failed to deliver password reset email: {}", e.getMessage());
-            // Provider-failure policy: invalidate specifically the token associated with this failed delivery
-            passwordResetTokenRepository.invalidateTokenById(resetToken.getId(), clock.instant());
+            // Provider-failure policy: compensating transaction invalidates specifically this token
+            passwordResetTokenService.invalidateFailedToken(prepared.tokenId());
         }
 
         return new MessageResponse(FORGOT_PASSWORD_GENERIC_MESSAGE);
@@ -289,12 +271,6 @@ public class AuthService {
     }
 
     private String hashToken(String rawToken) {
-        try {
-            MessageDigest digest = MessageDigest.getInstance("SHA-256");
-            byte[] hashBytes = digest.digest(rawToken.getBytes(StandardCharsets.UTF_8));
-            return HexFormat.of().formatHex(hashBytes);
-        } catch (NoSuchAlgorithmException e) {
-            throw new RuntimeException("SHA-256 algorithm not available", e);
-        }
+        return passwordResetTokenService.hashToken(rawToken);
     }
 }

@@ -56,6 +56,11 @@ public class BrevoEmailService implements EmailService {
 
     @Override
     public void sendPasswordResetEmail(String toEmail, String recipientName, String resetToken) {
+        sendPasswordResetEmail(toEmail, recipientName, resetToken, 15);
+    }
+
+    @Override
+    public void sendPasswordResetEmail(String toEmail, String recipientName, String resetToken, int expirationMinutes) {
         String safeDomain = getDomain(toEmail);
         String apiKey = mailProperties.getBrevo().getApiKey();
 
@@ -64,12 +69,13 @@ public class BrevoEmailService implements EmailService {
             throw new IllegalStateException("Brevo API key is missing or unconfigured");
         }
 
+        int effectiveMinutes = expirationMinutes > 0 ? expirationMinutes : 15;
         String encodedToken = URLEncoder.encode(resetToken, StandardCharsets.UTF_8);
         String resetUrl = mailProperties.getFrontendBaseUrl() + "/reset-password?token=" + encodedToken;
 
         String safeName = recipientName != null && !recipientName.isBlank() ? recipientName.trim() : "bạn";
-        String htmlContent = buildHtmlTemplate(safeName, resetUrl);
-        String textContent = buildPlainTextTemplate(safeName, resetUrl);
+        String htmlContent = buildHtmlTemplate(safeName, resetUrl, effectiveMinutes);
+        String textContent = buildPlainTextTemplate(safeName, resetUrl, effectiveMinutes);
 
         BrevoEmailPayload payload = new BrevoEmailPayload(
                 new BrevoSender(mailProperties.getBrevo().getSenderName(), mailProperties.getBrevo().getSenderEmail()),
@@ -100,8 +106,13 @@ public class BrevoEmailService implements EmailService {
     }
 
     String buildHtmlTemplate(String recipientName, String resetUrl) {
+        return buildHtmlTemplate(recipientName, resetUrl, 15);
+    }
+
+    String buildHtmlTemplate(String recipientName, String resetUrl, int expirationMinutes) {
         String escapedName = escapeHtml(recipientName);
         String escapedUrl = escapeHtml(resetUrl);
+        int minutes = expirationMinutes > 0 ? expirationMinutes : 15;
 
         return """
                 <!DOCTYPE html>
@@ -139,7 +150,7 @@ public class BrevoEmailService implements EmailService {
                                 <a href="{{RESET_URL}}" class="btn" target="_blank">Đặt lại mật khẩu</a>
                             </div>
                             <div class="notice-box">
-                                <strong>Lưu ý bảo mật:</strong> Liên kết này chỉ có hiệu lực trong vòng <strong>15 phút</strong>. Sau thời gian này, bạn sẽ cần gửi lại yêu cầu mới.
+                                <strong>Lưu ý bảo mật:</strong> Liên kết này chỉ có hiệu lực trong vòng <strong>{{EXPIRATION_MINUTES}} phút</strong>. Sau thời gian này, bạn sẽ cần gửi lại yêu cầu mới.
                             </div>
                             <p style="font-size: 14px; color: #64748b;">Nếu nút trên không hoạt động, bạn có thể sao chép và dán liên kết sau vào trình duyệt:</p>
                             <div class="link-fallback">
@@ -148,7 +159,7 @@ public class BrevoEmailService implements EmailService {
                             <p style="margin-top: 32px; font-size: 14px; color: #64748b;">Nếu bạn không thực hiện yêu cầu này, vui lòng bỏ qua email. Mật khẩu của bạn vẫn sẽ được giữ an toàn tuyệt đối.</p>
                         </div>
                         <div class="footer">
-                            <p>© 2026 ShareLoop. Nền tảng chia sẻ đồ dùng học tập sinh viên bền vững.</p>
+                            <p>© 2026 ShareLoop. Nền tảng chia sẻ đồ dùng bền vững.</p>
                             <p>Đây là email tự động, vui lòng không phản hồi trực tiếp vào địa chỉ này.</p>
                         </div>
                     </div>
@@ -156,10 +167,16 @@ public class BrevoEmailService implements EmailService {
                 </html>
                 """
                 .replace("{{RECIPIENT_NAME}}", escapedName)
-                .replace("{{RESET_URL}}", escapedUrl);
+                .replace("{{RESET_URL}}", escapedUrl)
+                .replace("{{EXPIRATION_MINUTES}}", String.valueOf(minutes));
     }
 
     String buildPlainTextTemplate(String recipientName, String resetUrl) {
+        return buildPlainTextTemplate(recipientName, resetUrl, 15);
+    }
+
+    String buildPlainTextTemplate(String recipientName, String resetUrl, int expirationMinutes) {
+        int minutes = expirationMinutes > 0 ? expirationMinutes : 15;
         return """
                 Xin chào {{RECIPIENT_NAME}},
 
@@ -167,14 +184,15 @@ public class BrevoEmailService implements EmailService {
                 Vui lòng truy cập liên kết sau để tạo mật khẩu mới:
                 {{RESET_URL}}
 
-                Lưu ý: Liên kết chỉ có hiệu lực trong vòng 15 phút.
+                Lưu ý: Liên kết chỉ có hiệu lực trong vòng {{EXPIRATION_MINUTES}} phút.
                 Nếu bạn không thực hiện yêu cầu này, vui lòng bỏ qua email. Mật khẩu hiện tại của bạn vẫn an toàn.
 
                 Trân trọng,
                 Đội ngũ ShareLoop
                 """
                 .replace("{{RECIPIENT_NAME}}", recipientName)
-                .replace("{{RESET_URL}}", resetUrl);
+                .replace("{{RESET_URL}}", resetUrl)
+                .replace("{{EXPIRATION_MINUTES}}", String.valueOf(minutes));
     }
 
     private String escapeHtml(String input) {

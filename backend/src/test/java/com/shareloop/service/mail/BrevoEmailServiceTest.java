@@ -105,4 +105,43 @@ class BrevoEmailServiceTest {
                 .isInstanceOf(IllegalStateException.class)
                 .hasMessageContaining("Brevo API key is missing or unconfigured");
     }
+
+    @Test
+    @DisplayName("Default configured expiration lifetime (15 minutes) is reflected in both HTML and plain-text templates")
+    void defaultLifetimeReflectedInTemplates() {
+        String html = brevoEmailService.buildHtmlTemplate("Nguyen Van A", "https://shareloop.vn/reset-password?token=test");
+        String text = brevoEmailService.buildPlainTextTemplate("Nguyen Van A", "https://shareloop.vn/reset-password?token=test");
+
+        assertThat(html).contains("15 phút");
+        assertThat(text).contains("15 phút");
+    }
+
+    @Test
+    @DisplayName("Custom configured expiration lifetime (30 minutes) is dynamically reflected and replaces default")
+    void customLifetimeReflectedInTemplates() {
+        int customLifetime = 30;
+        String html = brevoEmailService.buildHtmlTemplate("Nguyen Van A", "https://shareloop.vn/reset-password?token=test", customLifetime);
+        String text = brevoEmailService.buildPlainTextTemplate("Nguyen Van A", "https://shareloop.vn/reset-password?token=test", customLifetime);
+
+        assertThat(html)
+                .contains("30 phút")
+                .doesNotContain("15 phút");
+        assertThat(text)
+                .contains("30 phút")
+                .doesNotContain("15 phút");
+    }
+
+    @Test
+    @DisplayName("Dispatched Brevo email contains the configured custom expiration duration in payload")
+    void dispatchesEmailWithCustomExpiration() {
+        mockServer.expect(requestTo(BREVO_API_URL))
+                .andExpect(method(HttpMethod.POST))
+                .andExpect(jsonPath("$.htmlContent").value(org.hamcrest.Matchers.containsString("45 phút")))
+                .andExpect(jsonPath("$.textContent").value(org.hamcrest.Matchers.containsString("45 phút")))
+                .andRespond(withSuccess("{\"messageId\":\"<mock-message-id-45@brevo.com>\"}", MediaType.APPLICATION_JSON));
+
+        brevoEmailService.sendPasswordResetEmail("student@example.com", "Nguyen Van A", "raw-token-45", 45);
+
+        mockServer.verify();
+    }
 }

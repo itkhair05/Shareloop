@@ -85,6 +85,36 @@ public class ProductionConfigurationValidator implements ApplicationRunner {
             );
         }
 
+        // 4. Production must require an absolute HTTPS frontend base URL for reset links
+        String frontendBaseUrl = mailProperties.getFrontendBaseUrl();
+        if (frontendBaseUrl == null || frontendBaseUrl.isBlank()) {
+            throw new IllegalStateException(
+                    "Production environment requires a non-blank frontend base URL (app.mail.frontend-base-url / FRONTEND_BASE_URL)."
+            );
+        }
+        try {
+            java.net.URI uri = java.net.URI.create(frontendBaseUrl.trim());
+            if (!uri.isAbsolute() || uri.getScheme() == null || !"https".equalsIgnoreCase(uri.getScheme())) {
+                throw new IllegalStateException(
+                        "Production frontend base URL must be an absolute URL with HTTPS scheme for secure reset links. Found scheme: " + uri.getScheme()
+                );
+            }
+            if (uri.getHost() == null || uri.getHost().isBlank()) {
+                throw new IllegalStateException(
+                        "Production frontend base URL must have a valid host name."
+                );
+            }
+            if (uri.getUserInfo() != null) {
+                throw new IllegalStateException(
+                        "Production frontend base URL must not contain embedded user credentials."
+                );
+            }
+        } catch (IllegalArgumentException e) {
+            throw new IllegalStateException(
+                    "Production frontend base URL is malformed: " + e.getMessage(), e
+            );
+        }
+
         log.info("Production configuration validation passed successfully.");
     }
 }

@@ -107,12 +107,115 @@ class ProductionConfigurationValidatorTest {
     }
 
     @Test
-    @DisplayName("Production profile with valid Brevo configuration and strong secret passes validation")
+    @DisplayName("Production profile with valid Brevo configuration, strong secret, and HTTPS URL passes validation")
     void productionWithValidConfigPasses() {
         environment.setActiveProfiles("prod");
         mailProperties.setProvider("brevo");
         mailProperties.getBrevo().setApiKey("xkeysib-valid-production-api-key-12345678");
         mailProperties.getBrevo().setSenderEmail("no-reply@shareloop.vn");
+        mailProperties.setFrontendBaseUrl("https://shareloop.vn");
+        rateLimitProperties.setForgotPasswordSecret(STRONG_SECRET);
+
+        assertThatCode(() -> validator.validateConfiguration())
+                .doesNotThrowAnyException();
+    }
+
+    @Test
+    @DisplayName("Production profile with HTTP frontend URL throws IllegalStateException")
+    void productionWithHttpFrontendUrlThrowsIllegalStateException() {
+        environment.setActiveProfiles("prod");
+        mailProperties.setProvider("brevo");
+        mailProperties.getBrevo().setApiKey("xkeysib-valid-production-api-key-12345678");
+        mailProperties.getBrevo().setSenderEmail("no-reply@shareloop.vn");
+        mailProperties.setFrontendBaseUrl("http://shareloop.vn");
+        rateLimitProperties.setForgotPasswordSecret(STRONG_SECRET);
+
+        assertThatThrownBy(() -> validator.validateConfiguration())
+                .isInstanceOf(IllegalStateException.class)
+                .hasMessageContaining("must be an absolute URL with HTTPS scheme");
+    }
+
+    @Test
+    @DisplayName("Production profile with blank frontend URL throws IllegalStateException")
+    void productionWithBlankFrontendUrlThrowsIllegalStateException() {
+        environment.setActiveProfiles("prod");
+        mailProperties.setProvider("brevo");
+        mailProperties.getBrevo().setApiKey("xkeysib-valid-production-api-key-12345678");
+        mailProperties.getBrevo().setSenderEmail("no-reply@shareloop.vn");
+        mailProperties.setFrontendBaseUrl("");
+        rateLimitProperties.setForgotPasswordSecret(STRONG_SECRET);
+
+        assertThatThrownBy(() -> validator.validateConfiguration())
+                .isInstanceOf(IllegalStateException.class)
+                .hasMessageContaining("requires a non-blank frontend base URL");
+    }
+
+    @Test
+    @DisplayName("Production profile with missing scheme in frontend URL throws IllegalStateException")
+    void productionWithMissingSchemeThrowsIllegalStateException() {
+        environment.setActiveProfiles("prod");
+        mailProperties.setProvider("brevo");
+        mailProperties.getBrevo().setApiKey("xkeysib-valid-production-api-key-12345678");
+        mailProperties.getBrevo().setSenderEmail("no-reply@shareloop.vn");
+        mailProperties.setFrontendBaseUrl("shareloop.vn");
+        rateLimitProperties.setForgotPasswordSecret(STRONG_SECRET);
+
+        assertThatThrownBy(() -> validator.validateConfiguration())
+                .isInstanceOf(IllegalStateException.class)
+                .hasMessageContaining("must be an absolute URL with HTTPS scheme");
+    }
+
+    @Test
+    @DisplayName("Production profile with non-HTTPS scheme (ftp) throws IllegalStateException")
+    void productionWithNonHttpsSchemeThrowsIllegalStateException() {
+        environment.setActiveProfiles("prod");
+        mailProperties.setProvider("brevo");
+        mailProperties.getBrevo().setApiKey("xkeysib-valid-production-api-key-12345678");
+        mailProperties.getBrevo().setSenderEmail("no-reply@shareloop.vn");
+        mailProperties.setFrontendBaseUrl("ftp://shareloop.vn");
+        rateLimitProperties.setForgotPasswordSecret(STRONG_SECRET);
+
+        assertThatThrownBy(() -> validator.validateConfiguration())
+                .isInstanceOf(IllegalStateException.class)
+                .hasMessageContaining("must be an absolute URL with HTTPS scheme");
+    }
+
+    @Test
+    @DisplayName("Production profile with user credentials in frontend URL throws IllegalStateException")
+    void productionWithUserInfoInFrontendUrlThrowsIllegalStateException() {
+        environment.setActiveProfiles("prod");
+        mailProperties.setProvider("brevo");
+        mailProperties.getBrevo().setApiKey("xkeysib-valid-production-api-key-12345678");
+        mailProperties.getBrevo().setSenderEmail("no-reply@shareloop.vn");
+        mailProperties.setFrontendBaseUrl("https://admin:secret@shareloop.vn");
+        rateLimitProperties.setForgotPasswordSecret(STRONG_SECRET);
+
+        assertThatThrownBy(() -> validator.validateConfiguration())
+                .isInstanceOf(IllegalStateException.class)
+                .hasMessageContaining("must not contain embedded user credentials");
+    }
+
+    @Test
+    @DisplayName("Production profile with malformed URL throws IllegalStateException")
+    void productionWithMalformedUrlThrowsIllegalStateException() {
+        environment.setActiveProfiles("prod");
+        mailProperties.setProvider("brevo");
+        mailProperties.getBrevo().setApiKey("xkeysib-valid-production-api-key-12345678");
+        mailProperties.getBrevo().setSenderEmail("no-reply@shareloop.vn");
+        mailProperties.setFrontendBaseUrl("https://::invalid::url");
+        rateLimitProperties.setForgotPasswordSecret(STRONG_SECRET);
+
+        assertThatThrownBy(() -> validator.validateConfiguration())
+                .isInstanceOf(IllegalStateException.class)
+                .hasMessageContaining("frontend base URL");
+    }
+
+    @Test
+    @DisplayName("Non-production environment allows local HTTP frontend URL")
+    void nonProductionAllowsLocalHttpFrontendUrl() {
+        environment.setActiveProfiles("dev");
+        mailProperties.setProvider("mock");
+        mailProperties.setFrontendBaseUrl("http://localhost:5173");
         rateLimitProperties.setForgotPasswordSecret(STRONG_SECRET);
 
         assertThatCode(() -> validator.validateConfiguration())
