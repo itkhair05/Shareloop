@@ -1,7 +1,10 @@
 package com.shareloop.service;
 
+import com.shareloop.dto.transaction.AdminTransactionResponse;
 import com.shareloop.dto.transaction.CancelTransactionRequest;
 import com.shareloop.dto.transaction.TransactionResponse;
+import com.shareloop.repository.specification.TransactionSpecification;
+import org.springframework.data.jpa.domain.Specification;
 import com.shareloop.entity.Listing;
 import com.shareloop.entity.ListingRequest;
 import com.shareloop.entity.Transaction;
@@ -313,6 +316,33 @@ public class TransactionService {
         }
 
         return TransactionResponse.fromEntity(saved, principal);
+    }
+
+    /**
+     * List all platform transactions for administrator with optional status filter, keyword search,
+     * deterministic sorting, and pagination.
+     */
+    @Transactional(readOnly = true)
+    public Page<AdminTransactionResponse> getAdminTransactions(
+            TransactionStatus status,
+            String search,
+            int page,
+            int size,
+            UserPrincipal principal
+    ) {
+        if (principal == null || principal.getRole() != UserRole.ADMIN) {
+            throw new AccessDeniedException("Administrator role is required to list transactions");
+        }
+
+        validatePagination(page, size);
+
+        Sort sort = Sort.by(Sort.Direction.DESC, "createdAt").and(Sort.by(Sort.Direction.DESC, "id"));
+        Pageable pageable = PageRequest.of(page, size, sort);
+
+        Specification<Transaction> spec = TransactionSpecification.filterAdminTransactions(status, search);
+
+        Page<Transaction> transactions = transactionRepository.findAll(spec, pageable);
+        return transactions.map(AdminTransactionResponse::fromEntity);
     }
 
     private void validatePagination(int page, int size) {

@@ -11,13 +11,21 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
+import org.springframework.data.jpa.domain.Specification;
+import org.springframework.data.jpa.repository.EntityGraph;
+import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
+
 import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
 @Repository
-public interface TransactionRepository extends JpaRepository<Transaction, UUID> {
+public interface TransactionRepository extends JpaRepository<Transaction, UUID>, JpaSpecificationExecutor<Transaction> {
+
+    @Override
+    @EntityGraph(attributePaths = {"listing", "owner", "requester", "listingRequest", "cancelledBy"})
+    Page<Transaction> findAll(Specification<Transaction> spec, Pageable pageable);
 
     Optional<Transaction> findByListingRequestId(UUID listingRequestId);
 
