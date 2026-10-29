@@ -9,8 +9,11 @@ import com.shareloop.entity.enums.ListingStatus;
 import com.shareloop.entity.enums.ListingType;
 import com.shareloop.entity.enums.TransactionStatus;
 import com.shareloop.entity.enums.UserRole;
+import com.shareloop.entity.ListingCreationEvent;
+import com.shareloop.exception.RateLimitExceededException;
 import com.shareloop.exception.ResourceNotFoundException;
 import com.shareloop.repository.CategoryRepository;
+import com.shareloop.repository.ListingCreationEventRepository;
 import com.shareloop.repository.ListingRepository;
 import com.shareloop.repository.ListingRequestRepository;
 import com.shareloop.repository.TransactionRepository;
@@ -28,6 +31,8 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
 
 import java.math.BigDecimal;
+import java.time.Instant;
+import java.time.temporal.ChronoUnit;
 import java.util.Locale;
 import java.util.Set;
 import java.util.UUID;
@@ -46,19 +51,22 @@ public class ListingService {
     private final UserRepository userRepository;
     private final TransactionRepository transactionRepository;
     private final ListingRequestRepository listingRequestRepository;
+    private final ListingCreationEventRepository listingCreationEventRepository;
 
     public ListingService(
             ListingRepository listingRepository,
             CategoryRepository categoryRepository,
             UserRepository userRepository,
             TransactionRepository transactionRepository,
-            ListingRequestRepository listingRequestRepository
+            ListingRequestRepository listingRequestRepository,
+            ListingCreationEventRepository listingCreationEventRepository
     ) {
         this.listingRepository = listingRepository;
         this.categoryRepository = categoryRepository;
         this.userRepository = userRepository;
         this.transactionRepository = transactionRepository;
         this.listingRequestRepository = listingRequestRepository;
+        this.listingCreationEventRepository = listingCreationEventRepository;
     }
 
     @Transactional(readOnly = true)
@@ -127,8 +135,19 @@ public class ListingService {
             throw new AccessDeniedException("Authentication is required to create a listing");
         }
 
-        User owner = userRepository.findById(principal.getId())
+        User owner = userRepository.findByIdForUpdate(principal.getId())
                 .orElseThrow(() -> new ResourceNotFoundException("User not found with id: " + principal.getId()));
+
+        boolean isAdmin = principal.getRole() == UserRole.ADMIN;
+        Instant now = Instant.now();
+
+        if (!isAdmin) {
+            Instant windowStart = now.minus(24, ChronoUnit.HOURS);
+            long recentCreationCount = listingCreationEventRepository.countByUserIdAndCreatedAtAfter(owner.getId(), windowStart);
+            if (recentCreationCount >= 10) {
+                throw new RateLimitExceededException("Bạn đã đạt giới hạn 10 bài đăng trong 24h. Vui lòng quay lại sau.");
+            }
+        }
 
         Category category = categoryRepository.findById(request.getCategoryId())
                 .orElseThrow(() -> new ResourceNotFoundException("Category not found with id: " + request.getCategoryId()));
@@ -176,6 +195,12 @@ public class ListingService {
         }
 
         Listing saved = listingRepository.save(listing);
+
+        if (!isAdmin) {
+            ListingCreationEvent quotaEvent = new ListingCreationEvent(owner, now);
+            listingCreationEventRepository.save(quotaEvent);
+        }
+
         return ListingResponse.fromEntity(saved);
     }
 
