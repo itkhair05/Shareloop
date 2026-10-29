@@ -27,4 +27,7 @@ public interface ChatMessageRepository extends JpaRepository<ChatMessage, UUID> 
            "  )" +
            ")")
     List<ChatMessage> findLatestMessagesForConversations(@Param("conversationIds") List<UUID> conversationIds);
+
+    @Query("SELECT COUNT(m) FROM ChatMessage m WHERE m.sender.id = :senderId AND m.createdAt >= :since")
+    long countBySenderIdAndCreatedAtAfter(@Param("senderId") UUID senderId, @Param("since") java.time.Instant since);
 }

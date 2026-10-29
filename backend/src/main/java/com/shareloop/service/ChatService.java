@@ -11,6 +11,7 @@ import com.shareloop.entity.ListingRequest;
 import com.shareloop.entity.User;
 import com.shareloop.entity.enums.ListingStatus;
 import com.shareloop.entity.enums.NotificationType;
+import com.shareloop.exception.RateLimitExceededException;
 import com.shareloop.exception.ResourceNotFoundException;
 import com.shareloop.repository.ChatMessageRepository;
 import com.shareloop.repository.ConversationRepository;
@@ -18,6 +19,7 @@ import com.shareloop.repository.ListingRepository;
 import com.shareloop.repository.ListingRequestRepository;
 import com.shareloop.repository.UserRepository;
 import com.shareloop.security.UserPrincipal;
+import com.shareloop.security.ratelimit.RateLimitProperties;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Lazy;
 import org.springframework.dao.DataIntegrityViolationException;
@@ -30,7 +32,9 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.Clock;
 import java.time.Instant;
+import java.time.temporal.ChronoUnit;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -46,6 +50,8 @@ public class ChatService {
     private final ListingRequestRepository listingRequestRepository;
     private final UserRepository userRepository;
     private final NotificationService notificationService;
+    private final RateLimitProperties rateLimitProperties;
+    private final Clock clock;
 
     @Autowired
     @Lazy
@@ -57,7 +63,9 @@ public class ChatService {
             ListingRepository listingRepository,
             ListingRequestRepository listingRequestRepository,
             UserRepository userRepository,
-            NotificationService notificationService
+            NotificationService notificationService,
+            RateLimitProperties rateLimitProperties,
+            Clock clock
     ) {
         this.conversationRepository = conversationRepository;
         this.chatMessageRepository = chatMessageRepository;
@@ -65,6 +73,8 @@ public class ChatService {
         this.listingRequestRepository = listingRequestRepository;
         this.userRepository = userRepository;
         this.notificationService = notificationService;
+        this.rateLimitProperties = rateLimitProperties;
+        this.clock = clock;
     }
 
     /**
@@ -170,7 +180,23 @@ public class ChatService {
 
         String messagePreview = null;
         if (initialMessage != null && !initialMessage.isBlank()) {
-            ChatMessage message = new ChatMessage(savedConversation, requester, initialMessage);
+            User lockedRequester = userRepository.findByIdForUpdate(requesterId).orElse(requester);
+
+            Instant now = clock.instant();
+            int windowSeconds = rateLimitProperties != null && rateLimitProperties.getChatWindowSeconds() > 0
+                    ? rateLimitProperties.getChatWindowSeconds()
+                    : 60;
+            int maxLimit = rateLimitProperties != null && rateLimitProperties.getChatMessageLimit() > 0
+                    ? rateLimitProperties.getChatMessageLimit()
+                    : 20;
+
+            Instant windowStart = now.minus(windowSeconds, ChronoUnit.SECONDS);
+            long recentCount = chatMessageRepository.countBySenderIdAndCreatedAtAfter(lockedRequester.getId(), windowStart);
+            if (recentCount >= maxLimit) {
+                throw new RateLimitExceededException("Bạn đang gửi tin nhắn quá nhanh. Vui lòng chờ trong giây lát.");
+            }
+
+            ChatMessage message = new ChatMessage(savedConversation, lockedRequester, initialMessage);
             ChatMessage savedMessage = chatMessageRepository.saveAndFlush(message);
             savedConversation.setLastMessageAt(savedMessage.getCreatedAt());
             savedConversation = conversationRepository.saveAndFlush(savedConversation);
@@ -270,7 +296,26 @@ public class ChatService {
             throw new AccessDeniedException("Authentication is required to send a message");
         }
 
-        // Lock conversation row for update to serialize concurrent messages and update lastMessageAt atomically
+        // 1. Lock sender user row for update to serialize concurrent rate limit checks across all conversations
+        User sender = userRepository.findByIdForUpdate(principal.getId())
+                .orElseThrow(() -> new ResourceNotFoundException("User not found with id: " + principal.getId()));
+
+        // 2. Enforce chat message rate limit (default 20 messages per 60 seconds rolling window)
+        Instant now = clock.instant();
+        int windowSeconds = rateLimitProperties != null && rateLimitProperties.getChatWindowSeconds() > 0
+                ? rateLimitProperties.getChatWindowSeconds()
+                : 60;
+        int maxLimit = rateLimitProperties != null && rateLimitProperties.getChatMessageLimit() > 0
+                ? rateLimitProperties.getChatMessageLimit()
+                : 20;
+
+        Instant windowStart = now.minus(windowSeconds, ChronoUnit.SECONDS);
+        long recentMessageCount = chatMessageRepository.countBySenderIdAndCreatedAtAfter(sender.getId(), windowStart);
+        if (recentMessageCount >= maxLimit) {
+            throw new RateLimitExceededException("Bạn đang gửi tin nhắn quá nhanh. Vui lòng chờ trong giây lát.");
+        }
+
+        // 3. Lock conversation row for update to serialize concurrent messages and update lastMessageAt atomically
         Conversation conversation = conversationRepository.findByIdForUpdate(conversationId)
                 .orElseThrow(() -> new ResourceNotFoundException("Conversation not found with id: " + conversationId));
 
@@ -289,9 +334,6 @@ public class ChatService {
         if (content.length() > 2000) {
             throw new IllegalArgumentException("Message content cannot exceed 2000 characters");
         }
-
-        User sender = userRepository.findById(principal.getId())
-                .orElseThrow(() -> new ResourceNotFoundException("User not found with id: " + principal.getId()));
 
         ChatMessage message = new ChatMessage(conversation, sender, content);
         ChatMessage savedMessage = chatMessageRepository.saveAndFlush(message);

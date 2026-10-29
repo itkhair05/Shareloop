@@ -62,4 +62,38 @@ public class RateLimitProperties {
     public void setLoginAttemptRetentionHours(int loginAttemptRetentionHours) {
         this.loginAttemptRetentionHours = loginAttemptRetentionHours;
     }
+
+    /**
+     * Maximum chat message-send attempts allowed per user within the rolling window.
+     */
+    private int chatMessageLimit = 20;
+
+    /**
+     * Duration in seconds of the chat message rolling window (default: 60 seconds).
+     */
+    private int chatWindowSeconds = 60;
+
+    public int getChatMessageLimit() {
+        return chatMessageLimit;
+    }
+
+    public void setChatMessageLimit(int chatMessageLimit) {
+        this.chatMessageLimit = chatMessageLimit;
+    }
+
+    public int getChatWindowSeconds() {
+        return chatWindowSeconds;
+    }
+
+    public void setChatWindowSeconds(int chatWindowSeconds) {
+        this.chatWindowSeconds = chatWindowSeconds;
+    }
+
+    public int getChatLimit() {
+        return chatMessageLimit;
+    }
+
+    public void setChatLimit(int chatLimit) {
+        this.chatMessageLimit = chatLimit;
+    }
 }

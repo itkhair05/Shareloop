@@ -55,6 +55,8 @@ app:
       login-limit: ${LOGIN_RATE_LIMIT:5}
       login-window-seconds: ${LOGIN_RATE_LIMIT_WINDOW_SECONDS:60}
       login-attempt-retention-hours: ${LOGIN_RATE_LIMIT_RETENTION_HOURS:24}
+      chat-message-limit: ${CHAT_RATE_LIMIT:20}
+      chat-window-seconds: ${CHAT_RATE_LIMIT_WINDOW_SECONDS:60}
   storage:
     provider: ${STORAGE_PROVIDER:local}
     local:
