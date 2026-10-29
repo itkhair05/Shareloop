@@ -8,8 +8,11 @@ import com.shareloop.dto.auth.UserProfileResponse;
 import com.shareloop.exception.InvalidTokenException;
 import com.shareloop.security.UserPrincipal;
 import com.shareloop.service.AuthService;
+import com.shareloop.security.ratelimit.ClientIpResolver;
+import com.shareloop.security.ratelimit.LoginRateLimiter;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -22,9 +25,17 @@ import org.springframework.web.bind.annotation.*;
 public class AuthController {
 
     private final AuthService authService;
+    private final ClientIpResolver clientIpResolver;
+    private final LoginRateLimiter loginRateLimiter;
 
-    public AuthController(AuthService authService) {
+    public AuthController(
+            AuthService authService,
+            ClientIpResolver clientIpResolver,
+            LoginRateLimiter loginRateLimiter
+    ) {
         this.authService = authService;
+        this.clientIpResolver = clientIpResolver;
+        this.loginRateLimiter = loginRateLimiter;
     }
 
     @PostMapping("/register")
@@ -34,7 +45,12 @@ public class AuthController {
     }
 
     @PostMapping("/login")
-    public ResponseEntity<AuthResponse> login(@Valid @RequestBody LoginRequest request) {
+    public ResponseEntity<AuthResponse> login(
+            @Valid @RequestBody LoginRequest request,
+            HttpServletRequest httpRequest
+    ) {
+        String clientIp = clientIpResolver.resolveClientIp(httpRequest);
+        loginRateLimiter.checkAndRecordAttempt(clientIp);
         AuthResponse response = authService.login(request);
         return ResponseEntity.ok(response);
     }
