@@ -58,6 +58,49 @@ public class ListingSpecification {
         };
     }
 
+    public static Specification<Listing> filterAdminListings(
+            String keyword,
+            ListingStatus status,
+            ListingType type,
+            UUID categoryId,
+            UUID ownerId
+    ) {
+        return (root, query, cb) -> {
+            List<Predicate> predicates = new ArrayList<>();
+
+            // 1. Status filter (optional: when null, returns all statuses)
+            if (status != null) {
+                predicates.add(cb.equal(root.get("status"), status));
+            }
+
+            // 2. Keyword search in title or description with pattern escaping
+            if (StringUtils.hasText(keyword)) {
+                String escaped = escapeLikeWildcards(keyword.trim().toLowerCase(Locale.ROOT));
+                String searchPattern = "%" + escaped + "%";
+                Predicate titleMatch = cb.like(cb.lower(root.get("title")), searchPattern, ESCAPE_CHAR);
+                Predicate descMatch = cb.like(cb.lower(root.get("description")), searchPattern, ESCAPE_CHAR);
+                predicates.add(cb.or(titleMatch, descMatch));
+            }
+
+            // 3. Optional listing type filter
+            if (type != null) {
+                predicates.add(cb.equal(root.get("listingType"), type));
+            }
+
+            // 4. Optional category filter
+            if (categoryId != null) {
+                predicates.add(cb.equal(root.get("category").get("id"), categoryId));
+            }
+
+            // 5. Optional owner filter
+            if (ownerId != null) {
+                predicates.add(cb.equal(root.get("owner").get("id"), ownerId));
+            }
+
+            return predicates.isEmpty() ? cb.conjunction() : cb.and(predicates.toArray(new Predicate[0]));
+        };
+    }
+
     private static String escapeLikeWildcards(String value) {
         if (value == null) {
             return "";

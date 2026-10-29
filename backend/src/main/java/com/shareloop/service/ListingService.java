@@ -25,6 +25,7 @@ import org.springframework.data.jpa.domain.Specification;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.util.StringUtils;
 
 import java.math.BigDecimal;
 import java.util.Locale;
@@ -399,6 +400,96 @@ public class ListingService {
         }
 
         return listings.map(ListingSummaryResponse::fromEntity);
+    }
+
+    private static final Set<String> ALLOWED_ADMIN_SORT_FIELDS = Set.of(
+            "createdat",
+            "updatedat",
+            "title",
+            "price",
+            "status",
+            "listingtype"
+    );
+
+    /**
+     * List all platform listings across all owners for administrator inspection,
+     * supporting filtering by status, keyword, type, category, owner, deterministic sorting, and pagination.
+     */
+    @Transactional(readOnly = true)
+    public Page<ListingResponse> getAdminListings(
+            String keyword,
+            ListingStatus status,
+            ListingType type,
+            UUID categoryId,
+            UUID ownerId,
+            int page,
+            int size,
+            String sortParam,
+            String sortByParam,
+            String sortDirectionParam,
+            UserPrincipal principal
+    ) {
+        if (principal == null || principal.getRole() != UserRole.ADMIN) {
+            throw new AccessDeniedException("Administrator role is required to list platform listings");
+        }
+
+        validatePagination(page, size);
+
+        Sort sort = resolveAdminSort(sortParam, sortByParam, sortDirectionParam);
+        Pageable pageable = PageRequest.of(page, size, sort);
+
+        Specification<Listing> spec = ListingSpecification.filterAdminListings(
+                keyword,
+                status,
+                type,
+                categoryId,
+                ownerId
+        );
+
+        return listingRepository.findAll(spec, pageable).map(ListingResponse::fromEntity);
+    }
+
+    private Sort resolveAdminSort(String sortParam, String sortByParam, String sortDirectionParam) {
+        String property = "createdAt";
+        Sort.Direction direction = Sort.Direction.DESC;
+
+        if (StringUtils.hasText(sortParam)) {
+            String[] parts = sortParam.split(",");
+            property = parts[0].trim();
+            if (parts.length > 1 && StringUtils.hasText(parts[1])) {
+                direction = parseSortDirection(parts[1].trim());
+            }
+        } else if (StringUtils.hasText(sortByParam)) {
+            property = sortByParam.trim();
+            if (StringUtils.hasText(sortDirectionParam)) {
+                direction = parseSortDirection(sortDirectionParam.trim());
+            }
+        }
+
+        String normalized = property.toLowerCase(Locale.ROOT);
+        if (!ALLOWED_ADMIN_SORT_FIELDS.contains(normalized)) {
+            throw new IllegalArgumentException("Invalid sort field: " + property);
+        }
+
+        String entityProperty = switch (normalized) {
+            case "updatedat" -> "updatedAt";
+            case "title" -> "title";
+            case "price" -> "price";
+            case "status" -> "status";
+            case "listingtype" -> "listingType";
+            default -> "createdAt";
+        };
+
+        return Sort.by(direction, entityProperty).and(Sort.by(Sort.Direction.DESC, "id"));
+    }
+
+    private Sort.Direction parseSortDirection(String direction) {
+        if ("asc".equalsIgnoreCase(direction)) {
+            return Sort.Direction.ASC;
+        } else if ("desc".equalsIgnoreCase(direction)) {
+            return Sort.Direction.DESC;
+        }
+        throw new IllegalArgumentException("Invalid sort direction: " + direction + ". Expected 'asc' or 'desc'");
     }
 
     private void validatePagination(int page, int size) {
