@@ -12,6 +12,7 @@ import {
   Menu,
   X,
   LogOut,
+  Package,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Badge } from '@/components/ui/Badge';
@@ -33,6 +34,12 @@ export function AdminLayout() {
       label: 'Tổng quan quản trị',
       icon: LayoutDashboard,
       end: true,
+    },
+    {
+      to: '/admin/listings',
+      label: 'Quản lý tin đăng',
+      icon: Package,
+      end: false,
     },
     {
       to: '/admin/transactions',
