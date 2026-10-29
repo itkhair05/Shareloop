@@ -519,7 +519,8 @@ export function AdminUsersPage() {
             </div>
           ) : (
             <div className="overflow-x-auto" role="region" aria-label="Bảng quản lý người dùng">
-              <table className="w-full text-left border-collapse text-xs min-w-[1000px]">
+              {/* Bỏ min-w-[1000px], dùng w-full để bảng tự co giãn */}
+              <table className="w-full text-left border-collapse text-xs">
                 <thead>
                   <tr className="bg-slate-50/90 text-slate-600 font-semibold border-b border-slate-200">
                     <th scope="col" className="py-3 px-4 whitespace-nowrap">Người dùng</th>
@@ -527,7 +528,8 @@ export function AdminUsersPage() {
                     <th scope="col" className="py-3 px-4 text-center whitespace-nowrap">Vai trò</th>
                     <th scope="col" className="py-3 px-4 text-center whitespace-nowrap">Trạng thái</th>
                     <th scope="col" className="py-3 px-4 hidden lg:table-cell whitespace-nowrap">Ngày tham gia</th>
-                    <th scope="col" className="py-3 px-4 text-right whitespace-nowrap w-[260px] min-w-[260px]">Thao tác</th>
+                    {/* Cột Thao tác thu gọn còn 120px */}
+                    <th scope="col" className="py-3 px-4 text-right whitespace-nowrap w-[120px] min-w-[120px]">Thao tác</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100">
@@ -616,22 +618,21 @@ export function AdminUsersPage() {
                           {formatDateTime(row.createdAt)}
                         </td>
 
-                        {/* Actions */}
-                        <td className="py-3.5 px-4 text-right whitespace-nowrap w-[260px] min-w-[260px]">
+                        {/* Actions - Thu gọn icon */}
+                        <td className="py-3.5 px-4 text-right whitespace-nowrap w-[120px] min-w-[120px]">
                           <div className="flex flex-row flex-nowrap items-center justify-end gap-1.5">
-                            {/* View Details */}
+                            {/* Nút Chi tiết (Icon) */}
                             <button
                               type="button"
                               onClick={() => handleOpenDetail(row.id)}
-                              className="inline-flex items-center gap-1 h-7 px-2 text-xs font-medium text-slate-700 hover:text-slate-900 hover:bg-slate-100 rounded-md transition-colors cursor-pointer shrink-0"
+                              className="inline-flex items-center justify-center w-8 h-8 text-slate-700 hover:text-slate-900 hover:bg-slate-100 rounded-lg transition-colors cursor-pointer shrink-0"
                               title="Xem chi tiết người dùng"
                               aria-label={`Xem chi tiết ${row.displayName}`}
                             >
-                              <Eye className="w-3.5 h-3.5 shrink-0" />
-                              <span className="hidden sm:inline">Chi tiết</span>
+                              <Eye className="w-4 h-4 shrink-0" />
                             </button>
 
-                            {/* Role Actions */}
+                            {/* Nút Cấp Admin / Hạ quyền (Icon) */}
                             {!isSelf && row.status !== 'DEACTIVATED' && (
                               <>
                                 {row.role === 'USER' ? (
@@ -639,84 +640,80 @@ export function AdminUsersPage() {
                                     type="button"
                                     onClick={() => setPendingAction({ type: 'PROMOTE', user: row })}
                                     disabled={isSubmittingMutation}
-                                    className="inline-flex items-center gap-1 h-7 px-2 text-xs font-medium text-emerald-700 hover:text-emerald-800 hover:bg-emerald-50 rounded-md transition-colors cursor-pointer shrink-0 disabled:opacity-50"
+                                    className="inline-flex items-center justify-center w-8 h-8 text-emerald-700 hover:text-emerald-800 hover:bg-emerald-50 rounded-lg transition-colors cursor-pointer shrink-0 disabled:opacity-50"
                                     title="Nâng cấp lên Quản trị viên"
                                     aria-label={`Cấp Admin cho ${row.displayName}`}
                                   >
-                                    <ShieldCheck className="w-3.5 h-3.5 shrink-0" />
-                                    <span>Cấp Admin</span>
+                                    <ShieldCheck className="w-4 h-4 shrink-0" />
                                   </button>
                                 ) : (
                                   <button
                                     type="button"
                                     onClick={() => setPendingAction({ type: 'DEMOTE', user: row })}
                                     disabled={isSubmittingMutation}
-                                    className="inline-flex items-center gap-1 h-7 px-2 text-xs font-medium text-amber-700 hover:text-amber-800 hover:bg-amber-50 rounded-md transition-colors cursor-pointer shrink-0 disabled:opacity-50"
+                                    className="inline-flex items-center justify-center w-8 h-8 text-amber-700 hover:text-amber-800 hover:bg-amber-50 rounded-lg transition-colors cursor-pointer shrink-0 disabled:opacity-50"
                                     title="Hạ quyền xuống Người dùng"
                                     aria-label={`Hạ quyền Admin của ${row.displayName}`}
                                   >
-                                    <ShieldAlert className="w-3.5 h-3.5 shrink-0" />
-                                    <span>Hạ quyền</span>
+                                    <ShieldAlert className="w-4 h-4 shrink-0" />
                                   </button>
                                 )}
                               </>
                             )}
 
-                            {/* Status Actions */}
+                            {/* Nút Khóa / Mở khóa (Icon) */}
                             {!isSelf && row.status !== 'DEACTIVATED' && (
                               <>
-                                {row.status === 'ACTIVE' && (
+                                {row.status === 'ACTIVE' ? (
                                   <button
                                     type="button"
                                     onClick={() => setPendingAction({ type: 'SUSPEND', user: row })}
                                     disabled={isSubmittingMutation}
-                                    className="inline-flex items-center gap-1 h-7 px-2 text-xs font-medium text-amber-700 hover:text-amber-800 hover:bg-amber-50 rounded-md transition-colors cursor-pointer shrink-0 disabled:opacity-50"
+                                    className="inline-flex items-center justify-center w-8 h-8 text-amber-700 hover:text-amber-800 hover:bg-amber-50 rounded-lg transition-colors cursor-pointer shrink-0 disabled:opacity-50"
                                     title="Khóa tài khoản tạm thời"
                                     aria-label={`Khóa tài khoản ${row.displayName}`}
                                   >
-                                    <Lock className="w-3.5 h-3.5 shrink-0" />
-                                    <span>Khóa</span>
+                                    <Lock className="w-4 h-4 shrink-0" />
                                   </button>
-                                )}
-
-                                {row.status === 'SUSPENDED' && (
+                                ) : (
                                   <button
                                     type="button"
                                     onClick={() => setPendingAction({ type: 'ACTIVATE', user: row })}
                                     disabled={isSubmittingMutation}
-                                    className="inline-flex items-center gap-1 h-7 px-2 text-xs font-medium text-emerald-700 hover:text-emerald-800 hover:bg-emerald-50 rounded-md transition-colors cursor-pointer shrink-0 disabled:opacity-50"
+                                    className="inline-flex items-center justify-center w-8 h-8 text-emerald-700 hover:text-emerald-800 hover:bg-emerald-50 rounded-lg transition-colors cursor-pointer shrink-0 disabled:opacity-50"
                                     title="Mở khóa tài khoản"
                                     aria-label={`Mở khóa tài khoản ${row.displayName}`}
                                   >
-                                    <Unlock className="w-3.5 h-3.5 shrink-0" />
-                                    <span>Mở khóa</span>
+                                    <Unlock className="w-4 h-4 shrink-0" />
                                   </button>
                                 )}
-
-                                <button
-                                  type="button"
-                                  onClick={() => setPendingAction({ type: 'DEACTIVATE', user: row })}
-                                  disabled={isSubmittingMutation}
-                                  className="inline-flex items-center gap-1 h-7 px-2 text-xs font-medium text-red-600 hover:text-red-700 hover:bg-red-50 rounded-md transition-colors cursor-pointer shrink-0 disabled:opacity-50"
-                                  title="Vô hiệu hóa vĩnh viễn"
-                                  aria-label={`Vô hiệu hóa tài khoản ${row.displayName}`}
-                                >
-                                  <UserX className="w-3.5 h-3.5 shrink-0" />
-                                  <span>Vô hiệu hóa</span>
-                                </button>
                               </>
+                            )}
+
+                            {/* Nút Vô hiệu hóa (Icon) */}
+                            {!isSelf && row.status !== 'DEACTIVATED' && (
+                              <button
+                                type="button"
+                                onClick={() => setPendingAction({ type: 'DEACTIVATE', user: row })}
+                                disabled={isSubmittingMutation}
+                                className="inline-flex items-center justify-center w-8 h-8 text-red-600 hover:text-red-700 hover:bg-red-50 rounded-lg transition-colors cursor-pointer shrink-0 disabled:opacity-50"
+                                title="Vô hiệu hóa vĩnh viễn"
+                                aria-label={`Vô hiệu hóa tài khoản ${row.displayName}`}
+                              >
+                                <UserX className="w-4 h-4 shrink-0" />
+                              </button>
                             )}
 
                             {/* Self user safeguard label */}
                             {isSelf && (
-                              <span className="text-[11px] text-slate-400 italic px-2">
+                              <span className="text-[11px] text-slate-400 italic px-2 whitespace-nowrap">
                                 (Tài khoản hiện tại)
                               </span>
                             )}
 
                             {/* Deactivated account terminal state notice */}
                             {!isSelf && row.status === 'DEACTIVATED' && (
-                              <span className="text-[11px] text-slate-400 italic px-2">
+                              <span className="text-[11px] text-slate-400 italic px-2 whitespace-nowrap">
                                 Đã vô hiệu hóa
                               </span>
                             )}
@@ -734,14 +731,14 @@ export function AdminUsersPage() {
           {!isLoading && !isError && totalPages > 0 && (
             <div className="p-3.5 border-t border-slate-200 bg-slate-50/50 flex flex-col sm:flex-row items-center justify-between gap-3 text-xs">
               <div className="flex items-center gap-3 text-slate-600">
-                <span>
+                <span className="whitespace-nowrap">
                   Trang <strong className="text-slate-900">{page + 1}</strong> / {totalPages || 1}
                   {' '}(Tổng số <strong className="text-slate-900">{totalElements}</strong> người dùng)
                 </span>
 
                 {/* Page Size Selector */}
                 <div className="flex items-center gap-1.5 border-l border-slate-200 pl-3">
-                  <span className="text-slate-500">Hiển thị:</span>
+                  <span className="text-slate-500 whitespace-nowrap">Hiển thị:</span>
                   <select
                     value={size}
                     onChange={(e) => {

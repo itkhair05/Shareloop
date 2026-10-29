@@ -7,6 +7,7 @@ import {
   LayoutDashboard,
   Users,
   LifeBuoy,
+  ArrowLeftRight,
   ArrowLeft,
   Menu,
   X,
@@ -32,6 +33,12 @@ export function AdminLayout() {
       label: 'Tổng quan quản trị',
       icon: LayoutDashboard,
       end: true,
+    },
+    {
+      to: '/admin/transactions',
+      label: 'Quản lý giao dịch',
+      icon: ArrowLeftRight,
+      end: false,
     },
     {
       to: '/admin/users',
