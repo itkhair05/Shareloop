@@ -96,4 +96,108 @@ public class RateLimitProperties {
     public void setChatLimit(int chatLimit) {
         this.chatMessageLimit = chatLimit;
     }
+
+    /**
+     * Maximum forgot password requests allowed per IP within the rolling window.
+     */
+    private int forgotPasswordIpLimit = 5;
+
+    /**
+     * Maximum forgot password requests allowed per normalized email within the rolling window.
+     */
+    private int forgotPasswordEmailLimit = 3;
+
+    /**
+     * Duration in seconds of the forgot password rolling window (default: 900 seconds / 15 minutes).
+     */
+    private int forgotPasswordWindowSeconds = 900;
+
+    /**
+     * Secret key for keyed HMAC-SHA256 hashing of emails in forgot password attempts.
+     */
+    private String forgotPasswordSecret = "shareloop-forgot-password-salt-key-default";
+
+    /**
+     * Expiration duration in minutes for password reset tokens (default: 15 minutes).
+     */
+    private int resetTokenExpirationMinutes = 15;
+
+    public int getForgotPasswordIpLimit() {
+        return forgotPasswordIpLimit;
+    }
+
+    public void setForgotPasswordIpLimit(int forgotPasswordIpLimit) {
+        this.forgotPasswordIpLimit = forgotPasswordIpLimit;
+    }
+
+    public int getForgotPasswordEmailLimit() {
+        return forgotPasswordEmailLimit;
+    }
+
+    public void setForgotPasswordEmailLimit(int forgotPasswordEmailLimit) {
+        this.forgotPasswordEmailLimit = forgotPasswordEmailLimit;
+    }
+
+    public int getForgotPasswordWindowSeconds() {
+        return forgotPasswordWindowSeconds;
+    }
+
+    public void setForgotPasswordWindowSeconds(int forgotPasswordWindowSeconds) {
+        this.forgotPasswordWindowSeconds = forgotPasswordWindowSeconds;
+    }
+
+    public String getForgotPasswordSecret() {
+        return forgotPasswordSecret;
+    }
+
+    public void setForgotPasswordSecret(String forgotPasswordSecret) {
+        this.forgotPasswordSecret = forgotPasswordSecret;
+    }
+
+    public int getResetTokenExpirationMinutes() {
+        return resetTokenExpirationMinutes;
+    }
+
+    public void setResetTokenExpirationMinutes(int resetTokenExpirationMinutes) {
+        this.resetTokenExpirationMinutes = resetTokenExpirationMinutes;
+    }
+
+    /**
+     * Retention period in hours for forgot-password attempt audit records (default: 24 hours).
+     */
+    private int forgotPasswordAttemptRetentionHours = 24;
+
+    /**
+     * Retention period in days for expired or consumed password reset tokens (default: 7 days).
+     */
+    private int passwordResetTokenRetentionDays = 7;
+
+    /**
+     * Cron expression for scheduled cleanup of password reset tokens and forgot password attempts.
+     */
+    private String passwordResetCleanupCron = "0 0 * * * *";
+
+    public int getForgotPasswordAttemptRetentionHours() {
+        return forgotPasswordAttemptRetentionHours;
+    }
+
+    public void setForgotPasswordAttemptRetentionHours(int forgotPasswordAttemptRetentionHours) {
+        this.forgotPasswordAttemptRetentionHours = forgotPasswordAttemptRetentionHours;
+    }
+
+    public int getPasswordResetTokenRetentionDays() {
+        return passwordResetTokenRetentionDays;
+    }
+
+    public void setPasswordResetTokenRetentionDays(int passwordResetTokenRetentionDays) {
+        this.passwordResetTokenRetentionDays = passwordResetTokenRetentionDays;
+    }
+
+    public String getPasswordResetCleanupCron() {
+        return passwordResetCleanupCron;
+    }
+
+    public void setPasswordResetCleanupCron(String passwordResetCleanupCron) {
+        this.passwordResetCleanupCron = passwordResetCleanupCron;
+    }
 }

@@ -62,6 +62,16 @@ class AuthControllerIntegrationTest {
     @Autowired
     private JwtService jwtService;
 
+    @Autowired(required = false)
+    private com.shareloop.repository.LoginAttemptRepository loginAttemptRepository;
+
+    @org.junit.jupiter.api.BeforeEach
+    void cleanLoginRateLimit() {
+        if (loginAttemptRepository != null) {
+            loginAttemptRepository.deleteAll();
+        }
+    }
+
     private User createTestUser(String email, String rawPassword, UserRole role, UserStatus status) {
         User user = new User(
                 "Test User",

@@ -55,6 +55,24 @@ public class AuthController {
         return ResponseEntity.ok(response);
     }
 
+    @PostMapping("/forgot-password")
+    public ResponseEntity<com.shareloop.dto.auth.MessageResponse> forgotPassword(
+            @Valid @RequestBody com.shareloop.dto.auth.ForgotPasswordRequest request,
+            HttpServletRequest httpRequest
+    ) {
+        String clientIp = clientIpResolver.resolveClientIp(httpRequest);
+        com.shareloop.dto.auth.MessageResponse response = authService.forgotPassword(request, clientIp);
+        return ResponseEntity.ok(response);
+    }
+
+    @PostMapping("/reset-password")
+    public ResponseEntity<com.shareloop.dto.auth.MessageResponse> resetPassword(
+            @Valid @RequestBody com.shareloop.dto.auth.ResetPasswordRequest request
+    ) {
+        com.shareloop.dto.auth.MessageResponse response = authService.resetPassword(request);
+        return ResponseEntity.ok(response);
+    }
+
     @SecurityRequirement(name = "bearerAuth")
     @GetMapping("/me")
     public ResponseEntity<UserProfileResponse> getCurrentUser(@AuthenticationPrincipal UserPrincipal principal) {

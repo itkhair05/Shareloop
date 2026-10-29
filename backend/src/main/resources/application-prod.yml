@@ -4,3 +4,5 @@ app:
     enabled: false
   admin-bootstrap:
     enabled: false
+  mail:
+    provider: ${MAIL_PROVIDER:brevo}
