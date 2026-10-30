@@ -85,6 +85,34 @@ public class GlobalExceptionHandler {
         return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(errorResponse);
     }
 
+    @ExceptionHandler(InvalidGoogleIdTokenException.class)
+    public ResponseEntity<ErrorResponse> handleInvalidGoogleIdToken(
+            InvalidGoogleIdTokenException ex,
+            HttpServletRequest request
+    ) {
+        ErrorResponse errorResponse = new ErrorResponse(
+                HttpStatus.UNAUTHORIZED.value(),
+                HttpStatus.UNAUTHORIZED.getReasonPhrase(),
+                ex.getMessage(),
+                request.getRequestURI()
+        );
+        return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(errorResponse);
+    }
+
+    @ExceptionHandler(GoogleAuthConfigurationException.class)
+    public ResponseEntity<ErrorResponse> handleGoogleAuthConfiguration(
+            GoogleAuthConfigurationException ex,
+            HttpServletRequest request
+    ) {
+        ErrorResponse errorResponse = new ErrorResponse(
+                HttpStatus.SERVICE_UNAVAILABLE.value(),
+                HttpStatus.SERVICE_UNAVAILABLE.getReasonPhrase(),
+                ex.getMessage(),
+                request.getRequestURI()
+        );
+        return ResponseEntity.status(HttpStatus.SERVICE_UNAVAILABLE).body(errorResponse);
+    }
+
     @ExceptionHandler(AuthenticationException.class)
     public ResponseEntity<ErrorResponse> handleAuthenticationException(
             AuthenticationException ex,
@@ -130,7 +158,16 @@ public class GlobalExceptionHandler {
         return ResponseEntity.status(HttpStatus.FORBIDDEN).body(errorResponse);
     }
 
-    @ExceptionHandler({DuplicateEmailException.class, DuplicateRequestException.class, DuplicateSlugException.class, DuplicateReviewException.class, DuplicateReportException.class})
+    @ExceptionHandler({
+            DuplicateEmailException.class,
+            DuplicateRequestException.class,
+            DuplicateSlugException.class,
+            DuplicateReviewException.class,
+            DuplicateReportException.class,
+            AccountLinkingRequiredException.class,
+            AccountAlreadyLinkedException.class,
+            GoogleAccountAlreadyInUseException.class
+    })
     public ResponseEntity<ErrorResponse> handleDuplicateResource(
             RuntimeException ex,
             HttpServletRequest request

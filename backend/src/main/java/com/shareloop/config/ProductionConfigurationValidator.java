@@ -1,9 +1,11 @@
 package com.shareloop.config;
 
+import com.shareloop.security.google.GoogleSecurityProperties;
 import com.shareloop.security.ratelimit.RateLimitProperties;
 import com.shareloop.service.mail.MailProperties;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.ApplicationArguments;
 import org.springframework.boot.ApplicationRunner;
 import org.springframework.core.env.Environment;
@@ -20,15 +22,18 @@ public class ProductionConfigurationValidator implements ApplicationRunner {
     private final Environment environment;
     private final MailProperties mailProperties;
     private final RateLimitProperties rateLimitProperties;
+    private final GoogleSecurityProperties googleSecurityProperties;
 
     public ProductionConfigurationValidator(
             Environment environment,
             MailProperties mailProperties,
-            RateLimitProperties rateLimitProperties
+            RateLimitProperties rateLimitProperties,
+            @Autowired(required = false) GoogleSecurityProperties googleSecurityProperties
     ) {
         this.environment = environment;
         this.mailProperties = mailProperties;
         this.rateLimitProperties = rateLimitProperties;
+        this.googleSecurityProperties = googleSecurityProperties;
     }
 
     @Override
@@ -113,6 +118,17 @@ public class ProductionConfigurationValidator implements ApplicationRunner {
             throw new IllegalStateException(
                     "Production frontend base URL is malformed: " + e.getMessage(), e
             );
+        }
+
+        // 5. If Google authentication is enabled in production, require a non-blank Google Client ID
+        if (googleSecurityProperties != null && googleSecurityProperties.isEnabled()) {
+            String googleClientId = googleSecurityProperties.getClientId();
+            if (googleClientId == null || googleClientId.isBlank()) {
+                throw new IllegalStateException(
+                        "Production environment has Google authentication enabled (app.security.google.enabled=true), " +
+                        "but 'app.security.google.client-id' / GOOGLE_CLIENT_ID is missing or blank."
+                );
+            }
         }
 
         log.info("Production configuration validation passed successfully.");

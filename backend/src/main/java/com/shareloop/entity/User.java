@@ -36,9 +36,8 @@ public class User {
     @Column(name = "phone_number", length = 30)
     private String phoneNumber;
 
-    @NotBlank
     @Size(max = 255)
-    @Column(name = "password_hash", length = 255, nullable = false)
+    @Column(name = "password_hash", length = 255)
     private String passwordHash;
 
     @NotNull

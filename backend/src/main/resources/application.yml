@@ -65,6 +65,9 @@ app:
       forgot-password-attempt-retention-hours: ${FORGOT_PASSWORD_ATTEMPT_RETENTION_HOURS:24}
       password-reset-token-retention-days: ${PASSWORD_RESET_TOKEN_RETENTION_DAYS:7}
       password-reset-cleanup-cron: ${PASSWORD_RESET_CLEANUP_CRON:0 0 * * * *}
+    google:
+      enabled: ${GOOGLE_LOGIN_ENABLED:false}
+      client-id: ${GOOGLE_CLIENT_ID:}
   mail:
     provider: ${MAIL_PROVIDER:mock}
     frontend-base-url: ${FRONTEND_BASE_URL:http://localhost:5173}

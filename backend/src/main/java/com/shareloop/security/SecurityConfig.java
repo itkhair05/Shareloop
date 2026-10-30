@@ -88,7 +88,8 @@ public class SecurityConfig {
                                 "/api/v1/auth/register",
                                 "/api/v1/auth/login",
                                 "/api/v1/auth/forgot-password",
-                                "/api/v1/auth/reset-password"
+                                "/api/v1/auth/reset-password",
+                                "/api/v1/auth/google"
                         ).permitAll()
                         // Public health and monitoring endpoints
                         .requestMatchers("/api/health", "/actuator/health", "/actuator/info").permitAll()

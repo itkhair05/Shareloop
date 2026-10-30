@@ -1,6 +1,8 @@
 package com.shareloop.controller;
 
 import com.shareloop.dto.auth.AuthResponse;
+import com.shareloop.dto.auth.GoogleAccountStatusResponse;
+import com.shareloop.dto.auth.GoogleLoginRequest;
 import com.shareloop.dto.auth.LoginRequest;
 import com.shareloop.dto.auth.RegisterRequest;
 import com.shareloop.dto.auth.UpdateProfileRequest;
@@ -52,6 +54,41 @@ public class AuthController {
         String clientIp = clientIpResolver.resolveClientIp(httpRequest);
         loginRateLimiter.checkAndRecordAttempt(clientIp);
         AuthResponse response = authService.login(request);
+        return ResponseEntity.ok(response);
+    }
+
+    @PostMapping("/google")
+    public ResponseEntity<AuthResponse> loginWithGoogle(
+            @Valid @RequestBody GoogleLoginRequest request,
+            HttpServletRequest httpRequest
+    ) {
+        String clientIp = clientIpResolver.resolveClientIp(httpRequest);
+        AuthResponse response = authService.loginWithGoogle(request, clientIp);
+        return ResponseEntity.ok(response);
+    }
+
+    @SecurityRequirement(name = "bearerAuth")
+    @PostMapping("/google/link")
+    public ResponseEntity<GoogleAccountStatusResponse> linkGoogleAccount(
+            @Valid @RequestBody GoogleLoginRequest request,
+            @AuthenticationPrincipal UserPrincipal principal
+    ) {
+        if (principal == null) {
+            throw new InvalidTokenException("Authenticated principal not found");
+        }
+        GoogleAccountStatusResponse response = authService.linkGoogleAccount(principal.getId(), request);
+        return ResponseEntity.ok(response);
+    }
+
+    @SecurityRequirement(name = "bearerAuth")
+    @GetMapping("/google/status")
+    public ResponseEntity<GoogleAccountStatusResponse> getGoogleAccountStatus(
+            @AuthenticationPrincipal UserPrincipal principal
+    ) {
+        if (principal == null) {
+            throw new InvalidTokenException("Authenticated principal not found");
+        }
+        GoogleAccountStatusResponse response = authService.getGoogleAccountStatus(principal.getId());
         return ResponseEntity.ok(response);
     }
 

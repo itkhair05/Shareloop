@@ -1,5 +1,6 @@
 package com.shareloop.config;
 
+import com.shareloop.security.google.GoogleSecurityProperties;
 import com.shareloop.security.ratelimit.RateLimitProperties;
 import com.shareloop.service.mail.MailProperties;
 import org.junit.jupiter.api.BeforeEach;
@@ -15,6 +16,7 @@ class ProductionConfigurationValidatorTest {
     private MockEnvironment environment;
     private MailProperties mailProperties;
     private RateLimitProperties rateLimitProperties;
+    private GoogleSecurityProperties googleSecurityProperties;
     private ProductionConfigurationValidator validator;
 
     private static final String STRONG_SECRET = "super-secret-hmac-salt-key-that-is-longer-than-32-chars-for-testing!";
@@ -24,7 +26,8 @@ class ProductionConfigurationValidatorTest {
         environment = new MockEnvironment();
         mailProperties = new MailProperties();
         rateLimitProperties = new RateLimitProperties();
-        validator = new ProductionConfigurationValidator(environment, mailProperties, rateLimitProperties);
+        googleSecurityProperties = new GoogleSecurityProperties();
+        validator = new ProductionConfigurationValidator(environment, mailProperties, rateLimitProperties, googleSecurityProperties);
     }
 
     @Test
@@ -217,6 +220,55 @@ class ProductionConfigurationValidatorTest {
         mailProperties.setProvider("mock");
         mailProperties.setFrontendBaseUrl("http://localhost:5173");
         rateLimitProperties.setForgotPasswordSecret(STRONG_SECRET);
+
+        assertThatCode(() -> validator.validateConfiguration())
+                .doesNotThrowAnyException();
+    }
+
+    @Test
+    @DisplayName("Production profile with Google login disabled passes even if client ID is blank")
+    void productionWithGoogleDisabledPasses() {
+        environment.setActiveProfiles("prod");
+        mailProperties.setProvider("brevo");
+        mailProperties.getBrevo().setApiKey("xkeysib-valid-production-api-key-12345678");
+        mailProperties.getBrevo().setSenderEmail("no-reply@shareloop.vn");
+        mailProperties.setFrontendBaseUrl("https://shareloop.vn");
+        rateLimitProperties.setForgotPasswordSecret(STRONG_SECRET);
+        googleSecurityProperties.setEnabled(false);
+        googleSecurityProperties.setClientId("");
+
+        assertThatCode(() -> validator.validateConfiguration())
+                .doesNotThrowAnyException();
+    }
+
+    @Test
+    @DisplayName("Production profile with Google login enabled but blank client ID throws IllegalStateException")
+    void productionWithGoogleEnabledAndMissingClientIdThrows() {
+        environment.setActiveProfiles("prod");
+        mailProperties.setProvider("brevo");
+        mailProperties.getBrevo().setApiKey("xkeysib-valid-production-api-key-12345678");
+        mailProperties.getBrevo().setSenderEmail("no-reply@shareloop.vn");
+        mailProperties.setFrontendBaseUrl("https://shareloop.vn");
+        rateLimitProperties.setForgotPasswordSecret(STRONG_SECRET);
+        googleSecurityProperties.setEnabled(true);
+        googleSecurityProperties.setClientId("   ");
+
+        assertThatThrownBy(() -> validator.validateConfiguration())
+                .isInstanceOf(IllegalStateException.class)
+                .hasMessageContaining("GOOGLE_CLIENT_ID is missing or blank");
+    }
+
+    @Test
+    @DisplayName("Production profile with Google login enabled and valid client ID passes")
+    void productionWithGoogleEnabledAndValidClientIdPasses() {
+        environment.setActiveProfiles("prod");
+        mailProperties.setProvider("brevo");
+        mailProperties.getBrevo().setApiKey("xkeysib-valid-production-api-key-12345678");
+        mailProperties.getBrevo().setSenderEmail("no-reply@shareloop.vn");
+        mailProperties.setFrontendBaseUrl("https://shareloop.vn");
+        rateLimitProperties.setForgotPasswordSecret(STRONG_SECRET);
+        googleSecurityProperties.setEnabled(true);
+        googleSecurityProperties.setClientId("1234567890-test.apps.googleusercontent.com");
 
         assertThatCode(() -> validator.validateConfiguration())
                 .doesNotThrowAnyException();
