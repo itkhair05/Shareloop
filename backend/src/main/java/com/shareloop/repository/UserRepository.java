@@ -39,4 +39,12 @@ public interface UserRepository extends JpaRepository<User, UUID>, JpaSpecificat
     @Lock(LockModeType.PESSIMISTIC_WRITE)
     @Query("SELECT u FROM User u WHERE u.id = :id")
     Optional<User> findByIdForUpdate(@Param("id") UUID id);
+
+    @org.springframework.data.jpa.repository.Modifying(clearAutomatically = true)
+    @Query("UPDATE User u SET u.passwordHash = :passwordHash, u.updatedAt = :updatedAt WHERE u.id = :userId AND u.passwordHash IS NULL")
+    int setInitialPasswordIfNull(
+            @Param("userId") UUID userId,
+            @Param("passwordHash") String passwordHash,
+            @Param("updatedAt") java.time.Instant updatedAt
+    );
 }

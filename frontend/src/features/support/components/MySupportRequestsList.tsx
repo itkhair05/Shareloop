@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { ChevronLeft, ChevronRight, Filter, LifeBuoy, Plus } from 'lucide-react';
+import { ChevronLeft, ChevronRight, LifeBuoy, Plus } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
 import { EmptyState, ErrorAlert, LoadingSpinner } from '@/components/ui/Feedback';
 import { useMySupportRequests } from '../hooks/use-support';
@@ -38,42 +38,45 @@ export function MySupportRequestsList() {
   const totalElements = data?.totalElements ?? 0;
 
   return (
-    <div className="space-y-6">
-      {/* Action Header & Filter Badges */}
+    <div className="space-y-5">
+      {/* Action Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-        <div className="flex items-center gap-2 flex-wrap">
-          <Filter className="w-4 h-4 text-slate-400 shrink-0" aria-hidden="true" />
-          <div className="flex flex-wrap gap-1.5">
-            {STATUS_FILTERS.map((f) => {
-              const isSelected = selectedStatus === f.value;
-              return (
-                <button
-                  key={f.label}
-                  type="button"
-                  onClick={() => handleStatusChange(f.value)}
-                  className={`px-3 py-1.5 rounded-full text-xs font-medium transition-colors cursor-pointer ${
-                    isSelected
-                      ? 'bg-emerald-600 text-white font-semibold shadow-2xs'
-                      : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
-                  }`}
-                >
-                  {f.label}
-                </button>
-              );
-            })}
-          </div>
+        {/* Nút gửi yêu cầu mới - Đưa lên trên cùng bên phải trên Desktop, dưới cùng trên Mobile */}
+        <div className="order-2 sm:order-1 flex justify-center sm:justify-start w-full sm:w-auto">
+           <Button
+            type="button"
+            variant="primary"
+            size="sm"
+            onClick={() => setIsCreateOpen(true)}
+            leftIcon={<Plus className="w-4 h-4" aria-hidden="true" />}
+            className="w-full sm:w-auto shadow-2xs"
+          >
+            Gửi yêu cầu mới
+          </Button>
         </div>
+      </div>
 
-        <Button
-          type="button"
-          variant="primary"
-          size="sm"
-          onClick={() => setIsCreateOpen(true)}
-          leftIcon={<Plus className="w-4 h-4" aria-hidden="true" />}
-          className="self-start sm:self-auto shadow-2xs"
-        >
-          Gửi yêu cầu mới
-        </Button>
+      {/* Filter Box (Khung chứa bộ lọc) */}
+      <div className="bg-slate-50 border border-slate-200 rounded-xl p-1.5 sm:p-2">
+        <div className="flex overflow-x-auto gap-1.5 scrollbar-hide">
+          {STATUS_FILTERS.map((f) => {
+            const isSelected = selectedStatus === f.value;
+            return (
+              <button
+                key={f.label}
+                type="button"
+                onClick={() => handleStatusChange(f.value)}
+                className={`flex-shrink-0 whitespace-nowrap px-3.5 py-1.5 rounded-lg text-xs font-medium transition-all cursor-pointer ${
+                  isSelected
+                    ? 'bg-white text-emerald-700 shadow-sm ring-1 ring-slate-200 font-semibold'
+                    : 'text-slate-600 hover:bg-slate-200/60'
+                }`}
+              >
+                {f.label}
+              </button>
+            );
+          })}
+        </div>
       </div>
 
       {/* Content */}
@@ -115,11 +118,11 @@ export function MySupportRequestsList() {
 
           {/* Pagination */}
           {totalPages > 1 && (
-            <div className="flex items-center justify-between pt-4 border-t border-slate-200 text-xs text-slate-600">
-              <span>
-                Hiển thị {requests.length} trên tổng số {totalElements} yêu cầu
+            <div className="flex flex-col sm:flex-row items-center justify-between gap-3 pt-4 border-t border-slate-200 text-xs text-slate-600">
+              <span className="w-full text-center sm:text-left">
+                Hiển thị {requests.length} / {totalElements} yêu cầu
               </span>
-              <div className="flex items-center gap-2">
+              <div className="flex items-center justify-center gap-2 w-full sm:w-auto">
                 <Button
                   variant="outline"
                   size="sm"
@@ -129,7 +132,7 @@ export function MySupportRequestsList() {
                 >
                   Trước
                 </Button>
-                <span className="font-semibold px-2">
+                <span className="font-semibold px-2 whitespace-nowrap">
                   Trang {page + 1} / {totalPages}
                 </span>
                 <Button

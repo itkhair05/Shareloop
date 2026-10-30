@@ -1,11 +1,13 @@
 package com.shareloop.service;
 
 import com.shareloop.dto.auth.AuthResponse;
+import com.shareloop.dto.auth.ChangePasswordRequest;
 import com.shareloop.dto.auth.ForgotPasswordRequest;
 import com.shareloop.dto.auth.LoginRequest;
 import com.shareloop.dto.auth.MessageResponse;
 import com.shareloop.dto.auth.RegisterRequest;
 import com.shareloop.dto.auth.ResetPasswordRequest;
+import com.shareloop.dto.auth.SetPasswordRequest;
 import com.shareloop.dto.auth.UpdateProfileRequest;
 import com.shareloop.dto.auth.UserProfileResponse;
 import com.shareloop.dto.auth.GoogleAccountStatusResponse;
@@ -202,6 +204,71 @@ public class AuthService {
 
         User savedUser = userRepository.save(user);
         return UserProfileResponse.fromEntity(savedUser);
+    }
+
+    /**
+     * Changes an existing password for the authenticated user.
+     * Verifies current password, checks that new password differs from current password,
+     * and updates the password hash.
+     */
+    @Transactional
+    public MessageResponse changePassword(UUID userId, ChangePasswordRequest request) {
+        if (userId == null) {
+            throw new InvalidTokenException("Authenticated principal not found");
+        }
+
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new ResourceNotFoundException("User not found with id: " + userId));
+
+        validateAccountStatus(user);
+
+        if (user.getPasswordHash() == null) {
+            throw new PasswordNotSetException("Tài khoản chưa thiết lập mật khẩu. Vui lòng sử dụng chức năng thiết lập mật khẩu lần đầu.");
+        }
+
+        if (!passwordEncoder.matches(request.getCurrentPassword(), user.getPasswordHash())) {
+            throw new InvalidCurrentPasswordException("Mật khẩu hiện tại không chính xác.");
+        }
+
+        if (passwordEncoder.matches(request.getNewPassword(), user.getPasswordHash())) {
+            throw new IllegalArgumentException("Mật khẩu mới không được trùng với mật khẩu hiện tại.");
+        }
+
+        user.setPasswordHash(passwordEncoder.encode(request.getNewPassword()));
+        user.setUpdatedAt(clock.instant());
+        userRepository.save(user);
+
+        return new MessageResponse("Đổi mật khẩu thành công.");
+    }
+
+    /**
+     * Sets an initial password for a Google-only account (where password_hash is currently NULL).
+     * Uses atomic database conditional update to guard against concurrent requests.
+     */
+    @Transactional
+    public MessageResponse setPassword(UUID userId, SetPasswordRequest request) {
+        if (userId == null) {
+            throw new InvalidTokenException("Authenticated principal not found");
+        }
+
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new ResourceNotFoundException("User not found with id: " + userId));
+
+        validateAccountStatus(user);
+
+        if (user.getPasswordHash() != null) {
+            throw new PasswordAlreadySetException("Tài khoản đã có mật khẩu. Vui lòng sử dụng chức năng đổi mật khẩu.");
+        }
+
+        String encodedPassword = passwordEncoder.encode(request.getNewPassword());
+        Instant now = clock.instant();
+
+        int rowsUpdated = userRepository.setInitialPasswordIfNull(userId, encodedPassword, now);
+        if (rowsUpdated == 0) {
+            throw new PasswordAlreadySetException("Tài khoản đã có mật khẩu. Vui lòng sử dụng chức năng đổi mật khẩu.");
+        }
+
+        return new MessageResponse("Thiết lập mật khẩu thành công.");
     }
 
     /**

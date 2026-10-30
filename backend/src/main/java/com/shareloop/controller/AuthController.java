@@ -1,10 +1,13 @@
 package com.shareloop.controller;
 
 import com.shareloop.dto.auth.AuthResponse;
+import com.shareloop.dto.auth.ChangePasswordRequest;
 import com.shareloop.dto.auth.GoogleAccountStatusResponse;
 import com.shareloop.dto.auth.GoogleLoginRequest;
 import com.shareloop.dto.auth.LoginRequest;
+import com.shareloop.dto.auth.MessageResponse;
 import com.shareloop.dto.auth.RegisterRequest;
+import com.shareloop.dto.auth.SetPasswordRequest;
 import com.shareloop.dto.auth.UpdateProfileRequest;
 import com.shareloop.dto.auth.UserProfileResponse;
 import com.shareloop.exception.InvalidTokenException;
@@ -12,6 +15,7 @@ import com.shareloop.security.UserPrincipal;
 import com.shareloop.service.AuthService;
 import com.shareloop.security.ratelimit.ClientIpResolver;
 import com.shareloop.security.ratelimit.LoginRateLimiter;
+import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.servlet.http.HttpServletRequest;
@@ -130,6 +134,34 @@ public class AuthController {
             throw new InvalidTokenException("Authenticated principal not found");
         }
         UserProfileResponse response = authService.updateCurrentUser(principal.getId(), request);
+        return ResponseEntity.ok(response);
+    }
+
+    @Operation(summary = "Đổi mật khẩu người dùng đã xác thực", description = "Đổi mật khẩu hiện tại sang mật khẩu mới cho tài khoản đã có mật khẩu")
+    @SecurityRequirement(name = "bearerAuth")
+    @PostMapping("/change-password")
+    public ResponseEntity<MessageResponse> changePassword(
+            @Valid @RequestBody ChangePasswordRequest request,
+            @AuthenticationPrincipal UserPrincipal principal
+    ) {
+        if (principal == null) {
+            throw new InvalidTokenException("Authenticated principal not found");
+        }
+        MessageResponse response = authService.changePassword(principal.getId(), request);
+        return ResponseEntity.ok(response);
+    }
+
+    @Operation(summary = "Thiết lập mật khẩu lần đầu", description = "Thiết lập mật khẩu khởi tạo cho tài khoản thuần Google (chưa có mật khẩu)")
+    @SecurityRequirement(name = "bearerAuth")
+    @PostMapping("/set-password")
+    public ResponseEntity<MessageResponse> setPassword(
+            @Valid @RequestBody SetPasswordRequest request,
+            @AuthenticationPrincipal UserPrincipal principal
+    ) {
+        if (principal == null) {
+            throw new InvalidTokenException("Authenticated principal not found");
+        }
+        MessageResponse response = authService.setPassword(principal.getId(), request);
         return ResponseEntity.ok(response);
     }
 }

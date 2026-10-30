@@ -1,5 +1,6 @@
 package com.shareloop.dto.auth;
 
+import com.fasterxml.jackson.annotation.JsonProperty;
 import com.shareloop.entity.User;
 import com.shareloop.entity.enums.UserRole;
 import com.shareloop.entity.enums.UserStatus;
@@ -18,10 +19,17 @@ public class UserProfileResponse {
     private Instant createdAt;
     private Instant updatedAt;
 
+    @JsonProperty("hasPassword")
+    private boolean hasPassword;
+
     public UserProfileResponse() {
     }
 
     public UserProfileResponse(UUID id, String displayName, String email, String phoneNumber, UserRole role, UserStatus status, Instant createdAt, Instant updatedAt) {
+        this(id, displayName, email, phoneNumber, role, status, createdAt, updatedAt, false);
+    }
+
+    public UserProfileResponse(UUID id, String displayName, String email, String phoneNumber, UserRole role, UserStatus status, Instant createdAt, Instant updatedAt, boolean hasPassword) {
         this.id = id;
         this.displayName = displayName;
         this.email = email;
@@ -30,6 +38,7 @@ public class UserProfileResponse {
         this.status = status;
         this.createdAt = createdAt;
         this.updatedAt = updatedAt;
+        this.hasPassword = hasPassword;
     }
 
     public static UserProfileResponse fromEntity(User user) {
@@ -41,7 +50,8 @@ public class UserProfileResponse {
                 user.getRole(),
                 user.getStatus(),
                 user.getCreatedAt(),
-                user.getUpdatedAt()
+                user.getUpdatedAt(),
+                user.getPasswordHash() != null
         );
     }
 
@@ -107,5 +117,14 @@ public class UserProfileResponse {
 
     public void setUpdatedAt(Instant updatedAt) {
         this.updatedAt = updatedAt;
+    }
+
+    @JsonProperty("hasPassword")
+    public boolean isHasPassword() {
+        return hasPassword;
+    }
+
+    public void setHasPassword(boolean hasPassword) {
+        this.hasPassword = hasPassword;
     }
 }

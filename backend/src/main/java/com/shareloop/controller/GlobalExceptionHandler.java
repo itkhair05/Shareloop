@@ -166,7 +166,9 @@ public class GlobalExceptionHandler {
             DuplicateReportException.class,
             AccountLinkingRequiredException.class,
             AccountAlreadyLinkedException.class,
-            GoogleAccountAlreadyInUseException.class
+            GoogleAccountAlreadyInUseException.class,
+            PasswordNotSetException.class,
+            PasswordAlreadySetException.class
     })
     public ResponseEntity<ErrorResponse> handleDuplicateResource(
             RuntimeException ex,
@@ -179,6 +181,20 @@ public class GlobalExceptionHandler {
                 request.getRequestURI()
         );
         return ResponseEntity.status(HttpStatus.CONFLICT).body(errorResponse);
+    }
+
+    @ExceptionHandler(InvalidCurrentPasswordException.class)
+    public ResponseEntity<ErrorResponse> handleInvalidCurrentPassword(
+            InvalidCurrentPasswordException ex,
+            HttpServletRequest request
+    ) {
+        ErrorResponse errorResponse = new ErrorResponse(
+                HttpStatus.BAD_REQUEST.value(),
+                HttpStatus.BAD_REQUEST.getReasonPhrase(),
+                ex.getMessage(),
+                request.getRequestURI()
+        );
+        return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(errorResponse);
     }
 
     @ExceptionHandler(IllegalArgumentException.class)

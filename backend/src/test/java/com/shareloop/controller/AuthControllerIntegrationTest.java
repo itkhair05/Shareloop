@@ -214,6 +214,13 @@ class AuthControllerIntegrationTest {
     @DisplayName("Login Endpoint Tests")
     class LoginTests {
 
+        @org.junit.jupiter.api.BeforeEach
+        void cleanLoginRateLimitInNested() {
+            if (loginAttemptRepository != null) {
+                loginAttemptRepository.deleteAll();
+            }
+        }
+
         @Test
         @DisplayName("Successful login returns 200 and usable JWT access token")
         void successfulLogin() throws Exception {

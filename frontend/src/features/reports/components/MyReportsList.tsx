@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { ChevronLeft, ChevronRight, Filter, ShieldAlert } from 'lucide-react';
+import { ChevronLeft, ChevronRight, ShieldAlert } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
 import { EmptyState, ErrorAlert, LoadingSpinner } from '@/components/ui/Feedback';
 import { useMyReports } from '../hooks/use-reports';
@@ -36,11 +36,10 @@ export function MyReportsList() {
   const totalElements = data?.totalElements ?? 0;
 
   return (
-    <div className="space-y-6">
-      {/* Filter Badges */}
-      <div className="flex items-center gap-2 flex-wrap">
-        <Filter className="w-4 h-4 text-slate-400 shrink-0" aria-hidden="true" />
-        <div className="flex flex-wrap gap-1.5">
+    <div className="space-y-5">
+      {/* Filter Box (Khung chứa bộ lọc) */}
+      <div className="bg-slate-50 border border-slate-200 rounded-xl p-1.5 sm:p-2">
+        <div className="flex overflow-x-auto gap-1.5 scrollbar-hide">
           {STATUS_FILTERS.map((f) => {
             const isSelected = selectedStatus === f.value;
             return (
@@ -48,10 +47,10 @@ export function MyReportsList() {
                 key={f.label}
                 type="button"
                 onClick={() => handleStatusChange(f.value)}
-                className={`px-3 py-1.5 rounded-full text-xs font-medium transition-colors cursor-pointer ${
+                className={`flex-shrink-0 whitespace-nowrap px-3.5 py-1.5 rounded-lg text-xs font-medium transition-all cursor-pointer ${
                   isSelected
-                    ? 'bg-red-600 text-white font-semibold shadow-2xs'
-                    : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+                    ? 'bg-white text-red-700 shadow-sm ring-1 ring-slate-200 font-semibold'
+                    : 'text-slate-600 hover:bg-slate-200/60'
                 }`}
               >
                 {f.label}
@@ -98,11 +97,11 @@ export function MyReportsList() {
 
           {/* Pagination */}
           {totalPages > 1 && (
-            <div className="flex items-center justify-between pt-4 border-t border-slate-200 text-xs text-slate-600">
-              <span>
-                Hiển thị {reports.length} trên tổng số {totalElements} báo cáo
+            <div className="flex flex-col sm:flex-row items-center justify-between gap-3 pt-4 border-t border-slate-200 text-xs text-slate-600">
+              <span className="w-full text-center sm:text-left">
+                Hiển thị {reports.length} / {totalElements} báo cáo
               </span>
-              <div className="flex items-center gap-2">
+              <div className="flex items-center justify-center gap-2 w-full sm:w-auto">
                 <Button
                   variant="outline"
                   size="sm"
@@ -112,7 +111,7 @@ export function MyReportsList() {
                 >
                   Trước
                 </Button>
-                <span className="font-semibold px-2">
+                <span className="font-semibold px-2 whitespace-nowrap">
                   Trang {page + 1} / {totalPages}
                 </span>
                 <Button
