@@ -10,13 +10,16 @@ import { Button } from '@/components/ui/Button';
 import { Card, CardContent, CardHeader } from '@/components/ui/Card';
 import { ApiError } from '@/lib/api-error';
 import { resolvePostLoginDestination } from '../utils/auth-redirect';
+import { GoogleSignInButton } from '../components/GoogleSignInButton';
 
 export function LoginPage() {
   const navigate = useNavigate();
   const location = useLocation();
-  const { login, isAuthenticated, user } = useAuth();
+  const { login, loginWithGoogle, isAuthenticated, user } = useAuth();
   const [showPassword, setShowPassword] = useState(false);
   const [generalError, setGeneralError] = useState<string | null>(null);
+  const [isGoogleLoading, setIsGoogleLoading] = useState(false);
+  const [linkingRequiredInfo, setLinkingRequiredInfo] = useState<{ message: string } | null>(null);
 
   // Intended destination after successful login
   const fromLocation = (location.state as { from?: Location })?.from;
@@ -45,8 +48,51 @@ export function LoginPage() {
     return null;
   }
 
+  const handleGoogleSignIn = async (idToken: string) => {
+    setGeneralError(null);
+    setLinkingRequiredInfo(null);
+    setIsGoogleLoading(true);
+    try {
+      if (!loginWithGoogle) {
+        throw new Error('Đăng nhập Google chưa sẵn sàng');
+      }
+      const response = await loginWithGoogle(idToken);
+      const destination = resolvePostLoginDestination(fromLocation, response.role);
+      navigate(destination, { replace: true });
+    } catch (err) {
+      if (err instanceof ApiError) {
+        if (err.status === 409) {
+          // AccountLinkingRequiredException
+          setLinkingRequiredInfo({
+            message:
+              'Tài khoản với email này đã được đăng ký bằng mật khẩu. Vui lòng nhập email và mật khẩu bên dưới để đăng nhập, sau đó liên kết tài khoản Google trong phần Hồ sơ.',
+          });
+        } else if (err.isForbidden) {
+          setGeneralError(
+            err.message || 'Tài khoản của bạn đã bị tạm khóa hoặc vô hiệu hóa. Vui lòng liên hệ hỗ trợ.'
+          );
+        } else if (err.isUnauthorized) {
+          setGeneralError('Xác thực với Google không thành công hoặc phiên đăng nhập đã hết hạn.');
+        } else if (err.status === 503) {
+          setGeneralError('Đăng nhập Google hiện đang bảo trì hoặc chưa được kích hoạt trên hệ thống.');
+        } else if (err.status === 429) {
+          setGeneralError(err.message || 'Quá nhiều lần đăng nhập. Vui lòng thử lại sau 1 phút.');
+        } else if (err.isNetworkError) {
+          setGeneralError('Không thể kết nối đến máy chủ. Vui lòng kiểm tra kết nối mạng của bạn.');
+        } else {
+          setGeneralError(err.message || 'Đã xảy ra lỗi ngoài ý muốn khi đăng nhập bằng Google.');
+        }
+      } else {
+        setGeneralError('Đã xảy ra lỗi ngoài ý muốn khi đăng nhập bằng Google.');
+      }
+    } finally {
+      setIsGoogleLoading(false);
+    }
+  };
+
   const onSubmit = async (data: LoginFormData) => {
     setGeneralError(null);
+    setLinkingRequiredInfo(null);
     try {
       const response = await login(data);
       const destination = resolvePostLoginDestination(fromLocation, response.role);
@@ -95,20 +141,58 @@ export function LoginPage() {
         <Card className="border border-slate-200 shadow-sm bg-white">
           <CardHeader className="pb-4">
             <h2 className="text-base font-semibold text-slate-900">Đăng nhập</h2>
-            <p className="text-xs text-slate-500">Nhập địa chỉ email và mật khẩu của bạn bên dưới</p>
+            <p className="text-xs text-slate-500">Chọn phương thức đăng nhập tiện lợi nhất cho bạn</p>
           </CardHeader>
-          <CardContent>
-            <form onSubmit={handleSubmit(onSubmit)} noValidate className="space-y-4">
-              {/* General API Error Banner */}
-              {generalError && (
-                <div
-                  role="alert"
-                  className="p-3.5 rounded-lg bg-red-50 border border-red-200 text-red-900 flex items-start gap-2.5 text-sm"
-                >
-                  <AlertCircle className="w-4 h-4 text-red-600 shrink-0 mt-0.5" aria-hidden="true" />
-                  <span className="leading-snug">{generalError}</span>
+          <CardContent className="space-y-4">
+            {/* Account Linking Required Alert (HTTP 409) */}
+            {linkingRequiredInfo && (
+              <div
+                role="alert"
+                className="p-3.5 rounded-lg bg-amber-50 border border-amber-200 text-amber-900 flex items-start gap-2.5 text-sm"
+              >
+                <AlertCircle className="w-4 h-4 text-amber-600 shrink-0 mt-0.5" aria-hidden="true" />
+                <div className="space-y-1">
+                  <p className="font-semibold text-amber-950">Yêu cầu đăng nhập bằng mật khẩu</p>
+                  <p className="leading-snug text-xs text-amber-800">{linkingRequiredInfo.message}</p>
                 </div>
-              )}
+              </div>
+            )}
+
+            {/* General API Error Banner */}
+            {generalError && (
+              <div
+                role="alert"
+                className="p-3.5 rounded-lg bg-red-50 border border-red-200 text-red-900 flex items-start gap-2.5 text-sm"
+              >
+                <AlertCircle className="w-4 h-4 text-red-600 shrink-0 mt-0.5" aria-hidden="true" />
+                <span className="leading-snug">{generalError}</span>
+              </div>
+            )}
+
+            {/* Google Sign-In Option */}
+            <div className="space-y-2">
+              <GoogleSignInButton
+                mode="signin"
+                onSuccess={handleGoogleSignIn}
+                onError={(err) => setGeneralError(err.message)}
+                disabled={isSubmitting || isGoogleLoading}
+                width="100%"
+              />
+            </div>
+
+            {/* Visual Divider */}
+            <div className="relative my-4">
+              <div className="absolute inset-0 flex items-center">
+                <div className="w-full border-t border-slate-200" />
+              </div>
+              <div className="relative flex justify-center text-xs uppercase">
+                <span className="bg-white px-2 text-slate-400 font-medium tracking-wider">
+                  hoặc đăng nhập với email
+                </span>
+              </div>
+            </div>
+
+            <form onSubmit={handleSubmit(onSubmit)} noValidate className="space-y-4">
 
               {/* Email Field */}
               <Input

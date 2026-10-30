@@ -8,6 +8,7 @@ export interface AuthContextValue {
   isLoading: boolean;
   error: ApiError | null;
   login: (credentials: LoginRequest) => Promise<AuthResponse>;
+  loginWithGoogle?: (idToken: string) => Promise<AuthResponse>;
   register: (data: RegisterRequest) => Promise<AuthResponse>;
   logout: () => void;
   clearError: () => void;

@@ -68,3 +68,14 @@ export interface ResetPasswordRequest {
 export interface MessageResponse {
   message: string;
 }
+
+export interface GoogleLoginRequest {
+  idToken: string;
+}
+
+export interface GoogleAccountStatusResponse {
+  linked: boolean;
+  provider: string;
+  email: string | null;
+  linkedAt: string | null;
+}

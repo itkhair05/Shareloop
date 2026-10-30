@@ -45,3 +45,8 @@ media/
 # Local AI agent skills
 .agent/
 .agents/
+
+# Local development scripts containing secrets
+run-backend.ps1
+run-backend.bat
+*.local.ps1

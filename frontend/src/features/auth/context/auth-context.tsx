@@ -91,6 +91,44 @@ export function AuthProvider({ children }: AuthProviderProps) {
     []
   );
 
+  const loginWithGoogle = useCallback(
+    async (idToken: string): Promise<AuthResponse> => {
+      setError(null);
+      try {
+        const response = await authApi.loginWithGoogle({ idToken });
+        tokenStorage.setAccessToken(response.accessToken);
+
+        // Fetch complete user profile from /me
+        try {
+          const profile = await authApi.getCurrentUser();
+          setUser(profile);
+        } catch {
+          // Fallback to response fields if /me temporarily fails
+          setUser({
+            id: response.id,
+            displayName: response.displayName,
+            email: response.email,
+            role: response.role,
+            status: response.status,
+            createdAt: response.createdAt,
+            updatedAt: response.createdAt,
+          });
+        }
+
+        return response;
+      } catch (err) {
+        const apiError = err instanceof ApiError ? err : new ApiError({
+          message: 'Google login failed',
+          status: 500,
+          error: 'Login Error',
+        });
+        setError(apiError);
+        throw apiError;
+      }
+    },
+    []
+  );
+
   const register = useCallback(
     async (data: RegisterRequest): Promise<AuthResponse> => {
       setError(null);
@@ -170,12 +208,13 @@ export function AuthProvider({ children }: AuthProviderProps) {
       isLoading,
       error,
       login,
+      loginWithGoogle,
       register,
       logout,
       clearError,
       refreshUser,
     }),
-    [user, isLoading, error, login, register, logout, clearError, refreshUser]
+    [user, isLoading, error, login, loginWithGoogle, register, logout, clearError, refreshUser]
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

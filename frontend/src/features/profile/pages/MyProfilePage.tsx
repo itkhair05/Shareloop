@@ -24,6 +24,7 @@ import { MySupportRequestsList } from '@/features/support';
 import { MyReportsList } from '@/features/reports';
 import { ProfileHeader } from '../components/ProfileHeader';
 import { ProfileStatsCards } from '../components/ProfileStatsCards';
+import { GoogleAccountLinkingCard } from '../components/GoogleAccountLinkingCard';
 import { EditProfileModal } from '../components/EditProfileModal';
 import { EmptyState, ErrorAlert, LoadingSpinner } from '@/components/ui/Feedback';
 import { Button } from '@/components/ui/Button';
@@ -216,6 +217,9 @@ export function MyProfilePage() {
       {/* Tab 1: Overview */}
       {activeTab === 'overview' && (
         <div className="space-y-8 animate-in fade-in duration-200">
+          {/* Linked Accounts & Security */}
+          <GoogleAccountLinkingCard />
+
           {/* Stats Cards Overview */}
           <ProfileStatsCards
             totalListings={totalListings}
