@@ -70,15 +70,17 @@ export function NotificationsPage() {
             size="sm"
             onClick={handleMarkAllRead}
             disabled={markAllMutation.isPending}
-            className="shrink-0 border-slate-200 hover:bg-slate-50 hover:text-emerald-700 text-slate-700"
+            className="shrink-0 w-max flex-nowrap border-slate-200 hover:bg-slate-50 hover:text-emerald-700 text-slate-700"
             aria-label="Đánh dấu tất cả thông báo là đã đọc"
+            leftIcon={
+              markAllMutation.isPending ? (
+                <Loader2 className="w-4 h-4 animate-spin" />
+              ) : (
+                <CheckCheck className="w-4 h-4 text-emerald-600" />
+              )
+            }
           >
-            {markAllMutation.isPending ? (
-              <Loader2 className="w-4 h-4 animate-spin mr-1.5" />
-            ) : (
-              <CheckCheck className="w-4 h-4 text-emerald-600 mr-1.5" />
-            )}
-            <span>Đánh dấu tất cả đã đọc ({unreadCount})</span>
+            Đánh dấu tất cả đã đọc ({unreadCount})
           </Button>
         )}
       </div>
