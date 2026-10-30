@@ -28,7 +28,13 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.atomic.AtomicInteger;
 
+import com.shareloop.exception.AccountDeactivatedException;
+import com.shareloop.exception.AccountSuspendedException;
+import com.shareloop.security.ratelimit.PasswordRateLimiter;
+import com.shareloop.service.AuthService;
+
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
@@ -55,13 +61,22 @@ class PasswordManagementIntegrationTest {
     @Autowired
     private JwtService jwtService;
 
+    @Autowired
+    private AuthService authService;
+
+    @Autowired(required = false)
+    private PasswordRateLimiter passwordRateLimiter;
+
     @Autowired(required = false)
     private com.shareloop.repository.LoginAttemptRepository loginAttemptRepository;
 
     @org.junit.jupiter.api.BeforeEach
-    void cleanLoginRateLimit() {
+    void cleanRateLimits() {
         if (loginAttemptRepository != null) {
             loginAttemptRepository.deleteAll();
+        }
+        if (passwordRateLimiter != null) {
+            passwordRateLimiter.reset();
         }
     }
 
@@ -89,6 +104,50 @@ class PasswordManagementIntegrationTest {
 
     private String generateBearerToken(User user) {
         return "Bearer " + jwtService.generateToken(user.getId(), user.getEmail(), user.getRole(), user.getStatus());
+    }
+
+    private User createSuspendedUserWithPassword(String email, String rawPassword) {
+        User user = new User(
+                "Suspended User",
+                email,
+                passwordEncoder.encode(rawPassword),
+                UserRole.USER,
+                UserStatus.SUSPENDED
+        );
+        return userRepository.saveAndFlush(user);
+    }
+
+    private User createDeactivatedUserWithPassword(String email, String rawPassword) {
+        User user = new User(
+                "Deactivated User",
+                email,
+                passwordEncoder.encode(rawPassword),
+                UserRole.USER,
+                UserStatus.DEACTIVATED
+        );
+        return userRepository.saveAndFlush(user);
+    }
+
+    private User createSuspendedGoogleOnlyUser(String email) {
+        User user = new User(
+                "Suspended Google User",
+                email,
+                null,
+                UserRole.USER,
+                UserStatus.SUSPENDED
+        );
+        return userRepository.saveAndFlush(user);
+    }
+
+    private User createDeactivatedGoogleOnlyUser(String email) {
+        User user = new User(
+                "Deactivated Google User",
+                email,
+                null,
+                UserRole.USER,
+                UserStatus.DEACTIVATED
+        );
+        return userRepository.saveAndFlush(user);
     }
 
     // =========================================================================
@@ -177,9 +236,12 @@ class PasswordManagementIntegrationTest {
     class ChangePasswordTests {
 
         @org.junit.jupiter.api.BeforeEach
-        void cleanLoginRateLimitInNested() {
+        void cleanRateLimitsInNested() {
             if (loginAttemptRepository != null) {
                 loginAttemptRepository.deleteAll();
+            }
+            if (passwordRateLimiter != null) {
+                passwordRateLimiter.reset();
             }
         }
 
@@ -364,6 +426,175 @@ class PasswordManagementIntegrationTest {
             User freshUserB = userRepository.findById(userB.getId()).orElseThrow();
             assertThat(passwordEncoder.matches("UserBPassword123!", freshUserB.getPasswordHash())).isTrue();
         }
+
+        @Test
+        @Transactional
+        @DisplayName("Suspended user attempting change-password is rejected")
+        void suspendedUserCannotChangePassword() throws Exception {
+            User user = createSuspendedUserWithPassword("suspended." + UUID.randomUUID() + "@shareloop.vn", "ValidPass123!");
+            String token = generateBearerToken(user);
+
+            ChangePasswordRequest request = new ChangePasswordRequest("ValidPass123!", "NewValidPass123!");
+
+            // HTTP filter layer: unauthenticated because suspended user is rejected by JwtAuthenticationFilter
+            mockMvc.perform(post("/api/v1/auth/change-password")
+                            .header("Authorization", token)
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content(objectMapper.writeValueAsString(request)))
+                    .andExpect(status().isUnauthorized());
+
+            // Service layer: direct check throws AccountSuspendedException
+            assertThatThrownBy(() -> authService.changePassword(user.getId(), request))
+                    .isInstanceOf(AccountSuspendedException.class);
+        }
+
+        @Test
+        @Transactional
+        @DisplayName("Deactivated user attempting change-password is rejected")
+        void deactivatedUserCannotChangePassword() throws Exception {
+            User user = createDeactivatedUserWithPassword("deactivated." + UUID.randomUUID() + "@shareloop.vn", "ValidPass123!");
+            String token = generateBearerToken(user);
+
+            ChangePasswordRequest request = new ChangePasswordRequest("ValidPass123!", "NewValidPass123!");
+
+            // HTTP filter layer: unauthenticated because deactivated user is rejected by JwtAuthenticationFilter
+            mockMvc.perform(post("/api/v1/auth/change-password")
+                            .header("Authorization", token)
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content(objectMapper.writeValueAsString(request)))
+                    .andExpect(status().isUnauthorized());
+
+            // Service layer: direct check throws AccountDeactivatedException
+            assertThatThrownBy(() -> authService.changePassword(user.getId(), request))
+                    .isInstanceOf(AccountDeactivatedException.class);
+        }
+
+        @Test
+        @Transactional
+        @DisplayName("Change-password user rate limit returns HTTP 429 when quota is exceeded")
+        void changePasswordRateLimitExceededForUserReturns429() throws Exception {
+            User user = createTestUserWithPassword("ratelimit.user." + UUID.randomUUID() + "@shareloop.vn", "CorrectPassword123!");
+            String token = generateBearerToken(user);
+
+            // Send 5 incorrect-password attempts: all pass validation & hit rate limiter, returning 400 Bad Request
+            for (int i = 0; i < 5; i++) {
+                ChangePasswordRequest req = new ChangePasswordRequest("WrongPassword" + i + "!", "NewPassword123!");
+                mockMvc.perform(post("/api/v1/auth/change-password")
+                                .header("Authorization", token)
+                                .contentType(MediaType.APPLICATION_JSON)
+                                .content(objectMapper.writeValueAsString(req)))
+                        .andExpect(status().isBadRequest());
+            }
+
+            // 6th attempt hits user rate limit and returns 429 Too Many Requests
+            ChangePasswordRequest sixthReq = new ChangePasswordRequest("WrongPassword6!", "NewPassword123!");
+            mockMvc.perform(post("/api/v1/auth/change-password")
+                            .header("Authorization", token)
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content(objectMapper.writeValueAsString(sixthReq)))
+                    .andExpect(status().isTooManyRequests())
+                    .andExpect(jsonPath("$.status").value(429))
+                    .andExpect(jsonPath("$.error").value("Too Many Requests"))
+                    .andExpect(jsonPath("$.message").value(PasswordRateLimiter.CHANGE_PASSWORD_RATE_LIMIT_MESSAGE))
+                    .andExpect(jsonPath("$.path").value("/api/v1/auth/change-password"));
+        }
+
+        @Test
+        @Transactional
+        @DisplayName("Different users are isolated under change-password rate limiting")
+        void changePasswordRateLimitDifferentUsersAreIsolated() throws Exception {
+            User userA = createTestUserWithPassword("isolated.a." + UUID.randomUUID() + "@shareloop.vn", "PassA123!");
+            User userB = createTestUserWithPassword("isolated.b." + UUID.randomUUID() + "@shareloop.vn", "PassB123!");
+
+            String tokenA = generateBearerToken(userA);
+            String tokenB = generateBearerToken(userB);
+
+            // Exhaust user A's limit
+            for (int i = 0; i < 5; i++) {
+                ChangePasswordRequest req = new ChangePasswordRequest("WrongA" + i + "!", "NewPassA123!");
+                mockMvc.perform(post("/api/v1/auth/change-password")
+                                .header("Authorization", tokenA)
+                                .with(r -> { r.setRemoteAddr("10.10.1.1"); return r; })
+                                .contentType(MediaType.APPLICATION_JSON)
+                                .content(objectMapper.writeValueAsString(req)))
+                        .andExpect(status().isBadRequest());
+            }
+
+            // User A is blocked
+            mockMvc.perform(post("/api/v1/auth/change-password")
+                            .header("Authorization", tokenA)
+                            .with(r -> { r.setRemoteAddr("10.10.1.1"); return r; })
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content(objectMapper.writeValueAsString(new ChangePasswordRequest("PassA123!", "NewPassA123!"))))
+                    .andExpect(status().isTooManyRequests());
+
+            // User B on a different IP can still successfully change their password
+            mockMvc.perform(post("/api/v1/auth/change-password")
+                            .header("Authorization", tokenB)
+                            .with(r -> { r.setRemoteAddr("10.10.2.1"); return r; })
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content(objectMapper.writeValueAsString(new ChangePasswordRequest("PassB123!", "NewPassB123!"))))
+                    .andExpect(status().isOk())
+                    .andExpect(jsonPath("$.message").value("Đổi mật khẩu thành công."));
+        }
+
+        @Test
+        @Transactional
+        @DisplayName("Change-password IP rate limit returns HTTP 429 when IP quota is exceeded")
+        void changePasswordRateLimitExceededForIpReturns429() throws Exception {
+            String sharedIp = "192.168.10.50";
+
+            // Two distinct users send 5 requests each from the same client IP -> 10 attempts
+            for (int u = 0; u < 2; u++) {
+                User user = createTestUserWithPassword("ip.limit." + u + "." + UUID.randomUUID() + "@shareloop.vn", "Pass" + u + "123!");
+                String token = generateBearerToken(user);
+                for (int i = 0; i < 5; i++) {
+                    ChangePasswordRequest req = new ChangePasswordRequest("WrongPass" + i + "!", "NewPass123!");
+                    mockMvc.perform(post("/api/v1/auth/change-password")
+                                    .header("Authorization", token)
+                                    .with(r -> { r.setRemoteAddr(sharedIp); return r; })
+                                    .contentType(MediaType.APPLICATION_JSON)
+                                    .content(objectMapper.writeValueAsString(req)))
+                            .andExpect(status().isBadRequest());
+                }
+            }
+
+            // 11th request from a 3rd distinct user from the same IP is blocked by IP limit
+            User user3 = createTestUserWithPassword("ip.limit.third." + UUID.randomUUID() + "@shareloop.vn", "PassThird123!");
+            String token3 = generateBearerToken(user3);
+
+            mockMvc.perform(post("/api/v1/auth/change-password")
+                            .header("Authorization", token3)
+                            .with(r -> { r.setRemoteAddr(sharedIp); return r; })
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content(objectMapper.writeValueAsString(new ChangePasswordRequest("PassThird123!", "NewPassThird123!"))))
+                    .andExpect(status().isTooManyRequests())
+                    .andExpect(jsonPath("$.status").value(429))
+                    .andExpect(jsonPath("$.message").value(PasswordRateLimiter.CHANGE_PASSWORD_RATE_LIMIT_MESSAGE));
+        }
+
+        @Test
+        @Transactional
+        @DisplayName("Change-password response does not leak sensitive information")
+        void changePasswordResponseDoesNotLeakSensitiveInformation() throws Exception {
+            User user = createTestUserWithPassword("leakcheck." + UUID.randomUUID() + "@shareloop.vn", "CurrentSecret123!");
+            String token = generateBearerToken(user);
+
+            ChangePasswordRequest request = new ChangePasswordRequest("CurrentSecret123!", "NewSecret123!");
+
+            mockMvc.perform(post("/api/v1/auth/change-password")
+                            .header("Authorization", token)
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content(objectMapper.writeValueAsString(request)))
+                    .andExpect(status().isOk())
+                    .andExpect(jsonPath("$.message").value("Đổi mật khẩu thành công."))
+                    .andExpect(jsonPath("$.password").doesNotExist())
+                    .andExpect(jsonPath("$.passwordHash").doesNotExist())
+                    .andExpect(jsonPath("$.currentPassword").doesNotExist())
+                    .andExpect(jsonPath("$.newPassword").doesNotExist())
+                    .andExpect(jsonPath("$.token").doesNotExist())
+                    .andExpect(jsonPath("$.accessToken").doesNotExist());
+        }
     }
 
     // =========================================================================
@@ -374,9 +605,12 @@ class PasswordManagementIntegrationTest {
     class SetPasswordTests {
 
         @org.junit.jupiter.api.BeforeEach
-        void cleanLoginRateLimitInNested() {
+        void cleanRateLimitsInNested() {
             if (loginAttemptRepository != null) {
                 loginAttemptRepository.deleteAll();
+            }
+            if (passwordRateLimiter != null) {
+                passwordRateLimiter.reset();
             }
         }
 
@@ -549,6 +783,170 @@ class PasswordManagementIntegrationTest {
 
             User dbUser = userRepository.findById(user.getId()).orElseThrow();
             assertThat(passwordEncoder.matches("ConcurrentPassword123!", dbUser.getPasswordHash())).isTrue();
+        }
+
+        @Test
+        @Transactional
+        @DisplayName("Suspended Google user attempting set-password is rejected")
+        void suspendedGoogleUserCannotSetPassword() throws Exception {
+            User user = createSuspendedGoogleOnlyUser("suspended.google." + UUID.randomUUID() + "@shareloop.vn");
+            String token = generateBearerToken(user);
+
+            SetPasswordRequest request = new SetPasswordRequest("FirstPassword123!");
+
+            mockMvc.perform(post("/api/v1/auth/set-password")
+                            .header("Authorization", token)
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content(objectMapper.writeValueAsString(request)))
+                    .andExpect(status().isUnauthorized());
+
+            assertThatThrownBy(() -> authService.setPassword(user.getId(), request))
+                    .isInstanceOf(AccountSuspendedException.class);
+        }
+
+        @Test
+        @Transactional
+        @DisplayName("Deactivated Google user attempting set-password is rejected")
+        void deactivatedGoogleUserCannotSetPassword() throws Exception {
+            User user = createDeactivatedGoogleOnlyUser("deactivated.google." + UUID.randomUUID() + "@shareloop.vn");
+            String token = generateBearerToken(user);
+
+            SetPasswordRequest request = new SetPasswordRequest("FirstPassword123!");
+
+            mockMvc.perform(post("/api/v1/auth/set-password")
+                            .header("Authorization", token)
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content(objectMapper.writeValueAsString(request)))
+                    .andExpect(status().isUnauthorized());
+
+            assertThatThrownBy(() -> authService.setPassword(user.getId(), request))
+                    .isInstanceOf(AccountDeactivatedException.class);
+        }
+
+        @Test
+        @Transactional
+        @DisplayName("Set-password user rate limit returns HTTP 429 when quota is exceeded")
+        void setPasswordRateLimitExceededForUserReturns429() throws Exception {
+            User user = createTestUserWithPassword("already.has.pw." + UUID.randomUUID() + "@shareloop.vn", "AlreadyHasPass123!");
+            String token = generateBearerToken(user);
+
+            // 5 attempts by this user: each gets 409 Conflict because password is already set, but increments rate limiter
+            for (int i = 0; i < 5; i++) {
+                SetPasswordRequest req = new SetPasswordRequest("NewAttemptPassword" + i + "!");
+                mockMvc.perform(post("/api/v1/auth/set-password")
+                                .header("Authorization", token)
+                                .contentType(MediaType.APPLICATION_JSON)
+                                .content(objectMapper.writeValueAsString(req)))
+                        .andExpect(status().isConflict());
+            }
+
+            // 6th attempt is blocked by rate limiter with 429 Too Many Requests
+            SetPasswordRequest sixthReq = new SetPasswordRequest("NewAttemptPassword6!");
+            mockMvc.perform(post("/api/v1/auth/set-password")
+                            .header("Authorization", token)
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content(objectMapper.writeValueAsString(sixthReq)))
+                    .andExpect(status().isTooManyRequests())
+                    .andExpect(jsonPath("$.status").value(429))
+                    .andExpect(jsonPath("$.error").value("Too Many Requests"))
+                    .andExpect(jsonPath("$.message").value(PasswordRateLimiter.SET_PASSWORD_RATE_LIMIT_MESSAGE))
+                    .andExpect(jsonPath("$.path").value("/api/v1/auth/set-password"));
+        }
+
+        @Test
+        @Transactional
+        @DisplayName("Different users are isolated under set-password rate limiting")
+        void setPasswordRateLimitDifferentUsersAreIsolated() throws Exception {
+            User userA = createTestUserWithPassword("setpw.a." + UUID.randomUUID() + "@shareloop.vn", "HasPassA123!");
+            User userB = createGoogleOnlyUser("setpw.b." + UUID.randomUUID() + "@shareloop.vn");
+
+            String tokenA = generateBearerToken(userA);
+            String tokenB = generateBearerToken(userB);
+
+            // Exhaust user A's limit
+            for (int i = 0; i < 5; i++) {
+                SetPasswordRequest req = new SetPasswordRequest("NewPassA" + i + "!");
+                mockMvc.perform(post("/api/v1/auth/set-password")
+                                .header("Authorization", tokenA)
+                                .with(r -> { r.setRemoteAddr("10.20.1.1"); return r; })
+                                .contentType(MediaType.APPLICATION_JSON)
+                                .content(objectMapper.writeValueAsString(req)))
+                        .andExpect(status().isConflict());
+            }
+
+            // User A is blocked
+            mockMvc.perform(post("/api/v1/auth/set-password")
+                            .header("Authorization", tokenA)
+                            .with(r -> { r.setRemoteAddr("10.20.1.1"); return r; })
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content(objectMapper.writeValueAsString(new SetPasswordRequest("NewPassA99!"))))
+                    .andExpect(status().isTooManyRequests());
+
+            // User B on a different IP can still successfully set their initial password
+            mockMvc.perform(post("/api/v1/auth/set-password")
+                            .header("Authorization", tokenB)
+                            .with(r -> { r.setRemoteAddr("10.20.2.1"); return r; })
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content(objectMapper.writeValueAsString(new SetPasswordRequest("BrandNewPassB123!"))))
+                    .andExpect(status().isOk())
+                    .andExpect(jsonPath("$.message").value("Thiết lập mật khẩu thành công."));
+        }
+
+        @Test
+        @Transactional
+        @DisplayName("Set-password IP rate limit returns HTTP 429 when IP quota is exceeded")
+        void setPasswordRateLimitExceededForIpReturns429() throws Exception {
+            String sharedIp = "192.168.20.50";
+
+            // Two distinct users send 5 requests each from the same client IP -> 10 attempts
+            for (int u = 0; u < 2; u++) {
+                User user = createTestUserWithPassword("setpw.ip." + u + "." + UUID.randomUUID() + "@shareloop.vn", "Pass" + u + "123!");
+                String token = generateBearerToken(user);
+                for (int i = 0; i < 5; i++) {
+                    SetPasswordRequest req = new SetPasswordRequest("TryPassword" + i + "!");
+                    mockMvc.perform(post("/api/v1/auth/set-password")
+                                    .header("Authorization", token)
+                                    .with(r -> { r.setRemoteAddr(sharedIp); return r; })
+                                    .contentType(MediaType.APPLICATION_JSON)
+                                    .content(objectMapper.writeValueAsString(req)))
+                            .andExpect(status().isConflict());
+                }
+            }
+
+            // 11th request from a 3rd distinct Google-only user from the same IP is blocked by IP limit
+            User user3 = createGoogleOnlyUser("setpw.ip.third." + UUID.randomUUID() + "@shareloop.vn");
+            String token3 = generateBearerToken(user3);
+
+            mockMvc.perform(post("/api/v1/auth/set-password")
+                            .header("Authorization", token3)
+                            .with(r -> { r.setRemoteAddr(sharedIp); return r; })
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content(objectMapper.writeValueAsString(new SetPasswordRequest("ValidNewPasswordThird123!"))))
+                    .andExpect(status().isTooManyRequests())
+                    .andExpect(jsonPath("$.status").value(429))
+                    .andExpect(jsonPath("$.message").value(PasswordRateLimiter.SET_PASSWORD_RATE_LIMIT_MESSAGE));
+        }
+
+        @Test
+        @Transactional
+        @DisplayName("Set-password response does not leak sensitive information")
+        void setPasswordResponseDoesNotLeakSensitiveInformation() throws Exception {
+            User user = createGoogleOnlyUser("setpw.leakcheck." + UUID.randomUUID() + "@shareloop.vn");
+            String token = generateBearerToken(user);
+
+            SetPasswordRequest request = new SetPasswordRequest("InitialSecret123!");
+
+            mockMvc.perform(post("/api/v1/auth/set-password")
+                            .header("Authorization", token)
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content(objectMapper.writeValueAsString(request)))
+                    .andExpect(status().isOk())
+                    .andExpect(jsonPath("$.message").value("Thiết lập mật khẩu thành công."))
+                    .andExpect(jsonPath("$.password").doesNotExist())
+                    .andExpect(jsonPath("$.passwordHash").doesNotExist())
+                    .andExpect(jsonPath("$.newPassword").doesNotExist())
+                    .andExpect(jsonPath("$.token").doesNotExist())
+                    .andExpect(jsonPath("$.accessToken").doesNotExist());
         }
     }
 }

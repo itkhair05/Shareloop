@@ -15,6 +15,7 @@ import com.shareloop.security.UserPrincipal;
 import com.shareloop.service.AuthService;
 import com.shareloop.security.ratelimit.ClientIpResolver;
 import com.shareloop.security.ratelimit.LoginRateLimiter;
+import com.shareloop.security.ratelimit.PasswordRateLimiter;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -33,15 +34,18 @@ public class AuthController {
     private final AuthService authService;
     private final ClientIpResolver clientIpResolver;
     private final LoginRateLimiter loginRateLimiter;
+    private final PasswordRateLimiter passwordRateLimiter;
 
     public AuthController(
             AuthService authService,
             ClientIpResolver clientIpResolver,
-            LoginRateLimiter loginRateLimiter
+            LoginRateLimiter loginRateLimiter,
+            PasswordRateLimiter passwordRateLimiter
     ) {
         this.authService = authService;
         this.clientIpResolver = clientIpResolver;
         this.loginRateLimiter = loginRateLimiter;
+        this.passwordRateLimiter = passwordRateLimiter;
     }
 
     @PostMapping("/register")
@@ -142,11 +146,14 @@ public class AuthController {
     @PostMapping("/change-password")
     public ResponseEntity<MessageResponse> changePassword(
             @Valid @RequestBody ChangePasswordRequest request,
-            @AuthenticationPrincipal UserPrincipal principal
+            @AuthenticationPrincipal UserPrincipal principal,
+            HttpServletRequest httpRequest
     ) {
         if (principal == null) {
             throw new InvalidTokenException("Authenticated principal not found");
         }
+        String clientIp = clientIpResolver.resolveClientIp(httpRequest);
+        passwordRateLimiter.checkChangePasswordRateLimit(principal.getId(), clientIp);
         MessageResponse response = authService.changePassword(principal.getId(), request);
         return ResponseEntity.ok(response);
     }
@@ -156,11 +163,14 @@ public class AuthController {
     @PostMapping("/set-password")
     public ResponseEntity<MessageResponse> setPassword(
             @Valid @RequestBody SetPasswordRequest request,
-            @AuthenticationPrincipal UserPrincipal principal
+            @AuthenticationPrincipal UserPrincipal principal,
+            HttpServletRequest httpRequest
     ) {
         if (principal == null) {
             throw new InvalidTokenException("Authenticated principal not found");
         }
+        String clientIp = clientIpResolver.resolveClientIp(httpRequest);
+        passwordRateLimiter.checkSetPasswordRateLimit(principal.getId(), clientIp);
         MessageResponse response = authService.setPassword(principal.getId(), request);
         return ResponseEntity.ok(response);
     }

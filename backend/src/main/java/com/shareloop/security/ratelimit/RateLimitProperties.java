@@ -200,4 +200,83 @@ public class RateLimitProperties {
     public void setPasswordResetCleanupCron(String passwordResetCleanupCron) {
         this.passwordResetCleanupCron = passwordResetCleanupCron;
     }
+
+    /**
+     * Maximum change-password attempts allowed per user within the rolling window.
+     */
+    private int changePasswordUserLimit = 5;
+
+    /**
+     * Maximum change-password attempts allowed per IP within the rolling window.
+     */
+    private int changePasswordIpLimit = 10;
+
+    /**
+     * Duration in seconds of the change-password rolling window (default: 60 seconds).
+     */
+    private int changePasswordWindowSeconds = 60;
+
+    /**
+     * Maximum set-password attempts allowed per user within the rolling window.
+     */
+    private int setPasswordUserLimit = 5;
+
+    /**
+     * Maximum set-password attempts allowed per IP within the rolling window.
+     */
+    private int setPasswordIpLimit = 10;
+
+    /**
+     * Duration in seconds of the set-password rolling window (default: 60 seconds).
+     */
+    private int setPasswordWindowSeconds = 60;
+
+    public int getChangePasswordUserLimit() {
+        return changePasswordUserLimit;
+    }
+
+    public void setChangePasswordUserLimit(int changePasswordUserLimit) {
+        this.changePasswordUserLimit = changePasswordUserLimit;
+    }
+
+    public int getChangePasswordIpLimit() {
+        return changePasswordIpLimit;
+    }
+
+    public void setChangePasswordIpLimit(int changePasswordIpLimit) {
+        this.changePasswordIpLimit = changePasswordIpLimit;
+    }
+
+    public int getChangePasswordWindowSeconds() {
+        return changePasswordWindowSeconds;
+    }
+
+    public void setChangePasswordWindowSeconds(int changePasswordWindowSeconds) {
+        this.changePasswordWindowSeconds = changePasswordWindowSeconds;
+    }
+
+    public int getSetPasswordUserLimit() {
+        return setPasswordUserLimit;
+    }
+
+    public void setSetPasswordUserLimit(int setPasswordUserLimit) {
+        this.setPasswordUserLimit = setPasswordUserLimit;
+    }
+
+    public int getSetPasswordIpLimit() {
+        return setPasswordIpLimit;
+    }
+
+    public void setSetPasswordIpLimit(int setPasswordIpLimit) {
+        this.setPasswordIpLimit = setPasswordIpLimit;
+    }
+
+    public int getSetPasswordWindowSeconds() {
+        return setPasswordWindowSeconds;
+    }
+
+    public void setSetPasswordWindowSeconds(int setPasswordWindowSeconds) {
+        this.setPasswordWindowSeconds = setPasswordWindowSeconds;
+    }
 }
+
