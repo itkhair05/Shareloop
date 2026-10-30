@@ -100,7 +100,7 @@ export function GoogleAccountLinkingCard() {
         </div>
       </CardHeader>
 
-      <CardContent className="pt-4 space-y-4">
+      <CardContent className="p-4 sm:p-5 space-y-4">
         {/* Success Alert */}
         {successMessage && (
           <div
@@ -166,7 +166,7 @@ export function GoogleAccountLinkingCard() {
 
         {/* Status Display and Actions */}
         {!isLoading && !isError && status && (
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-4 rounded-xl border border-slate-100 bg-slate-50/60">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-3.5 sm:p-4 rounded-xl border border-slate-100 bg-slate-50/60 overflow-hidden">
             {/* Left: Google branding & user metadata */}
             <div className="flex items-start gap-3">
               <div className="w-10 h-10 rounded-xl bg-white border border-slate-200 shadow-2xs flex items-center justify-center shrink-0">
@@ -218,7 +218,7 @@ export function GoogleAccountLinkingCard() {
             </div>
 
             {/* Right: Actions */}
-            <div className="shrink-0 self-start sm:self-center">
+            <div className="w-full min-w-0 sm:w-auto sm:min-w-[280px] self-start sm:self-center">
               {status.linked ? (
                 <div className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-emerald-50 text-emerald-800 text-xs font-medium border border-emerald-200">
                   <ShieldCheck className="w-4 h-4 text-emerald-600 shrink-0" aria-hidden="true" />
@@ -230,7 +230,7 @@ export function GoogleAccountLinkingCard() {
                   onSuccess={handleLinkSuccess}
                   onError={(err) => setErrorMessage(err.message)}
                   disabled={linkMutation.isPending}
-                  width={240}
+                  width="100%"
                 />
               )}
             </div>

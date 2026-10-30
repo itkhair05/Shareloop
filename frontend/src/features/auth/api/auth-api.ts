@@ -1,6 +1,7 @@
 import { apiClient } from '@/lib/api-client';
 import type {
   AuthResponse,
+  ChangePasswordRequest,
   ForgotPasswordRequest,
   GoogleAccountStatusResponse,
   GoogleLoginRequest,
@@ -8,6 +9,7 @@ import type {
   MessageResponse,
   RegisterRequest,
   ResetPasswordRequest,
+  SetPasswordRequest,
   UserProfile,
 } from '@/types/auth';
 
@@ -70,6 +72,20 @@ export const authApi = {
    */
   async resetPassword(data: ResetPasswordRequest): Promise<MessageResponse> {
     return apiClient.post<MessageResponse, ResetPasswordRequest>('/api/v1/auth/reset-password', data);
+  },
+
+  /**
+   * Change existing password for authenticated user
+   */
+  async changePassword(data: ChangePasswordRequest): Promise<MessageResponse> {
+    return apiClient.post<MessageResponse, ChangePasswordRequest>('/api/v1/auth/change-password', data);
+  },
+
+  /**
+   * Set initial password for Google-only account without password
+   */
+  async setPassword(data: SetPasswordRequest): Promise<MessageResponse> {
+    return apiClient.post<MessageResponse, SetPasswordRequest>('/api/v1/auth/set-password', data);
   },
 };
 

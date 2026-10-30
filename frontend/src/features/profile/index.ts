@@ -4,6 +4,9 @@ export { ProfileHeader, type ProfileHeaderProps } from './components/ProfileHead
 export { PublicProfileHeader, type PublicProfileHeaderProps } from './components/PublicProfileHeader';
 export { ProfileStatsCards, type ProfileStatsCardsProps } from './components/ProfileStatsCards';
 export { GoogleAccountLinkingCard } from './components/GoogleAccountLinkingCard';
+export { PasswordManagementCard, type PasswordManagementCardProps } from './components/PasswordManagementCard';
+export { ChangePasswordModal, type ChangePasswordModalProps } from './components/ChangePasswordModal';
+export { SetPasswordModal, type SetPasswordModalProps } from './components/SetPasswordModal';
 export { EditProfileModal, type EditProfileModalProps } from './components/EditProfileModal';
 export { profileApi, profileKeys } from './api/profile-api';
 export { useUpdateProfile } from './hooks/use-update-profile';

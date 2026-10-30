@@ -132,6 +132,19 @@ export function initializeGoogleIdentity(options: {
   });
 }
 
+export const GOOGLE_BUTTON_MIN_WIDTH = 200;
+export const GOOGLE_BUTTON_MAX_WIDTH = 400;
+
+/**
+ * Clamps numeric width to Google Identity Services documented range [200, 400].
+ */
+export function clampGoogleButtonWidth(width: number): number {
+  return Math.min(
+    Math.max(Math.round(width), GOOGLE_BUTTON_MIN_WIDTH),
+    GOOGLE_BUTTON_MAX_WIDTH
+  );
+}
+
 /**
  * Renders the official Google button into a target DOM container.
  */
@@ -155,6 +168,20 @@ export function renderGoogleButton(
       ? 'continue_with'
       : 'signin_with';
 
+  // Google Identity Services documented constraints:
+  // - Minimum width: 200px
+  // - Maximum width: 400px
+  // - Valid integer px value only
+  let resolvedWidth: number | undefined;
+  if (typeof options.width === 'number') {
+    resolvedWidth = clampGoogleButtonWidth(options.width);
+  } else if (typeof options.width === 'string') {
+    const parsed = parseInt(options.width.trim(), 10);
+    if (!isNaN(parsed) && parsed > 0) {
+      resolvedWidth = clampGoogleButtonWidth(parsed);
+    }
+  }
+
   window.google.accounts.id.renderButton(container, {
     type: 'standard',
     theme: 'outline',
@@ -162,8 +189,9 @@ export function renderGoogleButton(
     text: textType,
     shape: 'rectangular',
     logo_alignment: 'left',
-    width: options.width ?? '100%',
+    ...(resolvedWidth !== undefined ? { width: resolvedWidth } : {}),
     locale: 'vi',
     click_listener: options.onClickListener,
   });
 }
+

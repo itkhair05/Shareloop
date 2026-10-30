@@ -15,6 +15,7 @@ export interface UserProfile {
   status: UserStatus;
   createdAt: string;
   updatedAt: string;
+  hasPassword?: boolean;
 }
 
 export interface AuthResponse {
@@ -78,4 +79,13 @@ export interface GoogleAccountStatusResponse {
   provider: string;
   email: string | null;
   linkedAt: string | null;
+}
+
+export interface ChangePasswordRequest {
+  currentPassword: string;
+  newPassword: string;
+}
+
+export interface SetPasswordRequest {
+  newPassword: string;
 }

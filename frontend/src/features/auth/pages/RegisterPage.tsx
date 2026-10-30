@@ -128,20 +128,8 @@ export function RegisterPage() {
   return (
     <div className="min-h-[calc(100vh-10rem)] flex items-center justify-center px-4 py-12 bg-slate-50/50">
       <div className="w-full max-w-md space-y-6">
-        {/* Brand & Page Header */}
-        <div className="text-center space-y-2">
-          <Link
-            to="/"
-            className="inline-flex items-center gap-2.5 rounded-lg p-1 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500"
-          >
-            <div className="w-10 h-10 rounded-xl bg-emerald-600 flex items-center justify-center text-white shadow-xs">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" className="w-6 h-6">
-                <circle cx="12" cy="12" r="9" strokeDasharray="4 3" />
-                <path d="M9 12a3 3 0 1 0 6 0 3 3 0 1 0-6 0" />
-              </svg>
-            </div>
-            <span className="text-2xl font-bold text-slate-950 tracking-tight">ShareLoop</span>
-          </Link>
+        {/* Page Header (Đã bỏ Logo và tên ShareLoop) */}
+        <div className="text-center space-y-2 mb-2">
           <h1 className="text-2xl font-bold text-slate-900 tracking-tight">Tạo tài khoản mới</h1>
           <p className="text-sm text-slate-600">
             Tham gia ShareLoop để chia sẻ, cho tặng và trao đổi đồ dùng gia đình cùng hàng xóm.

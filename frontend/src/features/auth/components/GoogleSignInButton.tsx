@@ -6,6 +6,8 @@ import {
   loadGoogleIdentityScript,
   initializeGoogleIdentity,
   renderGoogleButton,
+  clampGoogleButtonWidth,
+  GOOGLE_BUTTON_MIN_WIDTH,
 } from '../utils/google-identity';
 
 export interface GoogleSignInButtonProps {
@@ -34,18 +36,12 @@ export interface GoogleSignInButtonProps {
   className?: string;
   /**
    * Custom width in px or percentage.
-   * - If a number is provided, Google button uses that fixed width (px).
+   * - If a number is provided, Google button uses that clamped width (px).
    * - If a string like '100%' is provided, the width is measured from the
    *   container element and kept in sync via ResizeObserver.
    */
   width?: number | string;
 }
-
-/**
- * Minimum width Google Identity Services allows for the rendered button.
- * Reference: https://developers.google.com/identity/gsi/web/reference/js-reference
- */
-const GOOGLE_MIN_WIDTH = 200;
 
 export function GoogleSignInButton({
   mode = 'signin',
@@ -56,6 +52,7 @@ export function GoogleSignInButton({
   width = '100%',
 }: GoogleSignInButtonProps) {
   const containerRef = useRef<HTMLDivElement>(null);
+  const renderedWidthRef = useRef<number | null>(null);
   const [isScriptLoaded, setIsScriptLoaded] = useState(false);
   const [scriptError, setScriptError] = useState<string | null>(null);
   const [isProcessing, setIsProcessing] = useState(false);
@@ -63,15 +60,24 @@ export function GoogleSignInButton({
 
   /**
    * Resolve the actual pixel width to pass to Google.
-   * Google only accepts a numeric px value for its `width` option.
+   * Google only accepts an integer px value between 200 and 400.
    */
-  const resolveWidth = useCallback((): number => {
-    if (typeof width === 'number') {
-      return width;
-    }
-    const measured = containerRef.current?.offsetWidth ?? 0;
-    return measured > 0 ? measured : GOOGLE_MIN_WIDTH;
-  }, [width]);
+  const resolveTargetWidth = useCallback(
+    (customWidth?: number): number => {
+      if (typeof width === 'number') {
+        return clampGoogleButtonWidth(width);
+      }
+      const measured =
+        customWidth ??
+        containerRef.current?.getBoundingClientRect().width ??
+        containerRef.current?.offsetWidth ??
+        0;
+      return measured > 0
+        ? clampGoogleButtonWidth(measured)
+        : GOOGLE_BUTTON_MIN_WIDTH;
+    },
+    [width]
+  );
 
   const handleCredentialReceived = useCallback(
     async (idToken: string) => {
@@ -92,6 +98,27 @@ export function GoogleSignInButton({
     [disabled, isProcessing, onSuccess, onError]
   );
 
+  const renderButtonInstance = useCallback(
+    (targetWidth: number) => {
+      const container = containerRef.current;
+      if (!container || !container.isConnected) return;
+
+      container.innerHTML = '';
+      renderGoogleButton(container, {
+        mode,
+        disabled: disabled || isProcessing,
+        width: targetWidth,
+        onClickListener: () => {
+          if (disabled || isProcessing) {
+            return;
+          }
+        },
+      });
+      renderedWidthRef.current = targetWidth;
+    },
+    [mode, disabled, isProcessing]
+  );
+
   const initGoogle = useCallback(() => {
     if (!isConfigured) {
       return;
@@ -107,19 +134,8 @@ export function GoogleSignInButton({
           onCredentialReceived: handleCredentialReceived,
         });
 
-        if (containerRef.current) {
-          containerRef.current.innerHTML = '';
-          renderGoogleButton(containerRef.current, {
-            mode,
-            disabled: disabled || isProcessing,
-            width: resolveWidth(),
-            onClickListener: () => {
-              if (disabled || isProcessing) {
-                return;
-              }
-            },
-          });
-        }
+        const initialWidth = resolveTargetWidth();
+        renderButtonInstance(initialWidth);
       })
       .catch((err) => {
         const message =
@@ -132,10 +148,8 @@ export function GoogleSignInButton({
   }, [
     isConfigured,
     handleCredentialReceived,
-    mode,
-    disabled,
-    isProcessing,
-    resolveWidth,
+    resolveTargetWidth,
+    renderButtonInstance,
     onError,
   ]);
 
@@ -145,43 +159,35 @@ export function GoogleSignInButton({
 
   /**
    * Re-render the Google button whenever the container width changes
-   * (e.g. responsive layout, sidebar collapse, orientation change).
-   * The Google SDK renders an iframe with a fixed px width, so we have
-   * to explicitly re-mount it when the layout changes.
+   * (e.g. responsive layout, mobile orientation change, window resize).
+   * Google renders an iframe with fixed px dimensions, so it must be
+   * re-mounted with the newly calculated responsive width.
    */
   useEffect(() => {
     if (!isScriptLoaded || !isConfigured) return;
     const container = containerRef.current;
     if (!container) return;
 
-    let lastWidth = container.offsetWidth || 0;
+    // Fixed numeric width requested: do not observe container resize
+    if (typeof width === 'number') return;
+
     let rafId: number | null = null;
 
     const observer = new ResizeObserver((entries) => {
       const entry = entries[0];
       if (!entry) return;
-      const newWidth = Math.round(entry.contentRect.width);
-      // Skip tiny fluctuations (scrollbar appearance, sub-pixel rounding, etc.)
-      if (Math.abs(newWidth - lastWidth) < 10) return;
-      lastWidth = newWidth;
+
+      const currentWidth = entry.contentRect.width;
+      if (currentWidth <= 0) return;
+
+      const targetWidth = clampGoogleButtonWidth(currentWidth);
+
+      // Only re-render if the target clamped integer width actually changed
+      if (targetWidth === renderedWidthRef.current) return;
 
       if (rafId !== null) cancelAnimationFrame(rafId);
       rafId = requestAnimationFrame(() => {
-        if (!container.isConnected) return;
-        container.innerHTML = '';
-        renderGoogleButton(container, {
-          mode,
-          disabled: disabled || isProcessing,
-          width:
-            typeof width === 'number'
-              ? width
-              : Math.max(newWidth, GOOGLE_MIN_WIDTH),
-          onClickListener: () => {
-            if (disabled || isProcessing) {
-              return;
-            }
-          },
-        });
+        renderButtonInstance(targetWidth);
       });
     });
 
@@ -194,10 +200,8 @@ export function GoogleSignInButton({
   }, [
     isScriptLoaded,
     isConfigured,
-    mode,
-    disabled,
-    isProcessing,
     width,
+    renderButtonInstance,
   ]);
 
   // If Google Web Client ID is not configured in environment
@@ -243,19 +247,16 @@ export function GoogleSignInButton({
 
   return (
     <div
-      className={`relative flex flex-col items-center justify-center w-full ${className}`}
+      className={`relative flex flex-col items-center justify-center w-full min-w-0 ${className}`}
     >
       {/*
         Target container for Google Identity Services rendered button.
-        - `w-full` makes the wrapper stretch.
-        - `[&>div]:w-full` forces the SDK-generated wrapper <div> to fill.
-        - `[&_iframe]:w-full` forces the actual iframe (the clickable button)
-          to fill, so it visually matches the email/password inputs.
+        - `w-full min-w-0` ensures full responsiveness without overflow.
       */}
       <div
         ref={containerRef}
         data-testid="google-signin-container"
-        className={`w-full flex items-center justify-center min-h-[44px] [&>div]:w-full [&_iframe]:w-full ${
+        className={`w-full min-w-0 flex items-center justify-center min-h-[44px] ${
           disabled || isProcessing ? 'opacity-50 pointer-events-none' : ''
         }`}
       />

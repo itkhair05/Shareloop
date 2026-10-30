@@ -25,6 +25,7 @@ import { MyReportsList } from '@/features/reports';
 import { ProfileHeader } from '../components/ProfileHeader';
 import { ProfileStatsCards } from '../components/ProfileStatsCards';
 import { GoogleAccountLinkingCard } from '../components/GoogleAccountLinkingCard';
+import { PasswordManagementCard } from '../components/PasswordManagementCard';
 import { EditProfileModal } from '../components/EditProfileModal';
 import { EmptyState, ErrorAlert, LoadingSpinner } from '@/components/ui/Feedback';
 import { Button } from '@/components/ui/Button';
@@ -218,7 +219,13 @@ export function MyProfilePage() {
       {activeTab === 'overview' && (
         <div className="space-y-8 animate-in fade-in duration-200">
           {/* Linked Accounts & Security */}
-          <GoogleAccountLinkingCard />
+          <div className="space-y-6">
+            <GoogleAccountLinkingCard />
+            <PasswordManagementCard
+              user={user}
+              onSuccess={(msg) => setSuccessMessage(msg)}
+            />
+          </div>
 
           {/* Stats Cards Overview */}
           <ProfileStatsCards

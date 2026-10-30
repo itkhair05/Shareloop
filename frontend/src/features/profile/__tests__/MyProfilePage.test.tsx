@@ -23,6 +23,21 @@ vi.mock('../api/profile-api', () => ({
   },
 }));
 
+// Mock auth API for Google linking and password management cards
+vi.mock('@/features/auth/api/auth-api', () => ({
+  authApi: {
+    getGoogleAccountStatus: vi.fn().mockResolvedValue({
+      linked: false,
+      provider: 'GOOGLE',
+      email: null,
+      linkedAt: null,
+    }),
+    linkGoogleAccount: vi.fn(),
+    changePassword: vi.fn(),
+    setPassword: vi.fn(),
+  },
+}));
+
 // Mock auth hook
 vi.mock('@/features/auth', async () => {
   const actual = await vi.importActual<Record<string, unknown>>('@/features/auth');
