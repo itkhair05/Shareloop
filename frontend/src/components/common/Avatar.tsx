@@ -78,6 +78,7 @@ export function Avatar({
           alt={accessibleLabel}
           className="w-full h-full object-cover rounded-full"
           onError={() => setFailedUrl(resolvedUrl)}
+          referrerPolicy="no-referrer"
         />
       ) : initials ? (
         <span

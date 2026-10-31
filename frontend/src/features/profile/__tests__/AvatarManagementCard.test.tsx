@@ -194,6 +194,8 @@ describe('AvatarManagementCard Component', () => {
         expect(screen.getByText('Xem trước ảnh mới được chọn')).toBeInTheDocument();
         expect(screen.getByRole('button', { name: /Lưu ảnh đại diện/i })).toBeInTheDocument();
         expect(screen.getByRole('button', { name: /Hủy xem trước/i })).toBeInTheDocument();
+        const img = screen.getByRole('img', { name: /Xem trước ảnh đại diện mới/i });
+        expect(img).toHaveAttribute('src', 'blob:http://localhost/fake-preview-url');
       });
     });
 

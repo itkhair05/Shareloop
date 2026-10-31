@@ -30,6 +30,14 @@ rawAxiosClient.interceptors.request.use(
     if (token && !config.headers.Authorization) {
       config.headers.Authorization = `Bearer ${token}`;
     }
+    // For FormData payloads, remove default Content-Type so Axios/browser sets multipart/form-data with proper boundary
+    if (config.data instanceof FormData) {
+      if (typeof config.headers?.delete === 'function') {
+        config.headers.delete('Content-Type');
+      } else if (config.headers) {
+        delete config.headers['Content-Type'];
+      }
+    }
     return config;
   },
   (error) => Promise.reject(normalizeApiError(error))

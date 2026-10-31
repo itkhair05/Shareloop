@@ -28,6 +28,7 @@ describe('Avatar Component', () => {
 
       const img = screen.getByRole('img', { name: 'Trần Minh' });
       expect(img).toHaveAttribute('src', googlePhotoUrl);
+      expect(img).toHaveAttribute('referrerPolicy', 'no-referrer');
     });
 
     it('Priority 2: renders initials when avatarUrl is missing and name is present', () => {

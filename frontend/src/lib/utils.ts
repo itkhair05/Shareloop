@@ -43,7 +43,7 @@ export function resolveImageUrl(url?: string | null): string | null {
   if (!url) return null;
   const trimmed = url.trim();
   if (!trimmed) return null;
-  if (/^https?:\/\//i.test(trimmed)) {
+  if (/^(https?|blob|data):/i.test(trimmed)) {
     return trimmed;
   }
   const cleanPath = trimmed.startsWith('/') ? trimmed : `/${trimmed}`;

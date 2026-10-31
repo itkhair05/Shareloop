@@ -32,14 +32,20 @@ export function AvatarManagementCard({ user, onSuccess }: AvatarManagementCardPr
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
-  // Clean up object URL when component unmounts or previewUrl changes
+  const previewUrlRef = useRef<string | null>(null);
+
+  useEffect(() => {
+    previewUrlRef.current = previewUrl;
+  }, [previewUrl]);
+
+  // Clean up object URL when component unmounts
   useEffect(() => {
     return () => {
-      if (previewUrl) {
-        URL.revokeObjectURL(previewUrl);
+      if (previewUrlRef.current) {
+        URL.revokeObjectURL(previewUrlRef.current);
       }
     };
-  }, [previewUrl]);
+  }, []);
 
   const hasCustomAvatar = Boolean(user.customAvatarUrl);
   const hasGoogleAvatar = Boolean(user.googleAvatarUrl);
@@ -265,11 +271,13 @@ export function AvatarManagementCard({ user, onSuccess }: AvatarManagementCardPr
 
               {/* Action buttons */}
               <div className="flex flex-wrap items-center justify-center sm:justify-start gap-2.5 pt-1">
-                {/* Hidden native file input */}
                 <input
                   type="file"
                   ref={fileInputRef}
                   onChange={handleFileSelect}
+                  onClick={(e) => {
+                    (e.target as HTMLInputElement).value = '';
+                  }}
                   accept="image/jpeg,image/png"
                   className="hidden"
                   aria-label="Chọn tệp ảnh đại diện"

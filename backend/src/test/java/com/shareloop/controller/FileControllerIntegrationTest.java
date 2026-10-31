@@ -243,22 +243,43 @@ class FileControllerIntegrationTest {
     }
 
     @Test
-    @DisplayName("POST /api/v1/files/upload with declared PNG header but actual JPEG content returns 400 Bad Request")
-    void uploadFile_mismatchedContentType_returns400() throws Exception {
+    @DisplayName("POST /api/v1/files/upload with declared PNG header but actual JPEG content succeeds and normalizes to JPEG")
+    void uploadFile_mismatchedContentType_normalizesAndSucceeds() throws Exception {
         byte[] jpegBytes = createValidImage("jpg", 20, 20);
 
         MockMultipartFile file = new MockMultipartFile(
                 "file",
-                "mismatch.jpg",
-                "image/png", // Declares PNG, but payload is JPEG
+                "mismatch.png", // Declares PNG, but payload is JPEG
+                "image/png",
                 jpegBytes
         );
 
         mockMvc.perform(multipart("/api/v1/files/upload")
                         .file(file)
                         .header(HttpHeaders.AUTHORIZATION, aliceToken))
-                .andExpect(status().isBadRequest())
-                .andExpect(jsonPath("$.message", containsStringIgnoringCase("does not match")));
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.filename", endsWith(".jpg")))
+                .andExpect(jsonPath("$.contentType").value("image/jpeg"));
+    }
+
+    @Test
+    @DisplayName("POST /api/v1/files/upload with declared JPEG header but actual PNG content succeeds and normalizes to PNG")
+    void uploadFile_mismatchedPngDeclaredAsJpeg_normalizesAndSucceeds() throws Exception {
+        byte[] pngBytes = createValidImage("png", 20, 20);
+
+        MockMultipartFile file = new MockMultipartFile(
+                "file",
+                "mismatch.jpg", // Declares JPEG, but payload is PNG
+                "image/jpeg",
+                pngBytes
+        );
+
+        mockMvc.perform(multipart("/api/v1/files/upload")
+                        .file(file)
+                        .header(HttpHeaders.AUTHORIZATION, aliceToken))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.filename", endsWith(".png")))
+                .andExpect(jsonPath("$.contentType").value("image/png"));
     }
 
     @Test

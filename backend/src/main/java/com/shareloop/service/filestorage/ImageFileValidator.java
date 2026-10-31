@@ -1,5 +1,7 @@
 package com.shareloop.service.filestorage;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Component;
 import org.springframework.web.multipart.MultipartFile;
 
@@ -14,6 +16,8 @@ import java.util.Set;
 
 @Component
 public class ImageFileValidator {
+
+    private static final Logger log = LoggerFactory.getLogger(ImageFileValidator.class);
 
     public static final long MAX_FILE_SIZE = 5 * 1024 * 1024; // 5 MiB
     public static final int MAX_DIMENSION = 4_096; // 4,096 px defense against decompression bombs
@@ -51,7 +55,7 @@ public class ImageFileValidator {
             throw new IllegalArgumentException("File size exceeds maximum permitted limit of 5 MiB");
         }
 
-        // Magic byte validation
+        // Magic byte validation: actual encoded format is the authoritative source of truth
         String detectedExtension = detectFormatBySignature(bytes);
         if (detectedExtension == null) {
             throw new IllegalArgumentException("Unsupported file type. Only JPEG and PNG images are accepted");
@@ -59,7 +63,8 @@ public class ImageFileValidator {
 
         String detectedContentType = detectedExtension.equals("jpg") ? "image/jpeg" : "image/png";
 
-        // Check declared Content-Type if present
+        // Check declared Content-Type if present: ensure unsupported types (e.g. PDF, SVG) are rejected,
+        // but normalize harmless client MIME mismatches between JPEG and PNG to the verified detected format.
         String declaredContentType = file.getContentType();
         if (declaredContentType != null && !declaredContentType.isBlank()) {
             String normalizedDeclared = declaredContentType.toLowerCase().split(";")[0].trim();
@@ -67,7 +72,8 @@ public class ImageFileValidator {
                 throw new IllegalArgumentException("Declared content type is not supported: " + declaredContentType);
             }
             if (!normalizedDeclared.equals(detectedContentType)) {
-                throw new IllegalArgumentException("Declared content type (" + declaredContentType + ") does not match detected format (" + detectedContentType + ")");
+                log.info("Declared content type '{}' differs from verified format '{}'. Normalizing metadata to detected format.",
+                        declaredContentType, detectedContentType);
             }
         }
 

@@ -78,6 +78,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
             status: response.status,
             createdAt: response.createdAt,
             updatedAt: response.createdAt,
+            avatarUrl: response.avatarUrl,
           });
         }
 
@@ -116,6 +117,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
             status: response.status,
             createdAt: response.createdAt,
             updatedAt: response.createdAt,
+            avatarUrl: response.avatarUrl,
           });
         }
 
@@ -152,6 +154,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
             status: response.status,
             createdAt: response.createdAt,
             updatedAt: response.createdAt,
+            avatarUrl: response.avatarUrl,
           });
         }
 

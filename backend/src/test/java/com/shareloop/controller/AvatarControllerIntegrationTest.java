@@ -139,6 +139,38 @@ class AvatarControllerIntegrationTest {
     }
 
     @Test
+    @DisplayName("PUT /api/v1/auth/me/avatar: JPEG payload declared as image/png is accepted and normalized to .jpg")
+    void uploadAvatar_jpegDeclaredAsPng_succeedsAndNormalizes() throws Exception {
+        byte[] jpegBytes = createTestImage("jpg");
+        MockMultipartFile file = new MockMultipartFile("file", "avatar.png", "image/png", jpegBytes);
+
+        mockMvc.perform(
+                MockMvcRequestBuilders.multipart(HttpMethod.PUT, "/api/v1/auth/me/avatar")
+                        .file(file)
+                        .header("Authorization", "Bearer " + userToken)
+        )
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.avatarUrl").value(org.hamcrest.Matchers.endsWith(".jpg")))
+                .andExpect(jsonPath("$.customAvatarUrl").value(org.hamcrest.Matchers.endsWith(".jpg")));
+    }
+
+    @Test
+    @DisplayName("PUT /api/v1/auth/me/avatar: PNG payload declared as image/jpeg is accepted and normalized to .png")
+    void uploadAvatar_pngDeclaredAsJpeg_succeedsAndNormalizes() throws Exception {
+        byte[] pngBytes = createTestImage("png");
+        MockMultipartFile file = new MockMultipartFile("file", "avatar.jpg", "image/jpeg", pngBytes);
+
+        mockMvc.perform(
+                MockMvcRequestBuilders.multipart(HttpMethod.PUT, "/api/v1/auth/me/avatar")
+                        .file(file)
+                        .header("Authorization", "Bearer " + userToken)
+        )
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.avatarUrl").value(org.hamcrest.Matchers.endsWith(".png")))
+                .andExpect(jsonPath("$.customAvatarUrl").value(org.hamcrest.Matchers.endsWith(".png")));
+    }
+
+    @Test
     @DisplayName("PUT /api/v1/auth/me/avatar: Replacing custom avatar cleans up old file and persists new")
     void uploadAvatar_replaceExisting_cleansUpOldFile() throws Exception {
         // First upload
@@ -224,6 +256,20 @@ class AvatarControllerIntegrationTest {
                         .file(file)
         )
                 .andExpect(status().isUnauthorized());
+    }
+
+    @Test
+    @DisplayName("PUT /api/v1/auth/me/avatar: Request with Content-Type application/json returns 415 Unsupported Media Type")
+    void uploadAvatar_nonMultipartContentType_returns415() throws Exception {
+        mockMvc.perform(
+                MockMvcRequestBuilders.put("/api/v1/auth/me/avatar")
+                        .contentType(org.springframework.http.MediaType.APPLICATION_JSON)
+                        .content("{}")
+                        .header("Authorization", "Bearer " + userToken)
+        )
+                .andExpect(status().isUnsupportedMediaType())
+                .andExpect(jsonPath("$.status").value(415))
+                .andExpect(jsonPath("$.error").value("Unsupported Media Type"));
     }
 
     @Test
