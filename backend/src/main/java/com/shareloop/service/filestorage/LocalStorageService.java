@@ -102,6 +102,34 @@ public class LocalStorageService implements FileStorageService {
         }
     }
 
+    @Override
+    public boolean delete(String filename) {
+        if (filename == null || !SAFE_FILENAME_PATTERN.matcher(filename).matches()) {
+            log.warn("Attempted to delete file with invalid filename pattern: {}", filename);
+            return false;
+        }
+
+        Path targetLocation = this.rootPath.resolve(filename).normalize();
+
+        // Enforce path containment
+        if (!targetLocation.startsWith(this.rootPath)) {
+            throw new StorageException("Path traversal attempt detected during deletion: " + filename);
+        }
+
+        try {
+            boolean deleted = Files.deleteIfExists(targetLocation);
+            if (deleted) {
+                log.info("Successfully deleted stored file: {}", filename);
+            } else {
+                log.debug("File to delete does not exist: {}", filename);
+            }
+            return deleted;
+        } catch (IOException e) {
+            log.error("Failed to delete stored file {}: {}", filename, e.getMessage());
+            throw new StorageException("Failed to delete stored file: " + filename, e);
+        }
+    }
+
     public Path getRootPath() {
         return this.rootPath;
     }

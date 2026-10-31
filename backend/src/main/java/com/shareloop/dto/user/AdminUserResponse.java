@@ -17,6 +17,9 @@ public class AdminUserResponse {
     private UserStatus status;
     private Instant createdAt;
     private Instant updatedAt;
+    private String avatarUrl;
+    private String customAvatarUrl;
+    private String googleAvatarUrl;
 
     public AdminUserResponse() {
     }
@@ -32,8 +35,37 @@ public class AdminUserResponse {
         this.updatedAt = updatedAt;
     }
 
+    public AdminUserResponse(
+            UUID id,
+            String displayName,
+            String email,
+            String phoneNumber,
+            UserRole role,
+            UserStatus status,
+            Instant createdAt,
+            Instant updatedAt,
+            String avatarUrl,
+            String customAvatarUrl,
+            String googleAvatarUrl
+    ) {
+        this.id = id;
+        this.displayName = displayName;
+        this.email = email;
+        this.phoneNumber = phoneNumber;
+        this.role = role;
+        this.status = status;
+        this.createdAt = createdAt;
+        this.updatedAt = updatedAt;
+        this.avatarUrl = avatarUrl;
+        this.customAvatarUrl = customAvatarUrl;
+        this.googleAvatarUrl = googleAvatarUrl;
+    }
+
     public static AdminUserResponse fromEntity(User user) {
-        return new AdminUserResponse(
+        if (user == null) {
+            return null;
+        }
+        AdminUserResponse response = new AdminUserResponse(
                 user.getId(),
                 user.getDisplayName(),
                 user.getEmail(),
@@ -43,6 +75,10 @@ public class AdminUserResponse {
                 user.getCreatedAt(),
                 user.getUpdatedAt()
         );
+        response.setAvatarUrl(user.getEffectiveAvatarUrl());
+        response.setCustomAvatarUrl(user.getAvatarUrl());
+        response.setGoogleAvatarUrl(user.getGoogleAvatarUrl());
+        return response;
     }
 
     public UUID getId() {
@@ -107,5 +143,29 @@ public class AdminUserResponse {
 
     public void setUpdatedAt(Instant updatedAt) {
         this.updatedAt = updatedAt;
+    }
+
+    public String getAvatarUrl() {
+        return avatarUrl;
+    }
+
+    public void setAvatarUrl(String avatarUrl) {
+        this.avatarUrl = avatarUrl;
+    }
+
+    public String getCustomAvatarUrl() {
+        return customAvatarUrl;
+    }
+
+    public void setCustomAvatarUrl(String customAvatarUrl) {
+        this.customAvatarUrl = customAvatarUrl;
+    }
+
+    public String getGoogleAvatarUrl() {
+        return googleAvatarUrl;
+    }
+
+    public void setGoogleAvatarUrl(String googleAvatarUrl) {
+        this.googleAvatarUrl = googleAvatarUrl;
     }
 }

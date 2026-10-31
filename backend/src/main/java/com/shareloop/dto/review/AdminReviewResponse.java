@@ -19,11 +19,13 @@ public class AdminReviewResponse {
     private UUID reviewerId;
     private String reviewerDisplayName;
     private String reviewerEmail;
+    private String reviewerAvatarUrl;
 
     // Reviewee details
     private UUID revieweeId;
     private String revieweeDisplayName;
     private String revieweeEmail;
+    private String revieweeAvatarUrl;
 
     // Transaction details
     private UUID transactionId;
@@ -55,12 +57,14 @@ public class AdminReviewResponse {
             response.setReviewerId(review.getReviewer().getId());
             response.setReviewerDisplayName(review.getReviewer().getDisplayName());
             response.setReviewerEmail(review.getReviewer().getEmail());
+            response.setReviewerAvatarUrl(review.getReviewer().getEffectiveAvatarUrl());
         }
 
         if (review.getReviewee() != null) {
             response.setRevieweeId(review.getReviewee().getId());
             response.setRevieweeDisplayName(review.getReviewee().getDisplayName());
             response.setRevieweeEmail(review.getReviewee().getEmail());
+            response.setRevieweeAvatarUrl(review.getReviewee().getEffectiveAvatarUrl());
         }
 
         if (review.getTransaction() != null) {
@@ -166,12 +170,28 @@ public class AdminReviewResponse {
         this.revieweeDisplayName = revieweeDisplayName;
     }
 
+    public String getReviewerAvatarUrl() {
+        return reviewerAvatarUrl;
+    }
+
+    public void setReviewerAvatarUrl(String reviewerAvatarUrl) {
+        this.reviewerAvatarUrl = reviewerAvatarUrl;
+    }
+
     public String getRevieweeEmail() {
         return revieweeEmail;
     }
 
     public void setRevieweeEmail(String revieweeEmail) {
         this.revieweeEmail = revieweeEmail;
+    }
+
+    public String getRevieweeAvatarUrl() {
+        return revieweeAvatarUrl;
+    }
+
+    public void setRevieweeAvatarUrl(String revieweeAvatarUrl) {
+        this.revieweeAvatarUrl = revieweeAvatarUrl;
     }
 
     public UUID getTransactionId() {

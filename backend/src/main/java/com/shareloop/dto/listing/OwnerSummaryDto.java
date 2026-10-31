@@ -8,6 +8,7 @@ public class OwnerSummaryDto {
 
     private UUID id;
     private String displayName;
+    private String avatarUrl;
 
     public OwnerSummaryDto() {
     }
@@ -17,13 +18,20 @@ public class OwnerSummaryDto {
         this.displayName = displayName;
     }
 
+    public OwnerSummaryDto(UUID id, String displayName, String avatarUrl) {
+        this.id = id;
+        this.displayName = displayName;
+        this.avatarUrl = avatarUrl;
+    }
+
     public static OwnerSummaryDto fromEntity(User user) {
         if (user == null) {
             return null;
         }
         return new OwnerSummaryDto(
                 user.getId(),
-                user.getDisplayName()
+                user.getDisplayName(),
+                user.getEffectiveAvatarUrl()
         );
     }
 
@@ -41,5 +49,13 @@ public class OwnerSummaryDto {
 
     public void setDisplayName(String displayName) {
         this.displayName = displayName;
+    }
+
+    public String getAvatarUrl() {
+        return avatarUrl;
+    }
+
+    public void setAvatarUrl(String avatarUrl) {
+        this.avatarUrl = avatarUrl;
     }
 }

@@ -50,6 +50,17 @@ public class User {
     @Column(name = "status", length = 20, nullable = false)
     private UserStatus status = UserStatus.ACTIVE;
 
+    @Size(max = 1024)
+    @Column(name = "avatar_url", length = 1024)
+    private String avatarUrl;
+
+    @Size(max = 1024)
+    @Column(name = "google_avatar_url", length = 1024)
+    private String googleAvatarUrl;
+
+    @Column(name = "avatar_updated_at")
+    private Instant avatarUpdatedAt;
+
     @Column(name = "created_at", nullable = false, updatable = false)
     private Instant createdAt;
 
@@ -154,6 +165,83 @@ public class User {
         this.updatedAt = updatedAt;
     }
 
+    public String getAvatarUrl() {
+        return avatarUrl;
+    }
+
+    public void setAvatarUrl(String avatarUrl) {
+        this.avatarUrl = avatarUrl;
+    }
+
+    public String getGoogleAvatarUrl() {
+        return googleAvatarUrl;
+    }
+
+    public void setGoogleAvatarUrl(String googleAvatarUrl) {
+        this.googleAvatarUrl = googleAvatarUrl;
+    }
+
+    public Instant getAvatarUpdatedAt() {
+        return avatarUpdatedAt;
+    }
+
+    public void setAvatarUpdatedAt(Instant avatarUpdatedAt) {
+        this.avatarUpdatedAt = avatarUpdatedAt;
+    }
+
+    /**
+     * Resolves the effective avatar URL following priority rules:
+     * 1. User-uploaded custom avatar (avatarUrl) if present and non-blank.
+     * 2. Google OAuth profile avatar (googleAvatarUrl) if present and non-blank.
+     * 3. null (fallback to initials/default on presentation layer).
+     */
+    @Transient
+    public String getEffectiveAvatarUrl() {
+        if (avatarUrl != null && !avatarUrl.isBlank()) {
+            return avatarUrl;
+        }
+        if (googleAvatarUrl != null && !googleAvatarUrl.isBlank()) {
+            return googleAvatarUrl;
+        }
+        return null;
+    }
+
+    /**
+     * Updates the user's custom avatar and records the update timestamp.
+     */
+    public void updateCustomAvatar(String avatarUrl) {
+        this.avatarUrl = avatarUrl;
+        this.avatarUpdatedAt = Instant.now();
+    }
+
+    /**
+     * Clears the user's custom avatar and records the update timestamp.
+     * Leaves googleAvatarUrl untouched.
+     */
+    public void clearCustomAvatar() {
+        this.avatarUrl = null;
+        this.avatarUpdatedAt = Instant.now();
+    }
+
+    /**
+     * Synchronizes the verified Google profile picture URL.
+     * - Preserves the existing Google avatar if the new picture URL is null or blank.
+     * - Leaves the custom avatar (avatarUrl) and avatarUpdatedAt untouched.
+     *
+     * @param pictureUrl verified Google profile picture URL
+     * @return true if the Google avatar URL was modified, false otherwise
+     */
+    public boolean syncGoogleAvatar(String pictureUrl) {
+        if (pictureUrl != null && !pictureUrl.isBlank()) {
+            String trimmed = pictureUrl.trim();
+            if (!Objects.equals(this.googleAvatarUrl, trimmed)) {
+                this.googleAvatarUrl = trimmed;
+                return true;
+            }
+        }
+        return false;
+    }
+
     @Override
     public boolean equals(Object o) {
         if (this == o) return true;
@@ -176,6 +264,9 @@ public class User {
                 ", phoneNumber='" + phoneNumber + '\'' +
                 ", role=" + role +
                 ", status=" + status +
+                ", avatarUrl='" + avatarUrl + '\'' +
+                ", googleAvatarUrl='" + googleAvatarUrl + '\'' +
+                ", avatarUpdatedAt=" + avatarUpdatedAt +
                 ", createdAt=" + createdAt +
                 ", updatedAt=" + updatedAt +
                 '}';

@@ -15,9 +15,11 @@ public class AdminTransactionResponse {
     private UUID listingRequestId;
     private UUID ownerId;
     private String ownerDisplayName;
+    private String ownerAvatarUrl;
     private UserSummaryDto owner;
     private UUID requesterId;
     private String requesterDisplayName;
+    private String requesterAvatarUrl;
     private UserSummaryDto requester;
     private TransactionStatus status;
     private Boolean ownerCompleted;
@@ -26,6 +28,7 @@ public class AdminTransactionResponse {
     private Instant requesterCompletedAt;
     private UUID cancelledById;
     private String cancelledByDisplayName;
+    private String cancelledByAvatarUrl;
     private UserSummaryDto cancelledBy;
     private Instant cancelledAt;
     private String cancellationReason;
@@ -55,12 +58,14 @@ public class AdminTransactionResponse {
         if (transaction.getOwner() != null) {
             response.setOwnerId(transaction.getOwner().getId());
             response.setOwnerDisplayName(transaction.getOwner().getDisplayName());
+            response.setOwnerAvatarUrl(transaction.getOwner().getEffectiveAvatarUrl());
             response.setOwner(UserSummaryDto.fromEntity(transaction.getOwner()));
         }
 
         if (transaction.getRequester() != null) {
             response.setRequesterId(transaction.getRequester().getId());
             response.setRequesterDisplayName(transaction.getRequester().getDisplayName());
+            response.setRequesterAvatarUrl(transaction.getRequester().getEffectiveAvatarUrl());
             response.setRequester(UserSummaryDto.fromEntity(transaction.getRequester()));
         }
 
@@ -73,6 +78,7 @@ public class AdminTransactionResponse {
         if (transaction.getCancelledBy() != null) {
             response.setCancelledById(transaction.getCancelledBy().getId());
             response.setCancelledByDisplayName(transaction.getCancelledBy().getDisplayName());
+            response.setCancelledByAvatarUrl(transaction.getCancelledBy().getEffectiveAvatarUrl());
             response.setCancelledBy(UserSummaryDto.fromEntity(transaction.getCancelledBy()));
         }
 
@@ -132,6 +138,14 @@ public class AdminTransactionResponse {
         this.ownerDisplayName = ownerDisplayName;
     }
 
+    public String getOwnerAvatarUrl() {
+        return ownerAvatarUrl;
+    }
+
+    public void setOwnerAvatarUrl(String ownerAvatarUrl) {
+        this.ownerAvatarUrl = ownerAvatarUrl;
+    }
+
     public UserSummaryDto getOwner() {
         return owner;
     }
@@ -154,6 +168,14 @@ public class AdminTransactionResponse {
 
     public void setRequesterDisplayName(String requesterDisplayName) {
         this.requesterDisplayName = requesterDisplayName;
+    }
+
+    public String getRequesterAvatarUrl() {
+        return requesterAvatarUrl;
+    }
+
+    public void setRequesterAvatarUrl(String requesterAvatarUrl) {
+        this.requesterAvatarUrl = requesterAvatarUrl;
     }
 
     public UserSummaryDto getRequester() {
@@ -218,6 +240,14 @@ public class AdminTransactionResponse {
 
     public void setCancelledByDisplayName(String cancelledByDisplayName) {
         this.cancelledByDisplayName = cancelledByDisplayName;
+    }
+
+    public String getCancelledByAvatarUrl() {
+        return cancelledByAvatarUrl;
+    }
+
+    public void setCancelledByAvatarUrl(String cancelledByAvatarUrl) {
+        this.cancelledByAvatarUrl = cancelledByAvatarUrl;
     }
 
     public UserSummaryDto getCancelledBy() {

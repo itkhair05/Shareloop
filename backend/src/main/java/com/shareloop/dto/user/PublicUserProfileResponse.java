@@ -14,6 +14,7 @@ public class PublicUserProfileResponse {
     private UserRole role;
     private UserStatus status;
     private Instant createdAt;
+    private String avatarUrl;
 
     public PublicUserProfileResponse() {
     }
@@ -26,13 +27,26 @@ public class PublicUserProfileResponse {
         this.createdAt = createdAt;
     }
 
+    public PublicUserProfileResponse(UUID id, String displayName, UserRole role, UserStatus status, Instant createdAt, String avatarUrl) {
+        this.id = id;
+        this.displayName = displayName;
+        this.role = role;
+        this.status = status;
+        this.createdAt = createdAt;
+        this.avatarUrl = avatarUrl;
+    }
+
     public static PublicUserProfileResponse fromEntity(User user) {
+        if (user == null) {
+            return null;
+        }
         return new PublicUserProfileResponse(
                 user.getId(),
                 user.getDisplayName(),
                 user.getRole(),
                 user.getStatus(),
-                user.getCreatedAt()
+                user.getCreatedAt(),
+                user.getEffectiveAvatarUrl()
         );
     }
 
@@ -74,5 +88,13 @@ public class PublicUserProfileResponse {
 
     public void setCreatedAt(Instant createdAt) {
         this.createdAt = createdAt;
+    }
+
+    public String getAvatarUrl() {
+        return avatarUrl;
+    }
+
+    public void setAvatarUrl(String avatarUrl) {
+        this.avatarUrl = avatarUrl;
     }
 }

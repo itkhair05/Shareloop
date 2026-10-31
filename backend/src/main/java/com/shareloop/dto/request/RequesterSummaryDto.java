@@ -8,6 +8,7 @@ public class RequesterSummaryDto {
 
     private UUID id;
     private String displayName;
+    private String avatarUrl;
 
     public RequesterSummaryDto() {
     }
@@ -17,11 +18,17 @@ public class RequesterSummaryDto {
         this.displayName = displayName;
     }
 
+    public RequesterSummaryDto(UUID id, String displayName, String avatarUrl) {
+        this.id = id;
+        this.displayName = displayName;
+        this.avatarUrl = avatarUrl;
+    }
+
     public static RequesterSummaryDto fromEntity(User user) {
         if (user == null) {
             return null;
         }
-        return new RequesterSummaryDto(user.getId(), user.getDisplayName());
+        return new RequesterSummaryDto(user.getId(), user.getDisplayName(), user.getEffectiveAvatarUrl());
     }
 
     public UUID getId() {
@@ -38,5 +45,13 @@ public class RequesterSummaryDto {
 
     public void setDisplayName(String displayName) {
         this.displayName = displayName;
+    }
+
+    public String getAvatarUrl() {
+        return avatarUrl;
+    }
+
+    public void setAvatarUrl(String avatarUrl) {
+        this.avatarUrl = avatarUrl;
     }
 }

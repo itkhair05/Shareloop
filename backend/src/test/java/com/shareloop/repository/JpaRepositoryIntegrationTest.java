@@ -107,6 +107,37 @@ class JpaRepositoryIntegrationTest {
 
             assertThat(userRepository.existsByEmailIgnoreCase("Hoang.Tran@Example.Com")).isTrue();
         }
+
+        @Test
+        @DisplayName("findByIdForUpdate retrieves user inside active transaction")
+        void findByIdForUpdateRetrievesUser() {
+            User user = createAndPersistUser("lock.test@example.com", "Lock User");
+
+            Optional<User> lockedUser = userRepository.findByIdForUpdate(user.getId());
+            assertThat(lockedUser).isPresent();
+            assertThat(lockedUser.get().getId()).isEqualTo(user.getId());
+            assertThat(lockedUser.get().getDisplayName()).isEqualTo("Lock User");
+        }
+
+        @Test
+        @DisplayName("Persist and query user with avatar fields and verify effective resolution")
+        void persistAndQueryUserWithAvatarFields() {
+            User user = new User("Avatar User", "avatar.test@example.com", "dummyHash", UserRole.USER, UserStatus.ACTIVE);
+            user.setAvatarUrl("/api/v1/files/550e8400-e29b-41d4-a716-446655440000.jpg");
+            user.setGoogleAvatarUrl("https://lh3.googleusercontent.com/a/google-photo-456");
+            Instant now = Instant.now();
+            user.setAvatarUpdatedAt(now);
+
+            User saved = userRepository.saveAndFlush(user);
+            assertThat(saved.getId()).isNotNull();
+
+            Optional<User> found = userRepository.findById(saved.getId());
+            assertThat(found).isPresent();
+            assertThat(found.get().getAvatarUrl()).isEqualTo("/api/v1/files/550e8400-e29b-41d4-a716-446655440000.jpg");
+            assertThat(found.get().getGoogleAvatarUrl()).isEqualTo("https://lh3.googleusercontent.com/a/google-photo-456");
+            assertThat(found.get().getAvatarUpdatedAt()).isNotNull();
+            assertThat(found.get().getEffectiveAvatarUrl()).isEqualTo("/api/v1/files/550e8400-e29b-41d4-a716-446655440000.jpg");
+        }
     }
 
     @Nested

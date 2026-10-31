@@ -22,14 +22,35 @@ public class UserProfileResponse {
     @JsonProperty("hasPassword")
     private boolean hasPassword;
 
+    private String avatarUrl;
+    private String customAvatarUrl;
+    private String googleAvatarUrl;
+
     public UserProfileResponse() {
     }
 
     public UserProfileResponse(UUID id, String displayName, String email, String phoneNumber, UserRole role, UserStatus status, Instant createdAt, Instant updatedAt) {
-        this(id, displayName, email, phoneNumber, role, status, createdAt, updatedAt, false);
+        this(id, displayName, email, phoneNumber, role, status, createdAt, updatedAt, false, null, null, null);
     }
 
     public UserProfileResponse(UUID id, String displayName, String email, String phoneNumber, UserRole role, UserStatus status, Instant createdAt, Instant updatedAt, boolean hasPassword) {
+        this(id, displayName, email, phoneNumber, role, status, createdAt, updatedAt, hasPassword, null, null, null);
+    }
+
+    public UserProfileResponse(
+            UUID id,
+            String displayName,
+            String email,
+            String phoneNumber,
+            UserRole role,
+            UserStatus status,
+            Instant createdAt,
+            Instant updatedAt,
+            boolean hasPassword,
+            String avatarUrl,
+            String customAvatarUrl,
+            String googleAvatarUrl
+    ) {
         this.id = id;
         this.displayName = displayName;
         this.email = email;
@@ -39,9 +60,15 @@ public class UserProfileResponse {
         this.createdAt = createdAt;
         this.updatedAt = updatedAt;
         this.hasPassword = hasPassword;
+        this.avatarUrl = avatarUrl;
+        this.customAvatarUrl = customAvatarUrl;
+        this.googleAvatarUrl = googleAvatarUrl;
     }
 
     public static UserProfileResponse fromEntity(User user) {
+        if (user == null) {
+            return null;
+        }
         return new UserProfileResponse(
                 user.getId(),
                 user.getDisplayName(),
@@ -51,7 +78,10 @@ public class UserProfileResponse {
                 user.getStatus(),
                 user.getCreatedAt(),
                 user.getUpdatedAt(),
-                user.getPasswordHash() != null
+                user.getPasswordHash() != null,
+                user.getEffectiveAvatarUrl(),
+                user.getAvatarUrl(),
+                user.getGoogleAvatarUrl()
         );
     }
 
@@ -126,5 +156,29 @@ public class UserProfileResponse {
 
     public void setHasPassword(boolean hasPassword) {
         this.hasPassword = hasPassword;
+    }
+
+    public String getAvatarUrl() {
+        return avatarUrl;
+    }
+
+    public void setAvatarUrl(String avatarUrl) {
+        this.avatarUrl = avatarUrl;
+    }
+
+    public String getCustomAvatarUrl() {
+        return customAvatarUrl;
+    }
+
+    public void setCustomAvatarUrl(String customAvatarUrl) {
+        this.customAvatarUrl = customAvatarUrl;
+    }
+
+    public String getGoogleAvatarUrl() {
+        return googleAvatarUrl;
+    }
+
+    public void setGoogleAvatarUrl(String googleAvatarUrl) {
+        this.googleAvatarUrl = googleAvatarUrl;
     }
 }

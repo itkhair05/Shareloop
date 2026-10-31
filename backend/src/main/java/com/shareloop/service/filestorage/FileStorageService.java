@@ -22,4 +22,12 @@ public interface FileStorageService {
      * @return Resource representing the file
      */
     Resource loadAsResource(String filename);
+
+    /**
+     * Safely delete a stored file.
+     *
+     * @param filename server-generated UUID filename (e.g., "uuid.jpg")
+     * @return true if an existing file was deleted, false if file did not exist or filename was invalid
+     */
+    boolean delete(String filename);
 }

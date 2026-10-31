@@ -387,6 +387,9 @@ public class AuthService {
             // Check account status: suspended or deactivated accounts are rejected
             validateAccountStatus(user);
             // Strict rule: preserve existing role (never modify role during login)
+            if (user.syncGoogleAvatar(claims.pictureUrl())) {
+                user = userRepository.saveAndFlush(user);
+            }
         } else {
             // First-time Google Sign-In: Identity does not exist
             // Strict rule: Never auto-link if email matches an existing account without explicit linking
@@ -410,6 +413,9 @@ public class AuthService {
                     UserRole.USER,
                     UserStatus.ACTIVE
             );
+            if (claims.pictureUrl() != null && !claims.pictureUrl().isBlank()) {
+                newUser.setGoogleAvatarUrl(claims.pictureUrl().trim());
+            }
 
             try {
                 user = userRepository.saveAndFlush(newUser);
@@ -430,6 +436,9 @@ public class AuthService {
                 if (concurrentIdentity.isPresent()) {
                     user = concurrentIdentity.get().getUser();
                     validateAccountStatus(user);
+                    if (user.syncGoogleAvatar(claims.pictureUrl())) {
+                        user = userRepository.saveAndFlush(user);
+                    }
                 } else {
                     throw new AccountLinkingRequiredException(
                             "An account with this email already exists. Please log in with your email and password first, then link your Google account in settings."
@@ -501,6 +510,9 @@ public class AuthService {
 
         try {
             identity = userIdentityRepository.saveAndFlush(identity);
+            if (user.syncGoogleAvatar(claims.pictureUrl())) {
+                userRepository.saveAndFlush(user);
+            }
         } catch (DataIntegrityViolationException e) {
             log.warn("Database constraint conflict during Google account linking: {}", e.getMessage());
             throw new GoogleAccountAlreadyInUseException("This Google account is already linked to a ShareLoop account.");

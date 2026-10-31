@@ -13,6 +13,7 @@ import com.shareloop.dto.auth.UserProfileResponse;
 import com.shareloop.exception.InvalidTokenException;
 import com.shareloop.security.UserPrincipal;
 import com.shareloop.service.AuthService;
+import com.shareloop.service.AvatarService;
 import com.shareloop.security.ratelimit.ClientIpResolver;
 import com.shareloop.security.ratelimit.LoginRateLimiter;
 import com.shareloop.security.ratelimit.PasswordRateLimiter;
@@ -22,9 +23,11 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MultipartFile;
 
 @Tag(name = "Authentication", description = "User registration, login, and current user profile")
 @RestController
@@ -32,17 +35,20 @@ import org.springframework.web.bind.annotation.*;
 public class AuthController {
 
     private final AuthService authService;
+    private final AvatarService avatarService;
     private final ClientIpResolver clientIpResolver;
     private final LoginRateLimiter loginRateLimiter;
     private final PasswordRateLimiter passwordRateLimiter;
 
     public AuthController(
             AuthService authService,
+            AvatarService avatarService,
             ClientIpResolver clientIpResolver,
             LoginRateLimiter loginRateLimiter,
             PasswordRateLimiter passwordRateLimiter
     ) {
         this.authService = authService;
+        this.avatarService = avatarService;
         this.clientIpResolver = clientIpResolver;
         this.loginRateLimiter = loginRateLimiter;
         this.passwordRateLimiter = passwordRateLimiter;
@@ -138,6 +144,33 @@ public class AuthController {
             throw new InvalidTokenException("Authenticated principal not found");
         }
         UserProfileResponse response = authService.updateCurrentUser(principal.getId(), request);
+        return ResponseEntity.ok(response);
+    }
+
+    @Operation(summary = "Tải lên hoặc thay thế ảnh đại diện", description = "Tải lên ảnh đại diện tùy chỉnh (JPEG hoặc PNG, tối đa 5 MiB)")
+    @SecurityRequirement(name = "bearerAuth")
+    @PutMapping(value = "/me/avatar", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    public ResponseEntity<UserProfileResponse> uploadAvatar(
+            @RequestParam("file") MultipartFile file,
+            @AuthenticationPrincipal UserPrincipal principal
+    ) {
+        if (principal == null) {
+            throw new InvalidTokenException("Authenticated principal not found");
+        }
+        UserProfileResponse response = avatarService.uploadAvatar(principal.getId(), file);
+        return ResponseEntity.ok(response);
+    }
+
+    @Operation(summary = "Xóa ảnh đại diện tùy chỉnh", description = "Xóa ảnh đại diện tùy chỉnh hiện tại và tự động chuyển về ảnh Google nếu có")
+    @SecurityRequirement(name = "bearerAuth")
+    @DeleteMapping("/me/avatar")
+    public ResponseEntity<UserProfileResponse> deleteAvatar(
+            @AuthenticationPrincipal UserPrincipal principal
+    ) {
+        if (principal == null) {
+            throw new InvalidTokenException("Authenticated principal not found");
+        }
+        UserProfileResponse response = avatarService.deleteAvatar(principal.getId());
         return ResponseEntity.ok(response);
     }
 
