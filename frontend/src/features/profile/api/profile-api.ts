@@ -17,6 +17,24 @@ export const profileApi = {
   },
 
   /**
+   * Upload or replace custom avatar for the authenticated user
+   * PUT /api/v1/auth/me/avatar
+   */
+  async uploadAvatar(file: File): Promise<UserProfile> {
+    const formData = new FormData();
+    formData.append('file', file);
+    return apiClient.put<UserProfile, FormData>('/api/v1/auth/me/avatar', formData);
+  },
+
+  /**
+   * Delete custom avatar for the authenticated user
+   * DELETE /api/v1/auth/me/avatar
+   */
+  async deleteAvatar(): Promise<UserProfile> {
+    return apiClient.delete<UserProfile>('/api/v1/auth/me/avatar');
+  },
+
+  /**
    * Retrieve public user profile by userId
    * GET /api/v1/users/{userId}
    */

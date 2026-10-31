@@ -16,6 +16,9 @@ export interface UserProfile {
   createdAt: string;
   updatedAt: string;
   hasPassword?: boolean;
+  avatarUrl?: string | null;
+  customAvatarUrl?: string | null;
+  googleAvatarUrl?: string | null;
 }
 
 export interface AuthResponse {
@@ -27,6 +30,7 @@ export interface AuthResponse {
   createdAt: string;
   accessToken: string;
   tokenType: string;
+  avatarUrl?: string | null;
 }
 
 export interface AuthTokens {
@@ -55,6 +59,7 @@ export interface PublicUserProfile {
   role: UserRole;
   status: UserStatus;
   createdAt: string;
+  avatarUrl?: string | null;
 }
 
 export interface ForgotPasswordRequest {

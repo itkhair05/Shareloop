@@ -12,6 +12,7 @@ import type { ListingStatus, ListingType, OwnerSummaryDto } from './listing';
 export interface UserSummaryDto {
   id: string;
   displayName: string;
+  avatarUrl?: string | null;
 }
 
 export interface ListingReferenceDto {

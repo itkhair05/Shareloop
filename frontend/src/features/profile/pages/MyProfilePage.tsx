@@ -24,6 +24,7 @@ import { MySupportRequestsList } from '@/features/support';
 import { MyReportsList } from '@/features/reports';
 import { ProfileHeader } from '../components/ProfileHeader';
 import { ProfileStatsCards } from '../components/ProfileStatsCards';
+import { AvatarManagementCard } from '../components/AvatarManagementCard';
 import { GoogleAccountLinkingCard } from '../components/GoogleAccountLinkingCard';
 import { PasswordManagementCard } from '../components/PasswordManagementCard';
 import { EditProfileModal } from '../components/EditProfileModal';
@@ -220,6 +221,10 @@ export function MyProfilePage() {
         <div className="space-y-8 animate-in fade-in duration-200">
           {/* Linked Accounts & Security */}
           <div className="space-y-6">
+            <AvatarManagementCard
+              user={user}
+              onSuccess={(msg) => setSuccessMessage(msg)}
+            />
             <GoogleAccountLinkingCard />
             <PasswordManagementCard
               user={user}

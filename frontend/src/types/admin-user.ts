@@ -13,6 +13,9 @@ export interface AdminUserResponse {
   status: UserStatus;
   createdAt: string;
   updatedAt: string;
+  avatarUrl?: string | null;
+  customAvatarUrl?: string | null;
+  googleAvatarUrl?: string | null;
 }
 
 /**

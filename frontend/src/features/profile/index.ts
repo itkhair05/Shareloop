@@ -3,6 +3,7 @@ export { PublicProfilePage } from './pages/PublicProfilePage';
 export { ProfileHeader, type ProfileHeaderProps } from './components/ProfileHeader';
 export { PublicProfileHeader, type PublicProfileHeaderProps } from './components/PublicProfileHeader';
 export { ProfileStatsCards, type ProfileStatsCardsProps } from './components/ProfileStatsCards';
+export { AvatarManagementCard, type AvatarManagementCardProps } from './components/AvatarManagementCard';
 export { GoogleAccountLinkingCard } from './components/GoogleAccountLinkingCard';
 export { PasswordManagementCard, type PasswordManagementCardProps } from './components/PasswordManagementCard';
 export { ChangePasswordModal, type ChangePasswordModalProps } from './components/ChangePasswordModal';

@@ -25,6 +25,7 @@ export type ListingStatus =
 export interface OwnerSummaryDto {
   id: string;
   displayName: string;
+  avatarUrl?: string | null;
 }
 
 export type OwnerSummary = OwnerSummaryDto;

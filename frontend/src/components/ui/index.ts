@@ -4,3 +4,4 @@ export * from './Badge';
 export * from './Input';
 export * from './Feedback';
 export * from './ConfirmDialog';
+export * from '../common/Avatar';

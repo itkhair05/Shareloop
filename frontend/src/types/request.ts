@@ -42,6 +42,7 @@ export interface UpdateListingRequestStatusRequest {
 export interface RequesterSummaryDto {
   id: string;
   displayName: string;
+  avatarUrl?: string | null;
 }
 
 /**

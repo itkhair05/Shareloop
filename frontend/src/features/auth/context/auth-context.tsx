@@ -31,6 +31,10 @@ export function AuthProvider({ children }: AuthProviderProps) {
     queryClient.clear();
   }, [queryClient]);
 
+  const updateUser = useCallback((updatedUser: UserProfile) => {
+    setUser(updatedUser);
+  }, []);
+
   const refreshUser = useCallback(async (): Promise<UserProfile | null> => {
     if (!tokenStorage.hasToken()) {
       setUser(null);
@@ -213,8 +217,9 @@ export function AuthProvider({ children }: AuthProviderProps) {
       logout,
       clearError,
       refreshUser,
+      updateUser,
     }),
-    [user, isLoading, error, login, loginWithGoogle, register, logout, clearError, refreshUser]
+    [user, isLoading, error, login, loginWithGoogle, register, logout, clearError, refreshUser, updateUser]
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

@@ -1,6 +1,7 @@
 import { Calendar, Mail, Pencil, Phone, Shield, Star } from 'lucide-react';
 import { Badge } from '@/components/ui/Badge';
 import { Button } from '@/components/ui/Button';
+import { Avatar } from '@/components/common/Avatar';
 import { StarRating } from '@/features/reviews';
 import type { UserProfile } from '@/types/auth';
 import type { UserRatingSummaryResponse } from '@/types/review';
@@ -63,14 +64,24 @@ export function ProfileHeader({
       className={`bg-white rounded-2xl border border-slate-200 shadow-xs p-6 sm:p-8 ${className}`}
     >
       <div className="flex flex-col sm:flex-row items-start sm:items-center gap-6">
-        {/* Initials-based Avatar */}
-        <div
-          role="img"
-          aria-label={`Ảnh đại diện chữ cái của ${user.displayName}`}
-          className="w-20 h-20 sm:w-24 sm:h-24 rounded-2xl bg-gradient-to-br from-emerald-500 to-teal-700 text-white font-bold text-2xl sm:text-3xl flex items-center justify-center shadow-md ring-4 ring-emerald-50 shrink-0 select-none"
-        >
-          {initial}
-        </div>
+        {/* User Avatar */}
+        {user.avatarUrl ? (
+          <Avatar
+            avatarUrl={user.avatarUrl}
+            name={user.displayName}
+            size="2xl"
+            alt={`Ảnh đại diện của ${user.displayName}`}
+            className="w-20 h-20 sm:w-24 sm:h-24 rounded-2xl ring-4 ring-emerald-50 shrink-0 select-none shadow-md"
+          />
+        ) : (
+          <div
+            role="img"
+            aria-label={`Ảnh đại diện chữ cái của ${user.displayName}`}
+            className="w-20 h-20 sm:w-24 sm:h-24 rounded-2xl bg-gradient-to-br from-emerald-500 to-teal-700 text-white font-bold text-2xl sm:text-3xl flex items-center justify-center shadow-md ring-4 ring-emerald-50 shrink-0 select-none"
+          >
+            {initial}
+          </div>
+        )}
 
         {/* User Details */}
         <div className="flex-1 min-w-0 space-y-3 w-full">
