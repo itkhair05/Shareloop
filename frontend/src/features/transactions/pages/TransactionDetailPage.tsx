@@ -19,6 +19,7 @@ import {
 } from 'lucide-react';
 import { Badge } from '@/components/ui/Badge';
 import { Button } from '@/components/ui/Button';
+import { Avatar } from '@/components/common/Avatar';
 import { ConfirmDialog } from '@/components/ui/ConfirmDialog';
 import { EmptyState, ErrorAlert, LoadingSpinner } from '@/components/ui/Feedback';
 import {
@@ -370,7 +371,16 @@ export function TransactionDetailPage() {
                   </span>
                 )}
               </div>
-              <div className="text-sm font-bold truncate">{owner.displayName}</div>
+              <div className="flex items-center gap-2.5 pt-0.5">
+                <Avatar
+                  avatarUrl={owner.avatarUrl}
+                  name={owner.displayName}
+                  size="sm"
+                  alt={`Ảnh đại diện của ${owner.displayName}`}
+                  className="shrink-0 shadow-xs"
+                />
+                <div className="text-sm font-bold truncate">{owner.displayName}</div>
+              </div>
               {transaction.ownerCompleted && transaction.ownerCompletedAt && (
                 <div className="text-[11px] text-emerald-700">
                   Thời gian: {formatDateTime(transaction.ownerCompletedAt)}
@@ -400,7 +410,16 @@ export function TransactionDetailPage() {
                   </span>
                 )}
               </div>
-              <div className="text-sm font-bold truncate">{requester.displayName}</div>
+              <div className="flex items-center gap-2.5 pt-0.5">
+                <Avatar
+                  avatarUrl={requester.avatarUrl}
+                  name={requester.displayName}
+                  size="sm"
+                  alt={`Ảnh đại diện của ${requester.displayName}`}
+                  className="shrink-0 shadow-xs"
+                />
+                <div className="text-sm font-bold truncate">{requester.displayName}</div>
+              </div>
               {transaction.requesterCompleted && transaction.requesterCompletedAt && (
                 <div className="text-[11px] text-emerald-700">
                   Thời gian: {formatDateTime(transaction.requesterCompletedAt)}
@@ -500,8 +519,17 @@ export function TransactionDetailPage() {
 
             {status === 'CANCELLED' && (
               <div className="p-3.5 rounded-xl bg-red-50 border border-red-200 text-red-950 text-xs space-y-1.5">
-                <div className="flex items-center gap-2 font-semibold text-red-900">
+                <div className="flex items-center gap-2 font-semibold text-red-900 flex-wrap">
                   <XCircle className="w-5 h-5 text-red-600 shrink-0" />
+                  {transaction.cancelledBy && (
+                    <Avatar
+                      avatarUrl={transaction.cancelledBy.avatarUrl}
+                      name={transaction.cancelledBy.displayName}
+                      size="xs"
+                      alt={`Ảnh đại diện của ${transaction.cancelledBy.displayName}`}
+                      className="shrink-0 -my-0.5"
+                    />
+                  )}
                   <span>
                     Giao dịch đã bị hủy
                     {transaction.cancelledBy ? ` bởi ${transaction.cancelledBy.displayName}` : ''}

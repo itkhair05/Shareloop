@@ -1,6 +1,7 @@
 import React, { useCallback, useEffect, useId, useState } from 'react';
 import { AlertCircle, Star, X } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
+import { Avatar } from '@/components/common/Avatar';
 import { useCreateReview } from '../hooks/use-reviews';
 import { ApiError } from '@/lib/api-error';
 import type { ReviewResponse } from '@/types/review';
@@ -43,12 +44,9 @@ export function CreateReviewModal({
 
   // Determine partner (reviewee) based on current user's role
   const isOwner = transaction.myRole === 'OWNER';
-  const partnerName = isOwner
-    ? transaction.requester.displayName
-    : transaction.owner.displayName;
-  const partnerId = isOwner
-    ? transaction.requester.id
-    : transaction.owner.id;
+  const partner = isOwner ? transaction.requester : transaction.owner;
+  const partnerName = partner.displayName;
+  const partnerId = partner.id;
 
   const handleClose = useCallback(() => {
     if (createReviewMutation.isPending) return;
@@ -193,14 +191,23 @@ export function CreateReviewModal({
         {/* Form */}
         <form onSubmit={handleSubmit} className="space-y-4">
           {/* Partner Info Banner */}
-          <div className="p-3.5 rounded-xl bg-slate-50 border border-slate-100 text-xs text-slate-600 space-y-1">
-            <p>
-              Bạn đang đánh giá trải nghiệm trao đổi với:{' '}
-              <strong className="text-slate-900 font-semibold">{partnerName}</strong>.
-            </p>
-            <p className="text-slate-500">
-              Đánh giá của bạn sẽ giúp cộng đồng ShareLoop tin cậy và gắn kết hơn.
-            </p>
+          <div className="p-3.5 rounded-xl bg-slate-50 border border-slate-100 flex items-center gap-3">
+            <Avatar
+              avatarUrl={partner.avatarUrl}
+              name={partnerName}
+              size="sm"
+              alt={`Ảnh đại diện của ${partnerName}`}
+              className="shrink-0 shadow-xs"
+            />
+            <div className="text-xs text-slate-600 space-y-0.5 min-w-0">
+              <p>
+                Bạn đang đánh giá trải nghiệm trao đổi với:{' '}
+                <strong className="text-slate-900 font-semibold">{partnerName}</strong>.
+              </p>
+              <p className="text-slate-500">
+                Đánh giá của bạn sẽ giúp cộng đồng ShareLoop tin cậy và gắn kết hơn.
+              </p>
+            </div>
           </div>
 
           {/* Star Rating Selector */}

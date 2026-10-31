@@ -7,10 +7,10 @@ import {
   Package,
   RotateCw,
   ShieldAlert,
-  User as UserIcon,
 } from 'lucide-react';
 import { StarRating } from './StarRating';
 import { Button } from '@/components/ui/Button';
+import { Avatar } from '@/components/common/Avatar';
 import { useAuth } from '@/features/auth';
 import { CreateReportModal } from '@/features/reports';
 import { formatDateTime } from '@/lib/utils';
@@ -130,22 +130,47 @@ export function UserReviewsList({
               {/* Reviewer Header */}
               <div className="flex items-start justify-between gap-3">
                 <div className="flex items-center gap-3">
-                  <div
-                    className="w-9 h-9 rounded-full bg-emerald-50 border border-emerald-200 text-emerald-700 font-bold text-sm flex items-center justify-center shrink-0"
-                    aria-hidden="true"
-                  >
-                    {review.reviewer?.displayName?.charAt(0).toUpperCase() || (
-                      <UserIcon className="w-4 h-4" />
-                    )}
-                  </div>
-                  <div>
-                    <span className="font-bold text-slate-900 text-sm block">
-                      {review.reviewer?.displayName || 'Thành viên ẩn danh'}
-                    </span>
-                    <span className="text-xs text-slate-400">
-                      {formatDateTime(review.createdAt)}
-                    </span>
-                  </div>
+                  {review.reviewer?.id ? (
+                    <Link
+                      to={`/users/${review.reviewer.id}`}
+                      className="flex items-center gap-3 group focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 rounded-lg"
+                      aria-label={`Hồ sơ của ${review.reviewer.displayName}`}
+                    >
+                      <Avatar
+                        avatarUrl={review.reviewer.avatarUrl}
+                        name={review.reviewer.displayName}
+                        size="sm"
+                        alt={`Ảnh đại diện của ${review.reviewer.displayName}`}
+                        className="w-9 h-9 text-sm shrink-0 group-hover:ring-2 group-hover:ring-emerald-500 transition-all shadow-xs"
+                      />
+                      <div>
+                        <span className="font-bold text-slate-900 text-sm block group-hover:text-emerald-700 transition-colors">
+                          {review.reviewer.displayName}
+                        </span>
+                        <span className="text-xs text-slate-400">
+                          {formatDateTime(review.createdAt)}
+                        </span>
+                      </div>
+                    </Link>
+                  ) : (
+                    <>
+                      <Avatar
+                        avatarUrl={review.reviewer?.avatarUrl}
+                        name={review.reviewer?.displayName}
+                        size="sm"
+                        alt={`Ảnh đại diện của ${review.reviewer?.displayName || 'Thành viên'}`}
+                        className="w-9 h-9 text-sm shrink-0 shadow-xs"
+                      />
+                      <div>
+                        <span className="font-bold text-slate-900 text-sm block">
+                          {review.reviewer?.displayName || 'Thành viên ẩn danh'}
+                        </span>
+                        <span className="text-xs text-slate-400">
+                          {formatDateTime(review.createdAt)}
+                        </span>
+                      </div>
+                    </>
+                  )}
                 </div>
 
                 {/* Rating & Actions */}

@@ -12,11 +12,11 @@ import {
   Package,
   RotateCw,
   Search,
-  User,
   XCircle,
 } from 'lucide-react';
 import { Badge } from '@/components/ui/Badge';
 import { Button } from '@/components/ui/Button';
+import { Avatar } from '@/components/common/Avatar';
 import { EmptyState, ErrorAlert, LoadingSpinner } from '@/components/ui/Feedback';
 import { useUserTransactions } from '../hooks/use-transactions';
 import { formatDateTime, formatPrice } from '@/lib/utils';
@@ -367,7 +367,13 @@ function TransactionCard({ transaction }: { transaction: TransactionResponse }) 
             {/* Owner Step */}
             <div className="flex items-center justify-between gap-2">
               <div className="flex items-center gap-2 truncate">
-                <User className="w-3.5 h-3.5 text-slate-400 shrink-0" aria-hidden="true" />
+                <Avatar
+                  avatarUrl={owner.avatarUrl}
+                  name={owner.displayName}
+                  size="xs"
+                  alt={`Ảnh đại diện của ${owner.displayName}`}
+                  className="shrink-0"
+                />
                 <span className="text-slate-600 truncate">
                   Người cho/bán: <strong className="text-slate-800">{owner.displayName}</strong>
                 </span>
@@ -390,7 +396,13 @@ function TransactionCard({ transaction }: { transaction: TransactionResponse }) 
             {/* Requester Step */}
             <div className="flex items-center justify-between gap-2">
               <div className="flex items-center gap-2 truncate">
-                <User className="w-3.5 h-3.5 text-slate-400 shrink-0" aria-hidden="true" />
+                <Avatar
+                  avatarUrl={requester.avatarUrl}
+                  name={requester.displayName}
+                  size="xs"
+                  alt={`Ảnh đại diện của ${requester.displayName}`}
+                  className="shrink-0"
+                />
                 <span className="text-slate-600 truncate">
                   Người nhận/mua:{' '}
                   <strong className="text-slate-800">{requester.displayName}</strong>
@@ -448,7 +460,16 @@ function TransactionCard({ transaction }: { transaction: TransactionResponse }) 
               <div>
                 <span>Giao dịch đã hủy</span>
                 {transaction.cancelledBy && (
-                  <span> bởi {transaction.cancelledBy.displayName}</span>
+                  <span className="inline-flex items-center gap-1 ml-1">
+                    <Avatar
+                      avatarUrl={transaction.cancelledBy.avatarUrl}
+                      name={transaction.cancelledBy.displayName}
+                      size="xs"
+                      alt={`Ảnh đại diện của ${transaction.cancelledBy.displayName}`}
+                      className="shrink-0"
+                    />
+                    <span>bởi {transaction.cancelledBy.displayName}</span>
+                  </span>
                 )}
                 {transaction.cancellationReason && (
                   <span className="block text-slate-500 mt-0.5">

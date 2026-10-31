@@ -1,15 +1,20 @@
 import type { ChatMessageResponse } from '@/types/chat';
 import { formatDateTime, cn } from '@/lib/utils';
-import { User } from 'lucide-react';
+import { Avatar } from '@/components/common/Avatar';
 
 export interface MessageBubbleProps {
   message: ChatMessageResponse;
   isOwn: boolean;
+  showAvatar?: boolean;
+  showSenderName?: boolean;
 }
 
-export function MessageBubble({ message, isOwn }: MessageBubbleProps) {
-  const senderInitial = message.sender.displayName?.charAt(0).toUpperCase() || 'U';
-
+export function MessageBubble({
+  message,
+  isOwn,
+  showAvatar = true,
+  showSenderName = true,
+}: MessageBubbleProps) {
   return (
     <div
       className={cn(
@@ -19,13 +24,18 @@ export function MessageBubble({ message, isOwn }: MessageBubbleProps) {
       data-message-id={message.id}
     >
       {!isOwn && (
-        <div
-          className="w-8 h-8 rounded-full bg-slate-200 text-slate-700 flex items-center justify-center text-xs font-bold shrink-0 border border-slate-300 shadow-xs"
-          title={message.sender.displayName}
-          aria-hidden="true"
-        >
-          {senderInitial || <User className="w-4 h-4" />}
-        </div>
+        showAvatar ? (
+          <Avatar
+            avatarUrl={message.sender.avatarUrl}
+            name={message.sender.displayName}
+            size="sm"
+            alt={`Ảnh đại diện của ${message.sender.displayName}`}
+            title={message.sender.displayName}
+            className="shadow-xs shrink-0"
+          />
+        ) : (
+          <div className="w-8 h-8 shrink-0" aria-hidden="true" />
+        )
       )}
 
       <div
@@ -34,7 +44,7 @@ export function MessageBubble({ message, isOwn }: MessageBubbleProps) {
           isOwn ? 'items-end' : 'items-start'
         )}
       >
-        {!isOwn && (
+        {!isOwn && showSenderName && (
           <span className="text-[11px] font-semibold text-slate-500 mb-1 ml-1 truncate max-w-[200px]">
             {message.sender.displayName}
           </span>

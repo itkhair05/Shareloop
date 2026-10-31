@@ -26,6 +26,7 @@ export type TransactionMyRole = 'OWNER' | 'REQUESTER' | 'ADMIN' | 'OTHER' | stri
 export interface TransactionUserSummaryDto {
   id: string;
   displayName: string;
+  avatarUrl?: string | null;
 }
 
 /**

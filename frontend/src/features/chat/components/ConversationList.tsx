@@ -13,6 +13,7 @@ import { useAuth } from '@/features/auth';
 import { useConversations } from '../hooks/use-chat';
 import { formatDateTime, cn } from '@/lib/utils';
 import { Button } from '@/components/ui/Button';
+import { Avatar } from '@/components/common/Avatar';
 
 export interface ConversationListProps {
   selectedConversationId?: string;
@@ -112,7 +113,6 @@ export function ConversationList({
           conversations.map((conversation) => {
             const isSelected = conversation.id === selectedConversationId;
             const otherName = conversation.otherParticipant.displayName || 'Người dùng';
-            const otherInitial = otherName.charAt(0).toUpperCase();
 
             return (
               <Link
@@ -129,17 +129,16 @@ export function ConversationList({
                 aria-label={`Cuộc trò chuyện với ${otherName} về ${conversation.listing.title}`}
               >
                 {/* Participant Avatar */}
-                <div
+                <Avatar
+                  avatarUrl={conversation.otherParticipant.avatarUrl}
+                  name={otherName}
+                  size="md"
+                  alt={`Ảnh đại diện của ${otherName}`}
                   className={cn(
-                    'w-10 h-10 rounded-full flex items-center justify-center text-sm font-bold shrink-0 border shadow-xs',
-                    isSelected
-                      ? 'bg-emerald-600 text-white border-emerald-600'
-                      : 'bg-slate-100 text-slate-700 border-slate-200'
+                    'shrink-0 shadow-xs',
+                    isSelected && 'ring-2 ring-emerald-600 ring-offset-1'
                   )}
-                  aria-hidden="true"
-                >
-                  {otherInitial}
-                </div>
+                />
 
                 {/* Content details */}
                 <div className="flex-1 min-w-0 space-y-1">

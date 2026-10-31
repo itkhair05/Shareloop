@@ -17,6 +17,7 @@ import {
 } from '../hooks/use-chat';
 import { chatApi } from '../api/chat-api';
 import { MessageBubble } from './MessageBubble';
+import { Avatar } from '@/components/common/Avatar';
 import { Button } from '@/components/ui/Button';
 import { cn, isValidUuid } from '@/lib/utils';
 import type { ChatMessageResponse } from '@/types/chat';
@@ -248,7 +249,6 @@ export function ChatWindow({ conversationId, onBack, className }: ChatWindowProp
   }
 
   const otherName = conversation.otherParticipant.displayName || 'Người dùng';
-  const otherInitial = otherName.charAt(0).toUpperCase();
 
   return (
     <div className={cn('flex flex-col h-full bg-slate-50 overflow-hidden', className)}>
@@ -266,12 +266,13 @@ export function ChatWindow({ conversationId, onBack, className }: ChatWindowProp
             </button>
           )}
 
-          <div
-            className="w-10 h-10 rounded-full bg-emerald-600 text-white flex items-center justify-center text-sm font-bold shrink-0 shadow-xs"
-            aria-hidden="true"
-          >
-            {otherInitial}
-          </div>
+          <Avatar
+            avatarUrl={conversation.otherParticipant.avatarUrl}
+            name={otherName}
+            size="md"
+            alt={`Ảnh đại diện của ${otherName}`}
+            className="shadow-xs shrink-0"
+          />
 
           <div className="min-w-0">
             <h2 className="text-sm font-bold text-slate-900 truncate">
@@ -357,13 +358,23 @@ export function ChatWindow({ conversationId, onBack, className }: ChatWindowProp
             </p>
           </div>
         ) : (
-          chronologicalMessages.map((msg) => (
-            <MessageBubble
-              key={msg.id}
-              message={msg}
-              isOwn={Boolean(user?.id && msg.sender.id === user.id)}
-            />
-          ))
+          chronologicalMessages.map((msg, idx) => {
+            const isOwn = Boolean(user?.id && msg.sender.id === user.id);
+            const prevMsg = chronologicalMessages[idx - 1];
+            const nextMsg = chronologicalMessages[idx + 1];
+            const isFirstOfGroup = !prevMsg || prevMsg.sender.id !== msg.sender.id;
+            const isLastOfGroup = !nextMsg || nextMsg.sender.id !== msg.sender.id;
+
+            return (
+              <MessageBubble
+                key={msg.id}
+                message={msg}
+                isOwn={isOwn}
+                showAvatar={isLastOfGroup}
+                showSenderName={isFirstOfGroup}
+              />
+            );
+          })
         )}
         <div ref={messagesEndRef} aria-hidden="true" />
       </div>
