@@ -360,4 +360,110 @@ describe('User Profile Phase 4B: Public User Profile', () => {
       expect(screen.getByText('Trang đăng nhập')).toBeInTheDocument();
     });
   });
+
+  describe('Public Profile Avatar Integration', () => {
+    it('renders effective avatar image when public user has avatarUrl', () => {
+      const userWithAvatar: PublicUserProfile = {
+        ...mockPublicUser,
+        avatarUrl: '/api/v1/files/avatars/public-ha.jpg',
+      };
+
+      renderWithProviders(
+        <PublicProfileHeader
+          user={userWithAvatar}
+          ratingSummary={mockRatingSummary}
+        />
+      );
+
+      const avatarImg = screen.getByRole('img', { name: /Ảnh đại diện của Trần Thị Thu Hà/i });
+      expect(avatarImg).toBeInTheDocument();
+      expect(avatarImg).toHaveAttribute('src', 'http://localhost:8080/api/v1/files/avatars/public-ha.jpg');
+    });
+
+    it('falls back to initials when avatarUrl is null', () => {
+      const userWithoutAvatar: PublicUserProfile = {
+        ...mockPublicUser,
+        avatarUrl: null,
+      };
+
+      renderWithProviders(
+        <PublicProfileHeader
+          user={userWithoutAvatar}
+          ratingSummary={mockRatingSummary}
+        />
+      );
+
+      expect(screen.getByText('TH')).toBeInTheDocument();
+      expect(document.querySelector('img')).toBeNull();
+    });
+
+    it('does not break when avatarUrl is undefined', () => {
+      const userWithUndefinedAvatar: PublicUserProfile = {
+        ...mockPublicUser,
+        avatarUrl: undefined,
+      };
+
+      renderWithProviders(
+        <PublicProfileHeader
+          user={userWithUndefinedAvatar}
+          ratingSummary={mockRatingSummary}
+        />
+      );
+
+      expect(screen.getByText('TH')).toBeInTheDocument();
+    });
+
+    it('updates displayed avatar when navigating between different public profiles', () => {
+      const secondUser: PublicUserProfile = {
+        id: 'user-2-uuid',
+        displayName: 'Nguyễn Văn Nam',
+        role: 'USER',
+        status: 'ACTIVE',
+        createdAt: '2026-03-01T10:00:00Z',
+        avatarUrl: '/api/v1/files/avatars/nam.jpg',
+      };
+
+      const { rerender } = renderWithProviders(
+        <PublicProfileHeader
+          user={mockPublicUser}
+          ratingSummary={mockRatingSummary}
+        />
+      );
+
+      expect(screen.getByText('TH')).toBeInTheDocument();
+      expect(document.querySelector('img')).toBeNull();
+
+      rerender(
+        <PublicProfileHeader
+          user={secondUser}
+          ratingSummary={mockRatingSummary}
+        />
+      );
+
+      expect(screen.getByRole('heading', { level: 1, name: 'Nguyễn Văn Nam' })).toBeInTheDocument();
+      const namImg = screen.getByRole('img', { name: /Ảnh đại diện của Nguyễn Văn Nam/i });
+      expect(namImg).toHaveAttribute('src', 'http://localhost:8080/api/v1/files/avatars/nam.jpg');
+    });
+
+    it('confirms the public profile UI does not require private avatar fields', () => {
+      const minimalPublicUser: PublicUserProfile = {
+        id: 'user-min',
+        displayName: 'Lê Thảo',
+        role: 'USER',
+        status: 'ACTIVE',
+        createdAt: '2026-01-01T00:00:00Z',
+        avatarUrl: 'https://lh3.googleusercontent.com/a/google-avatar',
+      };
+
+      renderWithProviders(
+        <PublicProfileHeader
+          user={minimalPublicUser}
+          ratingSummary={mockRatingSummary}
+        />
+      );
+
+      const img = screen.getByRole('img', { name: /Ảnh đại diện của Lê Thảo/i });
+      expect(img).toHaveAttribute('src', 'https://lh3.googleusercontent.com/a/google-avatar');
+    });
+  });
 });

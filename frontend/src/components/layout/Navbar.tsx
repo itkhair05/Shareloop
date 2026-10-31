@@ -1,8 +1,9 @@
 import { useState } from 'react';
 import { Link, NavLink } from 'react-router-dom';
-import { Menu, X, Shield, LogIn, LogOut, User as UserIcon, Plus, Bell, MessageSquare, Home, Compass, List, ArrowLeftRight, HelpCircle } from 'lucide-react';
+import { Menu, X, Shield, LogIn, LogOut, Plus, Bell, MessageSquare, Home, Compass, List, ArrowLeftRight, HelpCircle } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Badge } from '@/components/ui/Badge';
+import { Avatar } from '@/components/common/Avatar';
 import { useAuth } from '@/features/auth';
 import { NotificationBell, useUnreadNotificationCount } from '@/features/notifications';
 
@@ -109,9 +110,13 @@ export function Navbar() {
                     aria-label="Xem hồ sơ cá nhân"
                     className="inline-flex items-center gap-1.5 xl:gap-2 px-2 xl:px-2.5 py-1 bg-slate-50 hover:bg-slate-100 rounded-lg border border-slate-200 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 shrink-0 whitespace-nowrap"
                   >
-                    <div className="w-6 h-6 rounded-full bg-emerald-100 text-emerald-700 flex items-center justify-center font-bold text-xs shrink-0">
-                      <UserIcon className="w-3.5 h-3.5 shrink-0" />
-                    </div>
+                    <Avatar
+                      avatarUrl={user?.avatarUrl}
+                      name={user?.displayName}
+                      size="xs"
+                      alt={`Ảnh đại diện của ${user?.displayName || 'người dùng'}`}
+                      className="w-6 h-6 shrink-0 shadow-2xs"
+                    />
                     
                     {/* Tên User: Ẩn trên màn hình vừa, hiện trên màn hình lớn */}
                     <span className="text-xs font-semibold text-slate-800 max-w-[120px] truncate whitespace-nowrap hidden xl:inline">
@@ -319,9 +324,13 @@ export function Navbar() {
                   className="px-3 py-2 flex items-center justify-between rounded-lg bg-slate-50 hover:bg-slate-100 border border-slate-200 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 whitespace-nowrap"
                 >
                   <div className="flex items-center gap-2 min-w-0">
-                    <div className="w-6 h-6 rounded-full bg-emerald-100 text-emerald-700 flex items-center justify-center font-bold text-xs shrink-0">
-                      <UserIcon className="w-3.5 h-3.5 shrink-0" />
-                    </div>
+                    <Avatar
+                      avatarUrl={user?.avatarUrl}
+                      name={user?.displayName}
+                      size="xs"
+                      alt={`Ảnh đại diện của ${user?.displayName || 'người dùng'}`}
+                      className="w-6 h-6 shrink-0 shadow-2xs"
+                    />
                     <span className="text-sm font-semibold text-slate-800 truncate whitespace-nowrap">
                       {user?.displayName}
                     </span>

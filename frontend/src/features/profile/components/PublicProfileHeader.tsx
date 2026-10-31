@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { Calendar, Shield, ShieldAlert, Star } from 'lucide-react';
 import { Badge } from '@/components/ui/Badge';
 import { Button } from '@/components/ui/Button';
+import { Avatar } from '@/components/common/Avatar';
 import { StarRating } from '@/features/reviews';
 import { useAuth } from '@/features/auth';
 import { CreateReportModal } from '@/features/reports';
@@ -39,8 +40,6 @@ export function PublicProfileHeader({
   const { user: currentUser } = useAuth();
   const [isReportModalOpen, setIsReportModalOpen] = useState(false);
 
-  const initial = user.displayName?.trim().charAt(0).toUpperCase() || 'U';
-
   const roleLabel = user.role === 'ADMIN' ? 'Quản trị viên' : 'Thành viên';
   const roleVariant = user.role === 'ADMIN' ? 'warning' : 'neutral';
 
@@ -70,14 +69,14 @@ export function PublicProfileHeader({
       >
         <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-6">
           <div className="flex flex-col sm:flex-row items-start sm:items-center gap-6 flex-1 min-w-0">
-            {/* Initials-based Avatar */}
-            <div
-              role="img"
-              aria-label={`Ảnh đại diện chữ cái của ${user.displayName}`}
-              className="w-20 h-20 sm:w-24 sm:h-24 rounded-2xl bg-gradient-to-br from-emerald-500 to-teal-700 text-white font-bold text-2xl sm:text-3xl flex items-center justify-center shadow-md ring-4 ring-emerald-50 shrink-0 select-none"
-            >
-              {initial}
-            </div>
+            {/* User Avatar */}
+            <Avatar
+              avatarUrl={user.avatarUrl}
+              name={user.displayName}
+              size="2xl"
+              alt={user.avatarUrl ? `Ảnh đại diện của ${user.displayName}` : `Ảnh đại diện chữ cái của ${user.displayName}`}
+              className="w-20 h-20 sm:w-24 sm:h-24 rounded-2xl ring-4 ring-emerald-50 shrink-0 select-none shadow-md"
+            />
 
             {/* User Details */}
             <div className="flex-1 min-w-0 space-y-3 w-full">

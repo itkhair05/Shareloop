@@ -207,4 +207,179 @@ describe('Navbar Authentication and Role-Aware Navigation', () => {
     const logoutButton = screen.getByRole('button', { name: /đăng xuất/i });
     expect(logoutButton).toHaveClass('whitespace-nowrap', 'shrink-0');
   });
+
+  describe('Navbar Avatar Integration', () => {
+    it('renders custom avatar in Navbar when user has avatarUrl', () => {
+      const userWithCustomAvatar: UserProfile = {
+        id: 'usr-custom',
+        displayName: 'Nguyễn Văn Minh',
+        email: 'minh@shareloop.org',
+        role: 'USER',
+        status: 'ACTIVE',
+        createdAt: '2026-10-22T00:00:00Z',
+        updatedAt: '2026-10-22T00:00:00Z',
+        avatarUrl: '/api/v1/files/avatars/minh.jpg',
+      };
+
+      vi.mocked(useAuth).mockReturnValue({
+        user: userWithCustomAvatar,
+        isAuthenticated: true,
+        isLoading: false,
+        error: null,
+        login: vi.fn(),
+        register: vi.fn(),
+        logout: vi.fn(),
+        clearError: vi.fn(),
+        refreshUser: vi.fn(),
+      });
+
+      renderWithProviders(<Navbar />);
+
+      const avatarImg = screen.getByRole('img', { name: /Ảnh đại diện của Nguyễn Văn Minh/i });
+      expect(avatarImg).toBeInTheDocument();
+      expect(avatarImg).toHaveAttribute('src', 'http://localhost:8080/api/v1/files/avatars/minh.jpg');
+    });
+
+    it('renders Google avatar fallback in Navbar when user has Google avatarUrl', () => {
+      const userWithGoogleAvatar: UserProfile = {
+        id: 'usr-google',
+        displayName: 'Trần Minh',
+        email: 'minh.tran@shareloop.org',
+        role: 'USER',
+        status: 'ACTIVE',
+        createdAt: '2026-10-22T00:00:00Z',
+        updatedAt: '2026-10-22T00:00:00Z',
+        avatarUrl: 'https://lh3.googleusercontent.com/a/google-avatar',
+      };
+
+      vi.mocked(useAuth).mockReturnValue({
+        user: userWithGoogleAvatar,
+        isAuthenticated: true,
+        isLoading: false,
+        error: null,
+        login: vi.fn(),
+        register: vi.fn(),
+        logout: vi.fn(),
+        clearError: vi.fn(),
+        refreshUser: vi.fn(),
+      });
+
+      renderWithProviders(<Navbar />);
+
+      const avatarImg = screen.getByRole('img', { name: /Ảnh đại diện của Trần Minh/i });
+      expect(avatarImg).toHaveAttribute('src', 'https://lh3.googleusercontent.com/a/google-avatar');
+    });
+
+    it('renders initials fallback when user avatarUrl is null', () => {
+      const userWithoutAvatar: UserProfile = {
+        id: 'usr-no-avatar',
+        displayName: 'Phạm Hoàng',
+        email: 'hoang@shareloop.org',
+        role: 'USER',
+        status: 'ACTIVE',
+        createdAt: '2026-10-22T00:00:00Z',
+        updatedAt: '2026-10-22T00:00:00Z',
+        avatarUrl: null,
+      };
+
+      vi.mocked(useAuth).mockReturnValue({
+        user: userWithoutAvatar,
+        isAuthenticated: true,
+        isLoading: false,
+        error: null,
+        login: vi.fn(),
+        register: vi.fn(),
+        logout: vi.fn(),
+        clearError: vi.fn(),
+        refreshUser: vi.fn(),
+      });
+
+      renderWithProviders(<Navbar />);
+
+      expect(screen.getByText('PH')).toBeInTheDocument();
+      expect(document.querySelector('img')).toBeNull();
+    });
+
+    it('renders identical avatar in both desktop and mobile dropdown menu', async () => {
+      const userAction = userEvent.setup();
+      const userWithAvatar: UserProfile = {
+        id: 'usr-both',
+        displayName: 'Đặng Văn Lâm',
+        email: 'lam@shareloop.org',
+        role: 'USER',
+        status: 'ACTIVE',
+        createdAt: '2026-10-22T00:00:00Z',
+        updatedAt: '2026-10-22T00:00:00Z',
+        avatarUrl: '/api/v1/files/avatars/lam.png',
+      };
+
+      vi.mocked(useAuth).mockReturnValue({
+        user: userWithAvatar,
+        isAuthenticated: true,
+        isLoading: false,
+        error: null,
+        login: vi.fn(),
+        register: vi.fn(),
+        logout: vi.fn(),
+        clearError: vi.fn(),
+        refreshUser: vi.fn(),
+      });
+
+      renderWithProviders(<Navbar />);
+
+      // Open mobile dropdown menu
+      const menuToggle = screen.getByRole('button', { name: /mở menu điều hướng/i });
+      await userAction.click(menuToggle);
+
+      const avatarImages = screen.getAllByRole('img', { name: /Ảnh đại diện của Đặng Văn Lâm/i });
+      expect(avatarImages).toHaveLength(2);
+      expect(avatarImages[0]).toHaveAttribute('src', 'http://localhost:8080/api/v1/files/avatars/lam.png');
+      expect(avatarImages[1]).toHaveAttribute('src', 'http://localhost:8080/api/v1/files/avatars/lam.png');
+    });
+
+    it('updates avatar dynamically when AuthContext user changes', () => {
+      const initialUser: UserProfile = {
+        id: 'usr-dyn',
+        displayName: 'Nguyễn Văn Minh',
+        email: 'minh@shareloop.org',
+        role: 'USER',
+        status: 'ACTIVE',
+        createdAt: '2026-10-22T00:00:00Z',
+        updatedAt: '2026-10-22T00:00:00Z',
+        avatarUrl: null,
+      };
+
+      const authState = {
+        user: initialUser,
+        isAuthenticated: true,
+        isLoading: false,
+        error: null,
+        login: vi.fn(),
+        register: vi.fn(),
+        logout: vi.fn(),
+        clearError: vi.fn(),
+        refreshUser: vi.fn(),
+      };
+
+      vi.mocked(useAuth).mockReturnValue(authState);
+
+      const { rerender } = renderWithProviders(<Navbar />);
+      expect(screen.getByText('NM')).toBeInTheDocument();
+
+      // Update user with uploaded avatar
+      vi.mocked(useAuth).mockReturnValue({
+        ...authState,
+        user: {
+          ...initialUser,
+          avatarUrl: '/api/v1/files/avatars/minh-new.jpg',
+        },
+      });
+
+      rerender(<Navbar />);
+
+      const updatedImg = screen.getByRole('img', { name: /Ảnh đại diện của Nguyễn Văn Minh/i });
+      expect(updatedImg).toBeInTheDocument();
+      expect(updatedImg).toHaveAttribute('src', 'http://localhost:8080/api/v1/files/avatars/minh-new.jpg');
+    });
+  });
 });
