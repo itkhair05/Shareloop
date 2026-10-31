@@ -1,7 +1,8 @@
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
-import { MapPin, Package, User } from 'lucide-react';
+import { MapPin, Package } from 'lucide-react';
 import { Badge } from '@/components/ui/Badge';
+import { Avatar } from '@/components/common/Avatar';
 import { formatDateTime, formatPrice, resolveImageUrl } from '@/lib/utils';
 import type { ListingSummaryResponse, ListingType } from '@/types/listing';
 
@@ -114,7 +115,17 @@ export function ListingCard({ listing }: ListingCardProps) {
 
           <div className="flex items-center justify-between gap-2 pt-0.5">
             <div className="flex items-center gap-1.5 truncate">
-              <User className="w-3.5 h-3.5 text-slate-400 shrink-0" aria-hidden="true" />
+              <Avatar
+                avatarUrl={listing.owner.avatarUrl}
+                name={listing.owner.displayName}
+                size="xs"
+                alt={
+                  listing.owner.displayName
+                    ? `Ảnh đại diện của ${listing.owner.displayName}`
+                    : 'Ảnh đại diện người dùng'
+                }
+                className="shrink-0"
+              />
               <span className="truncate">{listing.owner.displayName}</span>
             </div>
             <time className="text-slate-400 text-[11px] shrink-0" dateTime={listing.createdAt}>

@@ -9,10 +9,10 @@ import {
   Clock,
   Inbox,
   MessageSquare,
-  User,
   X,
 } from 'lucide-react';
 import { Badge } from '@/components/ui/Badge';
+import { Avatar } from '@/components/common/Avatar';
 import { Button } from '@/components/ui/Button';
 import { ConfirmDialog } from '@/components/ui/ConfirmDialog';
 import { EmptyState, ErrorAlert, LoadingSpinner } from '@/components/ui/Feedback';
@@ -242,14 +242,17 @@ export function ListingRequestsManager({
                 {/* Header: Requester Name, Date, Status */}
                 <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5">
                   <div className="flex items-center gap-3">
-                    <div
-                      className="w-9 h-9 rounded-full bg-emerald-100 text-emerald-800 font-bold text-sm flex items-center justify-center shrink-0 border border-emerald-200"
-                      aria-hidden="true"
-                    >
-                      {request.requester.displayName?.charAt(0).toUpperCase() || (
-                        <User className="w-4 h-4 text-emerald-700" />
-                      )}
-                    </div>
+                    <Avatar
+                      avatarUrl={request.requester.avatarUrl}
+                      name={request.requester.displayName}
+                      size="sm"
+                      alt={
+                        request.requester.displayName
+                          ? `Ảnh đại diện của ${request.requester.displayName}`
+                          : 'Ảnh đại diện người dùng'
+                      }
+                      className="shrink-0"
+                    />
                     <div>
                       <div className="font-semibold text-slate-900 text-sm">
                         {request.requester.displayName}

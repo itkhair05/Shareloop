@@ -15,12 +15,12 @@ import {
   Send,
   ShieldCheck,
   Tag,
-  User,
   X,
   MessageSquare,
   ShieldAlert,
 } from 'lucide-react';
 import { Badge } from '@/components/ui/Badge';
+import { Avatar } from '@/components/common/Avatar';
 import { Button } from '@/components/ui/Button';
 import { EmptyState, ErrorAlert, LoadingSpinner } from '@/components/ui/Feedback';
 import { formatDateTime, formatPrice, isValidUuid, resolveImageUrl } from '@/lib/utils';
@@ -656,12 +656,20 @@ export function ListingDetailPage() {
             <div className="flex items-center gap-3.5">
               <Link
                 to={`/users/${listing.owner.id}`}
-                className="w-12 h-12 rounded-full bg-emerald-100 hover:bg-emerald-200 text-emerald-800 font-bold text-lg flex items-center justify-center shrink-0 border border-emerald-200 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500"
+                className="shrink-0 rounded-full focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500"
                 aria-label={`Xem hồ sơ của ${listing.owner.displayName}`}
               >
-                {listing.owner.displayName?.charAt(0).toUpperCase() || (
-                  <User className="w-6 h-6 text-emerald-700" />
-                )}
+                <Avatar
+                  avatarUrl={listing.owner.avatarUrl}
+                  name={listing.owner.displayName}
+                  size="lg"
+                  alt={
+                    listing.owner.displayName
+                      ? `Ảnh đại diện của ${listing.owner.displayName}`
+                      : 'Ảnh đại diện người dùng'
+                  }
+                  className="hover:ring-2 hover:ring-emerald-300 transition-all cursor-pointer"
+                />
               </Link>
 
               <div className="min-w-0 flex-1">

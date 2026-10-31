@@ -258,7 +258,7 @@ describe('ListingDetailPage & Marketplace Navigation', () => {
       expect(screen.getByRole('heading', { level: 1 })).toBeInTheDocument();
     });
 
-    const img = screen.getByRole('img');
+    const img = screen.getByAltText(`Hình ảnh 1 của ${mockSaleListing.title}`);
     fireEvent.error(img);
 
     await waitFor(() => {
