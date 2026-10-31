@@ -1,5 +1,6 @@
 import { useEffect, useId, useState } from 'react';
 import { AlertCircle, AlertTriangle, Ban, Loader2, X } from 'lucide-react';
+import { Avatar } from '@/components/common/Avatar';
 import { Button } from '@/components/ui/Button';
 import type { AdminTransactionResponse } from '@/types/admin-transaction';
 import { useAdminCancelTransaction } from '../hooks/use-admin-transactions';
@@ -152,14 +153,26 @@ export function CancelTransactionDialog({
             </div>
             <div className="flex justify-between items-center text-slate-600">
               <span className="text-slate-500">Người tặng:</span>
-              <span className="font-medium text-slate-800">
-                {transaction.ownerDisplayName}
+              <span className="inline-flex items-center gap-1.5 font-medium text-slate-800">
+                <Avatar
+                  avatarUrl={transaction.ownerAvatarUrl ?? transaction.owner?.avatarUrl}
+                  name={transaction.ownerDisplayName}
+                  size="xs"
+                  alt={`Ảnh đại diện của ${transaction.ownerDisplayName}`}
+                />
+                <span>{transaction.ownerDisplayName}</span>
               </span>
             </div>
             <div className="flex justify-between items-center text-slate-600">
               <span className="text-slate-500">Người nhận:</span>
-              <span className="font-medium text-slate-800">
-                {transaction.requesterDisplayName}
+              <span className="inline-flex items-center gap-1.5 font-medium text-slate-800">
+                <Avatar
+                  avatarUrl={transaction.requesterAvatarUrl ?? transaction.requester?.avatarUrl}
+                  name={transaction.requesterDisplayName}
+                  size="xs"
+                  alt={`Ảnh đại diện của ${transaction.requesterDisplayName}`}
+                />
+                <span>{transaction.requesterDisplayName}</span>
               </span>
             </div>
           </div>

@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { screen, waitFor } from '@testing-library/react';
+import { screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { AdminReportsPage } from '../AdminReportsPage';
 import { adminReportsApi } from '../api/admin-reports-api';
@@ -43,8 +43,11 @@ const mockResolvedReport: AdminReportResponse = {
   reporterId: 'user-reporter-2',
   reporterDisplayName: 'Trần Thị Khiếu Nại',
   reporterEmail: 'complaint@example.com',
+  reporterAvatarUrl: 'https://lh3.googleusercontent.com/a/reporter-google',
   targetType: 'USER',
   targetId: 'user-scammer-456',
+  targetUserDisplayName: 'Phạm Văn Lừa Đảo',
+  targetUserAvatarUrl: '/api/v1/files/avatars/target-user.png',
   category: 'FRAUD_OR_SCAM',
   description: 'Người dùng yêu cầu chuyển tiền cọc ngoài ứng dụng.',
   status: 'RESOLVED',
@@ -168,6 +171,11 @@ describe('AdminReportsPage', () => {
         resolutionNotes: 'Bắt đầu đối soát tin nhắn',
       });
     });
+
+    // Drain the post-mutation list invalidation refetch so it cannot leak into later tests.
+    await waitFor(() => {
+      expect(adminReportsApi.getAdminReports).toHaveBeenCalledTimes(2);
+    });
   });
 
   it('renders review target link and allows cross-inspecting review details without changing report state', async () => {
@@ -193,5 +201,115 @@ describe('AdminReportsPage', () => {
     await waitFor(() => {
       expect(screen.getByText('Chi tiết đánh giá giao dịch')).toBeInTheDocument();
     });
+  });
+
+  it('renders reporter initials avatars in the list and detail modal without extra report requests', async () => {
+    const user = userEvent.setup();
+    renderWithProviders(<AdminReportsPage />);
+
+    await waitFor(() => {
+      expect(screen.getByText('Nguyễn Văn Báo Cáo')).toBeInTheDocument();
+    });
+
+    const reporterRow = screen.getByText('Nguyễn Văn Báo Cáo').closest('tr');
+    expect(reporterRow).not.toBeNull();
+    const listAvatar = within(reporterRow!).getByRole('img', {
+      name: 'Ảnh đại diện của Nguyễn Văn Báo Cáo',
+    });
+    expect(listAvatar.tagName).toBe('DIV');
+    expect(within(reporterRow!).getByText('NC')).toBeInTheDocument();
+
+    const listCallsBeforeDetail = vi.mocked(adminReportsApi.getAdminReports).mock.calls.length;
+
+    const detailButtons = screen.getAllByRole('button', { name: /Xem hồ sơ/i });
+    await user.click(detailButtons[0]);
+
+    const dialog = await screen.findByRole('dialog');
+    const detailAvatar = within(dialog).getByRole('img', {
+      name: 'Ảnh đại diện của Nguyễn Văn Báo Cáo',
+    });
+    expect(detailAvatar.tagName).toBe('DIV');
+    expect(adminReportsApi.getAdminReportById).toHaveBeenCalledWith('rep-1');
+    // Opening a report must not trigger an additional list request per row.
+    expect(adminReportsApi.getAdminReports).toHaveBeenCalledTimes(listCallsBeforeDetail);
+  });
+
+  it('renders custom and Google reporter avatars in the list without extra API calls', async () => {
+    vi.mocked(adminReportsApi.getAdminReports).mockResolvedValue({
+      ...mockPageResponse,
+      content: [
+        { ...mockReport1, reporterAvatarUrl: '/api/v1/files/avatars/reporter-custom.png' },
+        { ...mockResolvedReport, reporterAvatarUrl: 'https://lh3.googleusercontent.com/a/reporter-google' },
+      ],
+    });
+
+    renderWithProviders(<AdminReportsPage />);
+
+    await waitFor(() => {
+      expect(screen.getByText('Nguyễn Văn Báo Cáo')).toBeInTheDocument();
+    });
+
+    const customRow = screen.getByText('Nguyễn Văn Báo Cáo').closest('tr');
+    expect(
+      within(customRow!).getByAltText('Ảnh đại diện của Nguyễn Văn Báo Cáo')
+    ).toHaveAttribute('src', 'http://localhost:8080/api/v1/files/avatars/reporter-custom.png');
+
+    const googleRow = screen.getByText('Trần Thị Khiếu Nại').closest('tr');
+    expect(
+      within(googleRow!).getByAltText('Ảnh đại diện của Trần Thị Khiếu Nại')
+    ).toHaveAttribute('src', 'https://lh3.googleusercontent.com/a/reporter-google');
+  });
+
+  it('renders the reported-user avatar for USER targets in the detail modal', async () => {
+    const user = userEvent.setup();
+    renderWithProviders(<AdminReportsPage />);
+
+    await waitFor(() => {
+      expect(screen.getByText('Trần Thị Khiếu Nại')).toBeInTheDocument();
+    });
+
+    const listCallsBeforeDetail = vi.mocked(adminReportsApi.getAdminReports).mock.calls.length;
+
+    const detailButtons = screen.getAllByRole('button', { name: /Xem hồ sơ/i });
+    await user.click(detailButtons[1]);
+
+    const dialog = await screen.findByRole('dialog');
+
+    await waitFor(() => {
+      expect(within(dialog).getByText('Phạm Văn Lừa Đảo')).toBeInTheDocument();
+    });
+
+    expect(
+      within(dialog).getByAltText('Ảnh đại diện của Phạm Văn Lừa Đảo')
+    ).toHaveAttribute('src', 'http://localhost:8080/api/v1/files/avatars/target-user.png');
+    expect(
+      within(dialog).getByAltText('Ảnh đại diện của Trần Thị Khiếu Nại')
+    ).toHaveAttribute('src', 'https://lh3.googleusercontent.com/a/reporter-google');
+    expect(adminReportsApi.getAdminReportById).toHaveBeenCalledWith('rep-2');
+    expect(adminReportsApi.getAdminReports).toHaveBeenCalledTimes(listCallsBeforeDetail);
+  });
+
+  it('does not render reported-user identity for non-user targets', async () => {
+    const user = userEvent.setup();
+    renderWithProviders(<AdminReportsPage />);
+
+    await waitFor(() => {
+      expect(screen.getByText('Nguyễn Văn Báo Cáo')).toBeInTheDocument();
+    });
+
+    const detailButtons = screen.getAllByRole('button', { name: /Xem hồ sơ/i });
+    await user.click(detailButtons[0]);
+
+    const dialog = await screen.findByRole('dialog');
+
+    await waitFor(() => {
+      expect(within(dialog).getByText('Nguyễn Văn Báo Cáo')).toBeInTheDocument();
+    });
+
+    expect(within(dialog).queryByText('Người dùng bị báo cáo')).not.toBeInTheDocument();
+    expect(
+      within(dialog).queryByAltText('Ảnh đại diện người dùng bị báo cáo')
+    ).not.toBeInTheDocument();
+    expect(within(dialog).getByText('rev-target-123')).toBeInTheDocument();
   });
 });

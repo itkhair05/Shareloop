@@ -12,11 +12,13 @@ export interface AdminReviewResponse {
   reviewerId?: string;
   reviewerDisplayName?: string;
   reviewerEmail?: string;
+  reviewerAvatarUrl?: string | null;
 
   // Reviewee details
   revieweeId?: string;
   revieweeDisplayName?: string;
   revieweeEmail?: string;
+  revieweeAvatarUrl?: string | null;
 
   // Transaction details
   transactionId?: string;

@@ -11,6 +11,7 @@ import {
   User as UserIcon,
   X,
 } from 'lucide-react';
+import { Avatar } from '@/components/common/Avatar';
 import { Badge } from '@/components/ui/Badge';
 import { Button } from '@/components/ui/Button';
 import { formatDateTime } from '@/lib/utils';
@@ -150,9 +151,13 @@ export function UserDetailModal({ isOpen, onClose, userId }: UserDetailModalProp
             <div className="space-y-4 text-xs">
               {/* User Identity Banner */}
               <div className="flex items-center gap-3 p-3.5 bg-slate-50 rounded-xl border border-slate-200/80">
-                <div className="w-11 h-11 rounded-full bg-emerald-600 text-white font-bold text-base flex items-center justify-center shrink-0 uppercase shadow-xs">
-                  {user.displayName ? user.displayName.charAt(0) : 'U'}
-                </div>
+                <Avatar
+                  avatarUrl={user.avatarUrl}
+                  name={user.displayName}
+                  size="lg"
+                  alt={`Ảnh đại diện của ${user.displayName}`}
+                  className="shadow-xs"
+                />
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2">
                     <h3 className="text-sm font-bold text-slate-900 truncate">

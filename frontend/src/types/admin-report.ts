@@ -6,8 +6,11 @@ export interface AdminReportResponse {
   reporterId?: string;
   reporterDisplayName?: string;
   reporterEmail?: string;
+  reporterAvatarUrl?: string | null;
   targetType: ReportTargetType;
   targetId: string;
+  targetUserDisplayName?: string | null;
+  targetUserAvatarUrl?: string | null;
   category: ReportCategory;
   description: string;
   status: ReportStatus;

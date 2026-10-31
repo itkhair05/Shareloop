@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { screen, waitFor } from '@testing-library/react';
+import { screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { AdminUsersPage } from '../AdminUsersPage';
 import { adminUsersApi } from '../api/admin-users-api';
@@ -538,5 +538,58 @@ describe('AdminUsersPage', () => {
     await waitFor(() => {
       expect(screen.getByText('Không thể hạ quyền quản trị viên cuối cùng của hệ thống')).toBeInTheDocument();
     });
+  });
+
+  it('renders custom, Google, and initials fallback avatars in the users table without extra API calls', async () => {
+    const customAvatarUser: AdminUserResponse = {
+      ...mockRegularUser,
+      id: 'user-avatar-custom',
+      displayName: 'Phạm Custom',
+      avatarUrl: '/api/v1/files/avatars/custom.png',
+    };
+    const googleAvatarUser: AdminUserResponse = {
+      ...mockSuspendedUser,
+      id: 'user-avatar-google',
+      displayName: 'Google Tài Khoản',
+      avatarUrl: 'https://lh3.googleusercontent.com/a/google-avatar',
+    };
+    const initialsUser: AdminUserResponse = {
+      ...mockDeactivatedUser,
+      avatarUrl: null,
+    };
+
+    vi.mocked(adminUsersApi.getAdminUsers).mockResolvedValue(
+      createMockPage([customAvatarUser, googleAvatarUser, initialsUser])
+    );
+
+    renderWithProviders(<AdminUsersPage />, { initialEntries: ['/admin/users'] });
+
+    await waitFor(() => {
+      expect(screen.getByText('Phạm Custom')).toBeInTheDocument();
+    });
+
+    const customImg = screen.getByAltText('Ảnh đại diện của Phạm Custom');
+    expect(customImg.tagName).toBe('IMG');
+    expect(customImg).toHaveAttribute(
+      'src',
+      'http://localhost:8080/api/v1/files/avatars/custom.png'
+    );
+
+    const googleImg = screen.getByAltText('Ảnh đại diện của Google Tài Khoản');
+    expect(googleImg.tagName).toBe('IMG');
+    expect(googleImg).toHaveAttribute(
+      'src',
+      'https://lh3.googleusercontent.com/a/google-avatar'
+    );
+
+    const initialsRow = screen.getByText('Lê Văn C').closest('tr');
+    expect(initialsRow).not.toBeNull();
+    expect(
+      within(initialsRow!).getByRole('img', { name: 'Ảnh đại diện của Lê Văn C' })
+    ).toBeInTheDocument();
+    expect(within(initialsRow!).getByText('LC')).toBeInTheDocument();
+    expect(within(initialsRow!).queryByRole('img', { name: /^Ảnh đại diện của Lê Văn C$/ })?.tagName).toBe('DIV');
+
+    expect(adminUsersApi.getAdminUsers).toHaveBeenCalledTimes(1);
   });
 });

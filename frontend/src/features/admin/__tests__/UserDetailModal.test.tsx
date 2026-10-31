@@ -130,4 +130,49 @@ describe('UserDetailModal', () => {
 
     expect(handleClose).toHaveBeenCalledTimes(1);
   });
+
+  it('renders custom avatar image in the user identity banner', async () => {
+    vi.mocked(adminUsersApi.getAdminUserById).mockResolvedValue({
+      ...mockUser,
+      avatarUrl: '/api/v1/files/avatars/nam.png',
+    });
+
+    renderWithProviders(<UserDetailModal isOpen={true} onClose={vi.fn()} userId="user-uuid-1234" />);
+
+    const avatarImg = await screen.findByAltText('Ảnh đại diện của Lê Hoàng Nam');
+    expect(avatarImg.tagName).toBe('IMG');
+    expect(avatarImg).toHaveAttribute(
+      'src',
+      'http://localhost:8080/api/v1/files/avatars/nam.png'
+    );
+    expect(adminUsersApi.getAdminUserById).toHaveBeenCalledTimes(1);
+  });
+
+  it('renders Google avatar image in the user identity banner', async () => {
+    vi.mocked(adminUsersApi.getAdminUserById).mockResolvedValue({
+      ...mockUser,
+      avatarUrl: 'https://lh3.googleusercontent.com/a/nam-google',
+    });
+
+    renderWithProviders(<UserDetailModal isOpen={true} onClose={vi.fn()} userId="user-uuid-1234" />);
+
+    const avatarImg = await screen.findByAltText('Ảnh đại diện của Lê Hoàng Nam');
+    expect(avatarImg).toHaveAttribute('src', 'https://lh3.googleusercontent.com/a/nam-google');
+  });
+
+  it('renders initials fallback when the user has no avatar', async () => {
+    vi.mocked(adminUsersApi.getAdminUserById).mockResolvedValue({
+      ...mockUser,
+      avatarUrl: null,
+    });
+
+    renderWithProviders(<UserDetailModal isOpen={true} onClose={vi.fn()} userId="user-uuid-1234" />);
+
+    const fallback = await screen.findByRole('img', {
+      name: 'Ảnh đại diện của Lê Hoàng Nam',
+    });
+    expect(fallback.tagName).toBe('DIV');
+    expect(screen.getByText('LN')).toBeInTheDocument();
+    expect(document.querySelector('img')).toBeNull();
+  });
 });

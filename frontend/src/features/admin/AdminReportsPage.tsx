@@ -9,6 +9,7 @@ import {
   ShieldAlert,
   X,
 } from 'lucide-react';
+import { Avatar } from '@/components/common/Avatar';
 import { Badge } from '@/components/ui/Badge';
 import { Card, CardContent } from '@/components/ui/Card';
 import { formatDateTime } from '@/lib/utils';
@@ -343,11 +344,25 @@ export function AdminReportsPage() {
 
                     {/* Reporter */}
                     <td className="px-4 py-3.5">
-                      <div className="font-semibold text-slate-800 text-xs truncate max-w-[150px]">
-                        {rep.reporterDisplayName || 'Người dùng ẩn danh'}
-                      </div>
-                      <div className="text-[11px] text-slate-400 font-mono truncate max-w-[150px]">
-                        {rep.reporterEmail || '—'}
+                      <div className="flex items-center gap-2.5 min-w-0">
+                        <Avatar
+                          avatarUrl={rep.reporterAvatarUrl}
+                          name={rep.reporterDisplayName}
+                          size="sm"
+                          alt={
+                            rep.reporterDisplayName
+                              ? `Ảnh đại diện của ${rep.reporterDisplayName}`
+                              : 'Ảnh đại diện người gửi báo cáo'
+                          }
+                        />
+                        <div className="min-w-0">
+                          <div className="font-semibold text-slate-800 text-xs truncate max-w-[150px]">
+                            {rep.reporterDisplayName || 'Người dùng ẩn danh'}
+                          </div>
+                          <div className="text-[11px] text-slate-400 font-mono truncate max-w-[150px]">
+                            {rep.reporterEmail || '—'}
+                          </div>
+                        </div>
                       </div>
                     </td>
 

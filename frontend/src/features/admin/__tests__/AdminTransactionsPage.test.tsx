@@ -104,8 +104,10 @@ const mockPendingTx: AdminTransactionResponse = {
   listingRequestId: 'req-1',
   ownerId: 'user-owner-1',
   ownerDisplayName: 'Nguyễn Văn Chủ',
+  ownerAvatarUrl: '/api/v1/files/avatars/owner-1.png',
   requesterId: 'user-req-1',
   requesterDisplayName: 'Trần Thị Nhận',
+  requesterAvatarUrl: 'https://lh3.googleusercontent.com/a/requester-1',
   status: 'PENDING',
   ownerCompleted: false,
   requesterCompleted: false,
@@ -187,6 +189,7 @@ const mockCancelledTx: AdminTransactionResponse = {
   cancelledBy: {
     id: 'admin-1',
     displayName: 'Quản trị viên Hệ thống',
+    avatarUrl: '/api/v1/files/avatars/admin-1.png',
   },
   createdAt: '2026-10-22T14:00:00Z',
   updatedAt: '2026-10-23T10:00:00Z',
@@ -211,10 +214,12 @@ const mockDetailInProgress: TransactionResponse = {
   owner: {
     id: 'user-owner-2',
     displayName: 'Lê Văn Chủ',
+    avatarUrl: '/api/v1/files/avatars/owner-2.png',
   },
   requester: {
     id: 'user-req-2',
     displayName: 'Phạm Thị Khách',
+    avatarUrl: 'https://lh3.googleusercontent.com/a/requester-2',
   },
   status: 'IN_PROGRESS',
   ownerCompleted: true,
@@ -264,6 +269,7 @@ const mockDetailCancelled: TransactionResponse = {
   cancelledBy: {
     id: 'admin-1',
     displayName: 'Quản trị viên Hệ thống',
+    avatarUrl: '/api/v1/files/avatars/admin-1.png',
   },
   cancelledAt: '2026-10-23T10:00:00Z',
   cancellationReason: 'Hai bên không thỏa thuận được phương thức nhận đồ',
@@ -504,10 +510,11 @@ describe('AdminTransactionsPage', () => {
 
     await waitFor(() => {
       expect(screen.getByRole('heading', { level: 2, name: 'Chi tiết giao dịch trao đổi' })).toBeInTheDocument();
-      expect(screen.getByText('Thông tin giao dịch')).toBeInTheDocument();
-      expect(screen.getByText('Bài đăng liên quan')).toBeInTheDocument();
-      expect(screen.getByText('Các bên tham gia')).toBeInTheDocument();
-      expect(screen.getByText('Tiến độ xác nhận hai chiều (Dual-Party Confirmation)')).toBeInTheDocument();
+      const dialog = screen.getByRole('dialog');
+      expect(within(dialog).getByText('Thông tin giao dịch')).toBeInTheDocument();
+      expect(within(dialog).getByText('Bài đăng liên quan')).toBeInTheDocument();
+      expect(within(dialog).getByText('Các bên tham gia')).toBeInTheDocument();
+      expect(within(dialog).getByText('Tiến độ xác nhận hai chiều (Dual-Party Confirmation)')).toBeInTheDocument();
     });
 
     expect(transactionApi.getTransactionDetails).toHaveBeenCalledWith(mockInProgressTx.id);
@@ -649,5 +656,116 @@ describe('AdminTransactionsPage', () => {
     expect(screen.getByRole('heading', { level: 2, name: 'Truy cập bị từ chối' })).toBeInTheDocument();
     expect(screen.getByText(/không có quyền truy cập khu vực giới hạn này/i)).toBeInTheDocument();
     expect(screen.queryByRole('heading', { level: 1, name: 'Quản lý giao dịch' })).not.toBeInTheDocument();
+  });
+
+  it('renders participant avatars with custom, Google, and initials fallbacks in the transactions table', async () => {
+    renderWithProviders(<AdminTransactionsPage />);
+
+    await waitFor(() => {
+      expect(screen.getByText('Sách Lập trình TypeScript Nâng Cao')).toBeInTheDocument();
+    });
+
+    const ownerImg = screen.getByAltText('Ảnh đại diện của Nguyễn Văn Chủ');
+    expect(ownerImg.tagName).toBe('IMG');
+    expect(ownerImg).toHaveAttribute(
+      'src',
+      'http://localhost:8080/api/v1/files/avatars/owner-1.png'
+    );
+
+    const requesterImg = screen.getByAltText('Ảnh đại diện của Trần Thị Nhận');
+    expect(requesterImg.tagName).toBe('IMG');
+    expect(requesterImg).toHaveAttribute(
+      'src',
+      'https://lh3.googleusercontent.com/a/requester-1'
+    );
+
+    const fallbackRow = screen.getByText('Bàn phím cơ Bluetooth').closest('tr');
+    expect(fallbackRow).not.toBeNull();
+    expect(
+      within(fallbackRow!).getByRole('img', { name: 'Ảnh đại diện của Hoàng Văn C' })
+    ).toBeInTheDocument();
+    expect(within(fallbackRow!).getByText('HC')).toBeInTheDocument();
+
+    expect(adminTransactionsApi.getAdminTransactions).toHaveBeenCalledTimes(1);
+  });
+
+  it('renders owner and requester avatars in the transaction detail modal', async () => {
+    const user = userEvent.setup();
+    renderWithProviders(<AdminTransactionsPage />);
+
+    await waitFor(() => {
+      expect(screen.getByText('Nồi chiên không dầu Lock&Lock')).toBeInTheDocument();
+    });
+
+    const inProgressRow = screen.getByText('Nồi chiên không dầu Lock&Lock').closest('tr');
+    await user.click(
+      within(inProgressRow!).getByRole('button', { name: /Xem chi tiết giao dịch/i })
+    );
+
+    const dialog = await screen.findByRole('dialog');
+    const ownerAvatar = within(dialog).getByAltText('Ảnh đại diện của Lê Văn Chủ');
+    expect(ownerAvatar.tagName).toBe('IMG');
+    expect(ownerAvatar).toHaveAttribute(
+      'src',
+      'http://localhost:8080/api/v1/files/avatars/owner-2.png'
+    );
+    expect(
+      within(dialog).getByAltText('Ảnh đại diện của Phạm Thị Khách')
+    ).toHaveAttribute('src', 'https://lh3.googleusercontent.com/a/requester-2');
+
+    expect(transactionApi.getTransactionDetails).toHaveBeenCalledWith(mockInProgressTx.id);
+    expect(transactionApi.getTransactionDetails).toHaveBeenCalledTimes(1);
+  });
+
+  it('renders the cancelling administrator avatar in cancellation history', async () => {
+    const user = userEvent.setup();
+    renderWithProviders(<AdminTransactionsPage />);
+
+    await waitFor(() => {
+      expect(screen.getByText('Ghế xoay văn phòng Hòa Phát')).toBeInTheDocument();
+    });
+
+    const cancelledRow = screen.getByText('Ghế xoay văn phòng Hòa Phát').closest('tr');
+    await user.click(
+      within(cancelledRow!).getByRole('button', { name: /Xem chi tiết giao dịch/i })
+    );
+
+    await waitFor(() => {
+      expect(screen.getByText('Lịch sử hủy giao dịch')).toBeInTheDocument();
+    });
+
+    const dialog = screen.getByRole('dialog');
+    const cancelAvatar = within(dialog).getByAltText(
+      'Ảnh đại diện của Quản trị viên Hệ thống'
+    );
+    expect(cancelAvatar.tagName).toBe('IMG');
+    expect(cancelAvatar).toHaveAttribute(
+      'src',
+      'http://localhost:8080/api/v1/files/avatars/admin-1.png'
+    );
+  });
+
+  it('renders participant avatars in the administrative cancellation dialog', async () => {
+    const user = userEvent.setup();
+    renderWithProviders(<AdminTransactionsPage />);
+
+    await waitFor(() => {
+      expect(screen.getByText('Sách Lập trình TypeScript Nâng Cao')).toBeInTheDocument();
+    });
+
+    const pendingRow = screen.getByText('Sách Lập trình TypeScript Nâng Cao').closest('tr');
+    await user.click(
+      within(pendingRow!).getByRole('button', { name: /Hủy giao dịch 11111111/i })
+    );
+
+    const dialog = await screen.findByRole('dialog');
+    expect(
+      within(dialog).getByAltText('Ảnh đại diện của Nguyễn Văn Chủ')
+    ).toHaveAttribute('src', 'http://localhost:8080/api/v1/files/avatars/owner-1.png');
+    expect(
+      within(dialog).getByAltText('Ảnh đại diện của Trần Thị Nhận')
+    ).toHaveAttribute('src', 'https://lh3.googleusercontent.com/a/requester-1');
+
+    expect(adminTransactionsApi.getAdminTransactions).toHaveBeenCalledTimes(1);
   });
 });

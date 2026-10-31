@@ -14,6 +14,7 @@ import {
   User as UserIcon,
   X,
 } from 'lucide-react';
+import { Avatar } from '@/components/common/Avatar';
 import { Badge } from '@/components/ui/Badge';
 import { formatDateTime } from '@/lib/utils';
 import { useAdminReviewDetail } from '../hooks/use-admin-reviews';
@@ -212,12 +213,24 @@ export function ReviewDetailModal({
                       </button>
                     )}
                   </div>
-                  <div>
-                    <div className="font-semibold text-slate-900 text-sm">
-                      {review.reviewerDisplayName || 'Chưa cập nhật'}
-                    </div>
-                    <div className="text-xs text-slate-500 font-mono mt-0.5">
-                      {review.reviewerEmail || '—'}
+                  <div className="flex items-center gap-3">
+                    <Avatar
+                      avatarUrl={review.reviewerAvatarUrl}
+                      name={review.reviewerDisplayName}
+                      size="md"
+                      alt={
+                        review.reviewerDisplayName
+                          ? `Ảnh đại diện của ${review.reviewerDisplayName}`
+                          : 'Ảnh đại diện người đánh giá'
+                      }
+                    />
+                    <div className="min-w-0">
+                      <div className="font-semibold text-slate-900 text-sm">
+                        {review.reviewerDisplayName || 'Chưa cập nhật'}
+                      </div>
+                      <div className="text-xs text-slate-500 font-mono mt-0.5">
+                        {review.reviewerEmail || '—'}
+                      </div>
                     </div>
                   </div>
                 </div>
@@ -244,12 +257,24 @@ export function ReviewDetailModal({
                       </button>
                     )}
                   </div>
-                  <div>
-                    <div className="font-semibold text-slate-900 text-sm">
-                      {review.revieweeDisplayName || 'Chưa cập nhật'}
-                    </div>
-                    <div className="text-xs text-slate-500 font-mono mt-0.5">
-                      {review.revieweeEmail || '—'}
+                  <div className="flex items-center gap-3">
+                    <Avatar
+                      avatarUrl={review.revieweeAvatarUrl}
+                      name={review.revieweeDisplayName}
+                      size="md"
+                      alt={
+                        review.revieweeDisplayName
+                          ? `Ảnh đại diện của ${review.revieweeDisplayName}`
+                          : 'Ảnh đại diện người nhận đánh giá'
+                      }
+                    />
+                    <div className="min-w-0">
+                      <div className="font-semibold text-slate-900 text-sm">
+                        {review.revieweeDisplayName || 'Chưa cập nhật'}
+                      </div>
+                      <div className="text-xs text-slate-500 font-mono mt-0.5">
+                        {review.revieweeEmail || '—'}
+                      </div>
                     </div>
                   </div>
                 </div>

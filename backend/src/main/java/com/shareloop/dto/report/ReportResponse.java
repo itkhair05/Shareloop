@@ -13,6 +13,7 @@ public class ReportResponse {
     private UUID id;
     private UUID reporterId;
     private String reporterDisplayName;
+    private String reporterAvatarUrl;
     private ReportTargetType targetType;
     private UUID targetId;
     private ReportCategory category;
@@ -31,6 +32,7 @@ public class ReportResponse {
         if (entity.getReporter() != null) {
             response.setReporterId(entity.getReporter().getId());
             response.setReporterDisplayName(entity.getReporter().getDisplayName());
+            response.setReporterAvatarUrl(entity.getReporter().getEffectiveAvatarUrl());
         }
         response.setTargetType(entity.getTargetType());
         response.setTargetId(entity.getTargetId());
@@ -65,6 +67,14 @@ public class ReportResponse {
 
     public void setReporterDisplayName(String reporterDisplayName) {
         this.reporterDisplayName = reporterDisplayName;
+    }
+
+    public String getReporterAvatarUrl() {
+        return reporterAvatarUrl;
+    }
+
+    public void setReporterAvatarUrl(String reporterAvatarUrl) {
+        this.reporterAvatarUrl = reporterAvatarUrl;
     }
 
     public ReportTargetType getTargetType() {

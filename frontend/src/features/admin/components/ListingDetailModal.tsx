@@ -15,8 +15,9 @@ import {
   User,
   X,
 } from 'lucide-react';
+import { Avatar } from '@/components/common/Avatar';
 import { Badge } from '@/components/ui/Badge';
-import { formatDateTime } from '@/lib/utils';
+import { formatDateTime, resolveImageUrl } from '@/lib/utils';
 import { useAdminListingDetail } from '../hooks/use-admin-listings';
 import type { ListingResponse, ListingStatus, ListingType } from '@/types/admin-listing';
 
@@ -272,7 +273,7 @@ export function ListingDetailModal({
                 <div className="space-y-2">
                   <div className="relative aspect-video max-h-56 w-full overflow-hidden rounded-lg bg-slate-100 border border-slate-200">
                     <img
-                      src={images[selectedImageIndex]?.imageUrl}
+                      src={resolveImageUrl(images[selectedImageIndex]?.imageUrl) ?? undefined}
                       alt={`${detail.title} - ảnh ${selectedImageIndex + 1}`}
                       className="w-full h-full object-contain"
                     />
@@ -291,7 +292,7 @@ export function ListingDetailModal({
                           }`}
                         >
                           <img
-                            src={img.imageUrl}
+                            src={resolveImageUrl(img.imageUrl) ?? undefined}
                             alt=""
                             className="w-full h-full object-cover"
                           />
@@ -347,30 +348,42 @@ export function ListingDetailModal({
                     <User className="w-4 h-4 text-slate-500 shrink-0" />
                     <span>Người đăng tin</span>
                   </div>
-                  <div className="space-y-1 text-slate-600">
-                    <div>
-                      <span className="text-slate-400">Họ và tên: </span>
-                      <span className="font-medium text-slate-800">
-                        {detail.owner?.displayName || 'Ẩn danh'}
-                      </span>
-                    </div>
-                    <div className="flex items-center gap-1.5 font-mono text-[11px] text-slate-500">
-                      <span className="truncate">ID: {detail.owner?.id}</span>
-                      {detail.owner?.id && (
-                        <button
-                          type="button"
-                          onClick={() => copyToClipboard(detail.owner!.id, 'ownerId')}
-                          className="p-0.5 hover:text-slate-800 rounded transition-colors cursor-pointer shrink-0"
-                          title="Sao chép ID người đăng"
-                          aria-label="Sao chép ID người đăng"
-                        >
-                          {copiedField === 'ownerId' ? (
-                            <Check className="w-3 h-3 text-emerald-600" />
-                          ) : (
-                            <Copy className="w-3 h-3" />
-                          )}
-                        </button>
-                      )}
+                  <div className="flex items-start gap-3 text-slate-600">
+                    <Avatar
+                      avatarUrl={detail.owner?.avatarUrl}
+                      name={detail.owner?.displayName}
+                      size="md"
+                      alt={
+                        detail.owner?.displayName
+                          ? `Ảnh đại diện của ${detail.owner.displayName}`
+                          : 'Ảnh đại diện người đăng tin'
+                      }
+                    />
+                    <div className="min-w-0 space-y-1">
+                      <div>
+                        <span className="text-slate-400">Họ và tên: </span>
+                        <span className="font-medium text-slate-800">
+                          {detail.owner?.displayName || 'Ẩn danh'}
+                        </span>
+                      </div>
+                      <div className="flex items-center gap-1.5 font-mono text-[11px] text-slate-500">
+                        <span className="truncate">ID: {detail.owner?.id}</span>
+                        {detail.owner?.id && (
+                          <button
+                            type="button"
+                            onClick={() => copyToClipboard(detail.owner!.id, 'ownerId')}
+                            className="p-0.5 hover:text-slate-800 rounded transition-colors cursor-pointer shrink-0"
+                            title="Sao chép ID người đăng"
+                            aria-label="Sao chép ID người đăng"
+                          >
+                            {copiedField === 'ownerId' ? (
+                              <Check className="w-3 h-3 text-emerald-600" />
+                            ) : (
+                              <Copy className="w-3 h-3" />
+                            )}
+                          </button>
+                        )}
+                      </div>
                     </div>
                   </div>
                 </div>

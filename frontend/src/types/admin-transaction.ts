@@ -4,6 +4,7 @@ import type { TransactionStatus } from './transaction';
 export interface TransactionUserSummary {
   id: string;
   displayName: string;
+  avatarUrl?: string | null;
 }
 
 export interface AdminTransactionResponse {
@@ -13,9 +14,11 @@ export interface AdminTransactionResponse {
   listingRequestId: string | null;
   ownerId: string;
   ownerDisplayName: string;
+  ownerAvatarUrl?: string | null;
   owner?: TransactionUserSummary;
   requesterId: string;
   requesterDisplayName: string;
+  requesterAvatarUrl?: string | null;
   requester?: TransactionUserSummary;
   status: TransactionStatus;
   ownerCompleted: boolean;
@@ -24,6 +27,7 @@ export interface AdminTransactionResponse {
   requesterCompletedAt: string | null;
   cancelledById: string | null;
   cancelledByDisplayName: string | null;
+  cancelledByAvatarUrl?: string | null;
   cancelledBy?: TransactionUserSummary | null;
   cancelledAt: string | null;
   cancellationReason: string | null;

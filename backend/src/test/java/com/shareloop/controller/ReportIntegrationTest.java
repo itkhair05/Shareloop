@@ -473,6 +473,11 @@ class ReportIntegrationTest {
         @Test
         @DisplayName("Admin can list and filter reports by targetType and status")
         void adminCanListAndFilterReports() throws Exception {
+            alice.updateCustomAvatar("/api/v1/files/avatars/alice-report.png");
+            userRepository.saveAndFlush(alice);
+            bob.setGoogleAvatarUrl("https://lh3.googleusercontent.com/a/bob-avatar");
+            userRepository.saveAndFlush(bob);
+
             reportRepository.saveAndFlush(new Report(
                     alice, ReportTargetType.USER, bob.getId(), ReportCategory.HARASSMENT, "Report 1"
             ));
@@ -485,12 +490,36 @@ class ReportIntegrationTest {
                             .header(HttpHeaders.AUTHORIZATION, adminToken))
                     .andExpect(status().isOk())
                     .andExpect(jsonPath("$.totalElements").value(1))
-                    .andExpect(jsonPath("$.content[0].targetType").value("USER"));
+                    .andExpect(jsonPath("$.content[0].targetType").value("USER"))
+                    .andExpect(jsonPath("$.content[0].reporterDisplayName").value("Alice Reporter"))
+                    .andExpect(jsonPath("$.content[0].reporterAvatarUrl").value("/api/v1/files/avatars/alice-report.png"))
+                    .andExpect(jsonPath("$.content[0].targetUserDisplayName").value("Bob Offender"))
+                    .andExpect(jsonPath("$.content[0].targetUserAvatarUrl").value("https://lh3.googleusercontent.com/a/bob-avatar"));
+        }
+
+        @Test
+        @DisplayName("Admin report list keeps non-user targets free of reported-user avatar data")
+        void adminListNonUserTargetHasNoReportedUserAvatar() throws Exception {
+            reportRepository.saveAndFlush(new Report(
+                    alice, ReportTargetType.LISTING, bobListing.getId(), ReportCategory.PROHIBITED_ITEM, "Report listing"
+            ));
+
+            mockMvc.perform(get("/api/v1/admin/reports")
+                            .header(HttpHeaders.AUTHORIZATION, adminToken))
+                    .andExpect(status().isOk())
+                    .andExpect(jsonPath("$.content[0].targetType").value("LISTING"))
+                    .andExpect(jsonPath("$.content[0].targetUserDisplayName").value(nullValue()))
+                    .andExpect(jsonPath("$.content[0].targetUserAvatarUrl").value(nullValue()));
         }
 
         @Test
         @DisplayName("Admin can inspect report with internal resolution notes and reporter email")
         void adminCanInspectReport() throws Exception {
+            alice.setGoogleAvatarUrl("https://lh3.googleusercontent.com/a/alice-google");
+            userRepository.saveAndFlush(alice);
+            bob.updateCustomAvatar("/api/v1/files/avatars/bob-custom.jpg");
+            userRepository.saveAndFlush(bob);
+
             Report r = new Report(alice, ReportTargetType.USER, bob.getId(), ReportCategory.HARASSMENT, "Harassment report");
             r.setResolutionNotes("Admin noted: verified chat logs.");
             r = reportRepository.saveAndFlush(r);
@@ -499,7 +528,10 @@ class ReportIntegrationTest {
                             .header(HttpHeaders.AUTHORIZATION, adminToken))
                     .andExpect(status().isOk())
                     .andExpect(jsonPath("$.resolutionNotes").value("Admin noted: verified chat logs."))
-                    .andExpect(jsonPath("$.reporterEmail").value(alice.getEmail()));
+                    .andExpect(jsonPath("$.reporterEmail").value(alice.getEmail()))
+                    .andExpect(jsonPath("$.reporterAvatarUrl").value("https://lh3.googleusercontent.com/a/alice-google"))
+                    .andExpect(jsonPath("$.targetUserDisplayName").value("Bob Offender"))
+                    .andExpect(jsonPath("$.targetUserAvatarUrl").value("/api/v1/files/avatars/bob-custom.jpg"));
         }
 
         @Test

@@ -17,6 +17,7 @@ import {
   UserX,
   X,
 } from 'lucide-react';
+import { Avatar } from '@/components/common/Avatar';
 import { Badge } from '@/components/ui/Badge';
 import { Card, CardContent } from '@/components/ui/Card';
 import { ConfirmDialog } from '@/components/ui/ConfirmDialog';
@@ -550,9 +551,12 @@ export function AdminUsersPage() {
                         {/* Name and Email */}
                         <td className="py-3.5 px-4 font-semibold text-slate-900 whitespace-nowrap">
                           <div className="flex items-center gap-3">
-                            <div className="w-8 h-8 rounded-full bg-emerald-600/10 text-emerald-800 font-bold flex items-center justify-center text-xs shrink-0 uppercase">
-                              {row.displayName ? row.displayName.charAt(0) : 'U'}
-                            </div>
+                            <Avatar
+                              avatarUrl={row.avatarUrl}
+                              name={row.displayName}
+                              size="sm"
+                              alt={`Ảnh đại diện của ${row.displayName}`}
+                            />
                             <div className="min-w-0">
                               <div className="flex items-center gap-1.5">
                                 <span className="font-semibold text-slate-900 truncate">

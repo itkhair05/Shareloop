@@ -14,6 +14,7 @@ import {
   Search,
   X,
 } from 'lucide-react';
+import { Avatar } from '@/components/common/Avatar';
 import { Badge } from '@/components/ui/Badge';
 import { Card, CardContent } from '@/components/ui/Card';
 import { useAdminTransactions } from './hooks/use-admin-transactions';
@@ -421,14 +422,30 @@ export function AdminTransactionsPage() {
 
                       {/* Combined Participants */}
                       <td className="px-4 py-3.5">
-                        <div className="flex flex-col gap-0.5 text-xs">
-                          <div className="flex items-center gap-1">
-                            <span className="text-slate-500 shrink-0">Tặng:</span>
-                            <span className="font-semibold text-slate-900 truncate max-w-[120px]">{tx.ownerDisplayName}</span>
+                        <div className="flex flex-col gap-1 text-xs">
+                          <div className="flex items-center gap-1.5">
+                            <Avatar
+                              avatarUrl={tx.ownerAvatarUrl ?? tx.owner?.avatarUrl}
+                              name={tx.ownerDisplayName}
+                              size="xs"
+                              alt={`Ảnh đại diện của ${tx.ownerDisplayName}`}
+                            />
+                            <div className="flex items-center gap-1 min-w-0">
+                              <span className="text-slate-500 shrink-0">Tặng:</span>
+                              <span className="font-semibold text-slate-900 truncate max-w-[120px]">{tx.ownerDisplayName}</span>
+                            </div>
                           </div>
-                          <div className="flex items-center gap-1">
-                            <span className="text-slate-500 shrink-0">Nhận:</span>
-                            <span className="font-semibold text-slate-900 truncate max-w-[120px]">{tx.requesterDisplayName}</span>
+                          <div className="flex items-center gap-1.5">
+                            <Avatar
+                              avatarUrl={tx.requesterAvatarUrl ?? tx.requester?.avatarUrl}
+                              name={tx.requesterDisplayName}
+                              size="xs"
+                              alt={`Ảnh đại diện của ${tx.requesterDisplayName}`}
+                            />
+                            <div className="flex items-center gap-1 min-w-0">
+                              <span className="text-slate-500 shrink-0">Nhận:</span>
+                              <span className="font-semibold text-slate-900 truncate max-w-[120px]">{tx.requesterDisplayName}</span>
+                            </div>
                           </div>
                         </div>
                       </td>

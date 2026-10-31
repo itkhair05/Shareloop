@@ -458,4 +458,168 @@ describe('AdminListingsPage', () => {
       );
     });
   });
+
+  it('renders owner avatars with custom, Google, and initials fallbacks in the listings table', async () => {
+    const customOwnerListing: ListingResponse = {
+      ...mockActiveListing,
+      owner: {
+        id: 'owner-custom',
+        displayName: 'Chủ Custom',
+        avatarUrl: '/api/v1/files/avatars/owner-custom.png',
+      },
+    };
+    const googleOwnerListing: ListingResponse = {
+      ...mockDraftListing,
+      owner: {
+        id: 'owner-google',
+        displayName: 'Chủ Google',
+        avatarUrl: 'https://lh3.googleusercontent.com/a/owner-google',
+      },
+    };
+    const fallbackOwnerListing: ListingResponse = {
+      ...mockReservedListing,
+      owner: { id: 'owner-fallback', displayName: 'Chủ Không Ảnh' },
+    };
+
+    vi.mocked(adminListingsApi.getAdminListings).mockResolvedValue({
+      ...mockPageResponse,
+      content: [customOwnerListing, googleOwnerListing, fallbackOwnerListing],
+      totalElements: 3,
+    });
+
+    renderWithProviders(<AdminListingsPage />);
+
+    await waitFor(() => {
+      expect(screen.getByText('Chủ Custom')).toBeInTheDocument();
+    });
+
+    const customImg = screen.getByAltText('Ảnh đại diện của Chủ Custom');
+    expect(customImg.tagName).toBe('IMG');
+    expect(customImg).toHaveAttribute(
+      'src',
+      'http://localhost:8080/api/v1/files/avatars/owner-custom.png'
+    );
+
+    const googleImg = screen.getByAltText('Ảnh đại diện của Chủ Google');
+    expect(googleImg).toHaveAttribute(
+      'src',
+      'https://lh3.googleusercontent.com/a/owner-google'
+    );
+
+    const fallbackRow = screen.getByText('Chủ Không Ảnh').closest('tr');
+    expect(fallbackRow).not.toBeNull();
+    expect(
+      within(fallbackRow!).getByRole('img', { name: 'Ảnh đại diện của Chủ Không Ảnh' })
+    ).toBeInTheDocument();
+
+    expect(adminListingsApi.getAdminListings).toHaveBeenCalledTimes(1);
+  });
+
+  it('renders owner avatar in the listing detail modal', async () => {
+    const user = userEvent.setup();
+    vi.mocked(adminListingsApi.getAdminListingDetail).mockResolvedValue({
+      ...mockActiveListing,
+      owner: {
+        ...mockActiveListing.owner,
+        avatarUrl: '/api/v1/files/avatars/owner-detail.png',
+      },
+    });
+
+    renderWithProviders(<AdminListingsPage />);
+
+    await waitFor(() => {
+      expect(screen.getByText('Bàn phím cơ DareU EK87')).toBeInTheDocument();
+    });
+
+    await user.click(
+      screen.getByRole('button', { name: /Xem chi tiết tin đăng Bàn phím cơ DareU EK87/i })
+    );
+
+    const dialog = await screen.findByRole('dialog');
+    const ownerAvatar = within(dialog).getByAltText('Ảnh đại diện của Nguyễn Văn A');
+    expect(ownerAvatar.tagName).toBe('IMG');
+    expect(ownerAvatar).toHaveAttribute(
+      'src',
+      'http://localhost:8080/api/v1/files/avatars/owner-detail.png'
+    );
+    expect(adminListingsApi.getAdminListingDetail).toHaveBeenCalledTimes(1);
+  });
+
+  it('resolves relative thumbnail URLs while preserving absolute image URLs', async () => {
+    vi.mocked(adminListingsApi.getAdminListings).mockResolvedValue({
+      ...mockPageResponse,
+      content: [
+        {
+          ...mockActiveListing,
+          images: [
+            {
+              id: 'img-relative',
+              imageUrl: '/api/v1/files/97f8bae0-ee18-44f9-b85b-89ea02beca28.jpg',
+              sortOrder: 0,
+            },
+          ],
+        },
+        {
+          ...mockDraftListing,
+          images: [
+            { id: 'img-absolute', imageUrl: 'https://example.com/cover.jpg', sortOrder: 0 },
+          ],
+        },
+      ],
+      totalElements: 2,
+      totalPages: 1,
+    });
+
+    renderWithProviders(<AdminListingsPage />);
+
+    await waitFor(() => {
+      expect(screen.getByText('Bàn phím cơ DareU EK87')).toBeInTheDocument();
+    });
+
+    const relativeRow = screen.getByText('Bàn phím cơ DareU EK87').closest('tr');
+    expect(relativeRow!.querySelector('img')).toHaveAttribute(
+      'src',
+      'http://localhost:8080/api/v1/files/97f8bae0-ee18-44f9-b85b-89ea02beca28.jpg'
+    );
+
+    const absoluteRow = screen.getByText('Sách giải tích đại học').closest('tr');
+    expect(absoluteRow!.querySelector('img')).toHaveAttribute(
+      'src',
+      'https://example.com/cover.jpg'
+    );
+
+    expect(adminListingsApi.getAdminListings).toHaveBeenCalledTimes(1);
+  });
+
+  it('resolves relative gallery URLs in the listing detail modal', async () => {
+    const user = userEvent.setup();
+    vi.mocked(adminListingsApi.getAdminListingDetail).mockResolvedValue({
+      ...mockActiveListing,
+      images: [
+        {
+          id: 'img-relative',
+          imageUrl: '/api/v1/files/97f8bae0-ee18-44f9-b85b-89ea02beca28.jpg',
+          sortOrder: 0,
+        },
+      ],
+    });
+
+    renderWithProviders(<AdminListingsPage />);
+
+    await waitFor(() => {
+      expect(screen.getByText('Bàn phím cơ DareU EK87')).toBeInTheDocument();
+    });
+
+    await user.click(
+      screen.getByRole('button', { name: /Xem chi tiết tin đăng Bàn phím cơ DareU EK87/i })
+    );
+
+    const dialog = await screen.findByRole('dialog');
+    const galleryImage = await within(dialog).findByAltText('Bàn phím cơ DareU EK87 - ảnh 1');
+    expect(galleryImage).toHaveAttribute(
+      'src',
+      'http://localhost:8080/api/v1/files/97f8bae0-ee18-44f9-b85b-89ea02beca28.jpg'
+    );
+    expect(adminListingsApi.getAdminListingDetail).toHaveBeenCalledTimes(1);
+  });
 });

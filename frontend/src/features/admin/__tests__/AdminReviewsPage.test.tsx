@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { screen, waitFor } from '@testing-library/react';
+import { screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { AdminReviewsPage } from '../AdminReviewsPage';
 import { adminReviewsApi } from '../api/admin-reviews-api';
@@ -222,5 +222,74 @@ describe('AdminReviewsPage', () => {
     await waitFor(() => {
       expect(screen.getByText('Không tìm thấy đánh giá nào')).toBeInTheDocument();
     });
+  });
+
+  it('renders reviewer and reviewee avatars in the list and detail modal with fallbacks', async () => {
+    const user = userEvent.setup();
+
+    const reviewWithAvatars: AdminReviewResponse = {
+      ...mockReview1,
+      reviewerAvatarUrl: '/api/v1/files/avatars/alice.png',
+      revieweeAvatarUrl: 'https://lh3.googleusercontent.com/a/bob-google',
+    };
+    const reviewWithoutAvatars: AdminReviewResponse = {
+      ...mockHiddenReview,
+      reviewerAvatarUrl: null,
+      revieweeAvatarUrl: null,
+    };
+
+    vi.mocked(adminReviewsApi.getAdminReviews).mockResolvedValue({
+      ...mockPageResponse,
+      content: [reviewWithAvatars, reviewWithoutAvatars],
+    });
+    vi.mocked(adminReviewsApi.getAdminReviewById).mockImplementation((id) => {
+      if (id === 'rev-1') return Promise.resolve(reviewWithAvatars);
+      return Promise.resolve(reviewWithoutAvatars);
+    });
+
+    renderWithProviders(<AdminReviewsPage />);
+
+    await waitFor(() => {
+      expect(screen.getByText('Alice Nguyễn')).toBeInTheDocument();
+    });
+
+    const reviewerImg = screen.getByAltText('Ảnh đại diện của Alice Nguyễn');
+    expect(reviewerImg.tagName).toBe('IMG');
+    expect(reviewerImg).toHaveAttribute(
+      'src',
+      'http://localhost:8080/api/v1/files/avatars/alice.png'
+    );
+
+    const revieweeImg = screen.getByAltText('Ảnh đại diện của Bob Trần');
+    expect(revieweeImg).toHaveAttribute(
+      'src',
+      'https://lh3.googleusercontent.com/a/bob-google'
+    );
+
+    const fallbackRow = screen.getByText('Charlie Lê').closest('tr');
+    expect(fallbackRow).not.toBeNull();
+    expect(
+      within(fallbackRow!).getByRole('img', { name: 'Ảnh đại diện của Charlie Lê' })
+    ).toBeInTheDocument();
+    expect(within(fallbackRow!).getByText('CL')).toBeInTheDocument();
+    expect(
+      within(fallbackRow!).getByRole('img', { name: 'Ảnh đại diện của Diana Phạm' })
+    ).toBeInTheDocument();
+
+    expect(adminReviewsApi.getAdminReviews).toHaveBeenCalledTimes(1);
+
+    const detailButtons = screen.getAllByRole('button', { name: /Chi tiết/i });
+    await user.click(detailButtons[0]);
+
+    const dialog = await screen.findByRole('dialog');
+    const modalReviewerAvatar = within(dialog).getByAltText('Ảnh đại diện của Alice Nguyễn');
+    expect(modalReviewerAvatar).toHaveAttribute(
+      'src',
+      'http://localhost:8080/api/v1/files/avatars/alice.png'
+    );
+    expect(
+      within(dialog).getByAltText('Ảnh đại diện của Bob Trần')
+    ).toHaveAttribute('src', 'https://lh3.googleusercontent.com/a/bob-google');
+    expect(adminReviewsApi.getAdminReviewById).toHaveBeenCalledWith('rev-1');
   });
 });

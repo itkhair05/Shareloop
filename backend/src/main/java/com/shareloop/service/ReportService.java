@@ -31,7 +31,9 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Instant;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 
 @Service
@@ -152,7 +154,13 @@ public class ReportService {
 
         Pageable pageable = PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, "createdAt").and(Sort.by(Sort.Direction.DESC, "id")));
         Page<Report> result = reportRepository.findForAdmin(status, targetType, category, pageable);
-        return result.map(AdminReportResponse::fromEntity);
+        Map<UUID, User> reportedUsers = loadReportedUsers(result.getContent());
+        return result.map(report -> AdminReportResponse.fromEntity(
+                report,
+                report.getTargetType() == ReportTargetType.USER
+                        ? reportedUsers.get(report.getTargetId())
+                        : null
+        ));
     }
 
     @Transactional(readOnly = true)
@@ -164,7 +172,7 @@ public class ReportService {
         Report report = reportRepository.findWithDetailsById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Report not found with id: " + id));
 
-        return AdminReportResponse.fromEntity(report);
+        return AdminReportResponse.fromEntity(report, resolveReportedUser(report));
     }
 
     @Transactional
@@ -234,7 +242,34 @@ public class ReportService {
             );
         }
 
-        return AdminReportResponse.fromEntity(report);
+        return AdminReportResponse.fromEntity(report, resolveReportedUser(report));
+    }
+
+    /**
+     * Batch-loads reported users for USER-target reports to avoid N+1 lookups.
+     * Other target types reference listings, transactions, or reviews, not users.
+     */
+    private Map<UUID, User> loadReportedUsers(List<Report> reports) {
+        List<UUID> userIds = reports.stream()
+                .filter(report -> report.getTargetType() == ReportTargetType.USER)
+                .map(Report::getTargetId)
+                .distinct()
+                .toList();
+
+        if (userIds.isEmpty()) {
+            return Map.of();
+        }
+
+        Map<UUID, User> users = new HashMap<>();
+        userRepository.findAllById(userIds).forEach(user -> users.put(user.getId(), user));
+        return users;
+    }
+
+    private User resolveReportedUser(Report report) {
+        if (report.getTargetType() != ReportTargetType.USER) {
+            return null;
+        }
+        return userRepository.findById(report.getTargetId()).orElse(null);
     }
 
     private void validateTargetEntity(ReportTargetType targetType, UUID targetId, UUID reporterId) {

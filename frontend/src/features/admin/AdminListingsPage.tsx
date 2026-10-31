@@ -14,11 +14,12 @@ import {
   Trash2,
   X,
 } from 'lucide-react';
+import { Avatar } from '@/components/common/Avatar';
 import { Badge } from '@/components/ui/Badge';
 import { Button } from '@/components/ui/Button';
 import { Card, CardContent } from '@/components/ui/Card';
 import { ConfirmDialog } from '@/components/ui/ConfirmDialog';
-import { formatDateTime } from '@/lib/utils';
+import { formatDateTime, resolveImageUrl } from '@/lib/utils';
 import { categoryApi, categoryKeys } from '@/features/categories/api/category-api';
 import { useAdminDeleteListing, useAdminListings } from './hooks/use-admin-listings';
 import { ListingDetailModal } from './components/ListingDetailModal';
@@ -479,7 +480,9 @@ export function AdminListingsPage() {
                 {listings.map((item) => {
                   const deletable = isDeletable(item);
                   const deleteTooltip = getDeleteDisabledTooltip(item);
-                  const primaryImg = item.images && item.images.length > 0 ? item.images[0].imageUrl : null;
+                  const primaryImg = item.images && item.images.length > 0
+                    ? resolveImageUrl(item.images[0].imageUrl)
+                    : null;
 
                   return (
                     <tr
@@ -516,12 +519,26 @@ export function AdminListingsPage() {
 
                       {/* Owner */}
                       <td className="py-3.5 px-4 whitespace-nowrap">
-                        <p className="font-medium text-slate-800">
-                          {item.owner?.displayName || 'Ẩn danh'}
-                        </p>
-                        <p className="text-[10px] text-slate-400 font-mono">
-                          {item.city || 'Chưa có địa điểm'}
-                        </p>
+                        <div className="flex items-center gap-2.5">
+                          <Avatar
+                            avatarUrl={item.owner?.avatarUrl}
+                            name={item.owner?.displayName}
+                            size="sm"
+                            alt={
+                              item.owner?.displayName
+                                ? `Ảnh đại diện của ${item.owner.displayName}`
+                                : 'Ảnh đại diện người đăng tin'
+                            }
+                          />
+                          <div className="min-w-0">
+                            <p className="font-medium text-slate-800">
+                              {item.owner?.displayName || 'Ẩn danh'}
+                            </p>
+                            <p className="text-[10px] text-slate-400 font-mono">
+                              {item.city || 'Chưa có địa điểm'}
+                            </p>
+                          </div>
+                        </div>
                       </td>
 
                       {/* Type & Price */}

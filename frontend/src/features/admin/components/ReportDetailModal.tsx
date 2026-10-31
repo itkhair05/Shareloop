@@ -13,6 +13,7 @@ import {
   X,
 } from 'lucide-react';
 import { Link } from 'react-router-dom';
+import { Avatar } from '@/components/common/Avatar';
 import { Badge } from '@/components/ui/Badge';
 import { Button } from '@/components/ui/Button';
 import { formatDateTime } from '@/lib/utils';
@@ -183,12 +184,24 @@ export function ReportDetailModal({
                       </button>
                     )}
                   </div>
-                  <div>
-                    <div className="font-semibold text-slate-900 text-sm">
-                      {report.reporterDisplayName || 'Chưa cập nhật'}
-                    </div>
-                    <div className="text-xs text-slate-500 font-mono mt-0.5">
-                      {report.reporterEmail || '—'}
+                  <div className="flex items-center gap-3">
+                    <Avatar
+                      avatarUrl={report.reporterAvatarUrl}
+                      name={report.reporterDisplayName}
+                      size="md"
+                      alt={
+                        report.reporterDisplayName
+                          ? `Ảnh đại diện của ${report.reporterDisplayName}`
+                          : 'Ảnh đại diện người gửi báo cáo'
+                      }
+                    />
+                    <div className="min-w-0">
+                      <div className="font-semibold text-slate-900 text-sm">
+                        {report.reporterDisplayName || 'Chưa cập nhật'}
+                      </div>
+                      <div className="text-xs text-slate-500 font-mono mt-0.5">
+                        {report.reporterEmail || '—'}
+                      </div>
                     </div>
                   </div>
                 </div>
@@ -213,36 +226,59 @@ export function ReportDetailModal({
                       )}
                     </button>
                   </div>
-                  <div>
-                    <div className="font-mono text-xs text-slate-700 break-all select-all">
-                      {report.targetId}
-                    </div>
-                    {report.targetType === 'REVIEW' && (
-                      <div className="mt-2">
-                        {onViewReviewTarget ? (
-                          <button
-                            type="button"
-                            onClick={() => {
-                              onClose();
-                              onViewReviewTarget(report.targetId);
-                            }}
-                            className="text-xs font-medium text-emerald-600 hover:text-emerald-700 hover:underline flex items-center gap-1"
-                          >
-                            <FileText className="w-3 h-3" />
-                            Xem và kiểm duyệt đánh giá này
-                          </button>
-                        ) : (
-                          <Link
-                            to="/admin/reviews"
-                            className="text-xs font-medium text-emerald-600 hover:text-emerald-700 hover:underline flex items-center gap-1"
-                          >
-                            <FileText className="w-3 h-3" />
-                            Mở trang kiểm duyệt đánh giá
-                          </Link>
-                        )}
+                  {report.targetType === 'USER' ? (
+                    <div className="flex items-center gap-3">
+                      <Avatar
+                        avatarUrl={report.targetUserAvatarUrl}
+                        name={report.targetUserDisplayName}
+                        size="md"
+                        alt={
+                          report.targetUserDisplayName
+                            ? `Ảnh đại diện của ${report.targetUserDisplayName}`
+                            : 'Ảnh đại diện người dùng bị báo cáo'
+                        }
+                      />
+                      <div className="min-w-0">
+                        <div className="font-semibold text-slate-900 text-sm">
+                          {report.targetUserDisplayName || 'Người dùng bị báo cáo'}
+                        </div>
+                        <div className="font-mono text-xs text-slate-700 break-all select-all mt-0.5">
+                          {report.targetId}
+                        </div>
                       </div>
-                    )}
-                  </div>
+                    </div>
+                  ) : (
+                    <div>
+                      <div className="font-mono text-xs text-slate-700 break-all select-all">
+                        {report.targetId}
+                      </div>
+                      {report.targetType === 'REVIEW' && (
+                        <div className="mt-2">
+                          {onViewReviewTarget ? (
+                            <button
+                              type="button"
+                              onClick={() => {
+                                onClose();
+                                onViewReviewTarget(report.targetId);
+                              }}
+                              className="text-xs font-medium text-emerald-600 hover:text-emerald-700 hover:underline flex items-center gap-1"
+                            >
+                              <FileText className="w-3 h-3" />
+                              Xem và kiểm duyệt đánh giá này
+                            </button>
+                          ) : (
+                            <Link
+                              to="/admin/reviews"
+                              className="text-xs font-medium text-emerald-600 hover:text-emerald-700 hover:underline flex items-center gap-1"
+                            >
+                              <FileText className="w-3 h-3" />
+                              Mở trang kiểm duyệt đánh giá
+                            </Link>
+                          )}
+                        </div>
+                      )}
+                    </div>
+                  )}
                 </div>
               </div>
 

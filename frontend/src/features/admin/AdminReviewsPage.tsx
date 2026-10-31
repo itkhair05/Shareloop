@@ -12,6 +12,7 @@ import {
   Star,
   X,
 } from 'lucide-react';
+import { Avatar } from '@/components/common/Avatar';
 import { Badge } from '@/components/ui/Badge';
 import { Card, CardContent } from '@/components/ui/Card';
 import { ConfirmDialog } from '@/components/ui/ConfirmDialog';
@@ -403,21 +404,49 @@ export function AdminReviewsPage() {
 
                     {/* Reviewer */}
                     <td className="px-4 py-3.5">
-                      <div className="font-semibold text-slate-800 text-xs truncate max-w-[150px]">
-                        {rev.reviewerDisplayName || 'Chưa cập nhật'}
-                      </div>
-                      <div className="text-[11px] text-slate-400 font-mono truncate max-w-[150px]">
-                        {rev.reviewerEmail || '—'}
+                      <div className="flex items-center gap-2.5 min-w-0">
+                        <Avatar
+                          avatarUrl={rev.reviewerAvatarUrl}
+                          name={rev.reviewerDisplayName}
+                          size="sm"
+                          alt={
+                            rev.reviewerDisplayName
+                              ? `Ảnh đại diện của ${rev.reviewerDisplayName}`
+                              : 'Ảnh đại diện người đánh giá'
+                          }
+                        />
+                        <div className="min-w-0">
+                          <div className="font-semibold text-slate-800 text-xs truncate max-w-[150px]">
+                            {rev.reviewerDisplayName || 'Chưa cập nhật'}
+                          </div>
+                          <div className="text-[11px] text-slate-400 font-mono truncate max-w-[150px]">
+                            {rev.reviewerEmail || '—'}
+                          </div>
+                        </div>
                       </div>
                     </td>
 
                     {/* Reviewee */}
                     <td className="px-4 py-3.5">
-                      <div className="font-semibold text-slate-800 text-xs truncate max-w-[150px]">
-                        {rev.revieweeDisplayName || 'Chưa cập nhật'}
-                      </div>
-                      <div className="text-[11px] text-slate-400 font-mono truncate max-w-[150px]">
-                        {rev.revieweeEmail || '—'}
+                      <div className="flex items-center gap-2.5 min-w-0">
+                        <Avatar
+                          avatarUrl={rev.revieweeAvatarUrl}
+                          name={rev.revieweeDisplayName}
+                          size="sm"
+                          alt={
+                            rev.revieweeDisplayName
+                              ? `Ảnh đại diện của ${rev.revieweeDisplayName}`
+                              : 'Ảnh đại diện người nhận đánh giá'
+                          }
+                        />
+                        <div className="min-w-0">
+                          <div className="font-semibold text-slate-800 text-xs truncate max-w-[150px]">
+                            {rev.revieweeDisplayName || 'Chưa cập nhật'}
+                          </div>
+                          <div className="text-[11px] text-slate-400 font-mono truncate max-w-[150px]">
+                            {rev.revieweeEmail || '—'}
+                          </div>
+                        </div>
                       </div>
                     </td>
 

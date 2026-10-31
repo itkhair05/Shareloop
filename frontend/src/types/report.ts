@@ -27,6 +27,7 @@ export interface ReportResponse {
   id: string;
   reporterId?: string;
   reporterDisplayName?: string;
+  reporterAvatarUrl?: string | null;
   targetType: ReportTargetType;
   targetId: string;
   category: ReportCategory;

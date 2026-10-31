@@ -15,6 +15,7 @@ import {
   User,
   X,
 } from 'lucide-react';
+import { Avatar } from '@/components/common/Avatar';
 import { Badge } from '@/components/ui/Badge';
 import { Button } from '@/components/ui/Button';
 import { formatDateTime } from '@/lib/utils';
@@ -261,11 +262,25 @@ export function TransactionDetailModal({
                       </span>
                       <span className="w-2 h-2 rounded-full bg-emerald-500" aria-hidden="true" />
                     </div>
-                    <div className="text-sm font-bold text-slate-900">
-                      {detail.owner?.displayName || 'Chưa cập nhật'}
-                    </div>
-                    <div className="text-[11px] text-slate-500 font-mono">
-                      ID: {detail.owner?.id || '—'}
+                    <div className="flex items-center gap-2.5">
+                      <Avatar
+                        avatarUrl={detail.owner?.avatarUrl}
+                        name={detail.owner?.displayName}
+                        size="md"
+                        alt={
+                          detail.owner?.displayName
+                            ? `Ảnh đại diện của ${detail.owner.displayName}`
+                            : 'Ảnh đại diện người tặng'
+                        }
+                      />
+                      <div className="min-w-0">
+                        <div className="text-sm font-bold text-slate-900">
+                          {detail.owner?.displayName || 'Chưa cập nhật'}
+                        </div>
+                        <div className="text-[11px] text-slate-500 font-mono">
+                          ID: {detail.owner?.id || '—'}
+                        </div>
+                      </div>
                     </div>
                   </div>
 
@@ -277,11 +292,25 @@ export function TransactionDetailModal({
                       </span>
                       <span className="w-2 h-2 rounded-full bg-blue-500" aria-hidden="true" />
                     </div>
-                    <div className="text-sm font-bold text-slate-900">
-                      {detail.requester?.displayName || 'Chưa cập nhật'}
-                    </div>
-                    <div className="text-[11px] text-slate-500 font-mono">
-                      ID: {detail.requester?.id || '—'}
+                    <div className="flex items-center gap-2.5">
+                      <Avatar
+                        avatarUrl={detail.requester?.avatarUrl}
+                        name={detail.requester?.displayName}
+                        size="md"
+                        alt={
+                          detail.requester?.displayName
+                            ? `Ảnh đại diện của ${detail.requester.displayName}`
+                            : 'Ảnh đại diện người nhận'
+                        }
+                      />
+                      <div className="min-w-0">
+                        <div className="text-sm font-bold text-slate-900">
+                          {detail.requester?.displayName || 'Chưa cập nhật'}
+                        </div>
+                        <div className="text-[11px] text-slate-500 font-mono">
+                          ID: {detail.requester?.id || '—'}
+                        </div>
+                      </div>
                     </div>
                   </div>
                 </div>
@@ -370,7 +399,17 @@ export function TransactionDetailModal({
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-[11px]">
                       <div>
                         <span className="text-red-700 font-medium">Người thực hiện hủy:</span>{' '}
-                        <span className="font-semibold">{detail.cancelledBy?.displayName || 'Hệ thống / Ẩn danh'}</span>
+                        <span className="inline-flex items-center gap-1.5 font-semibold align-middle">
+                          {detail.cancelledBy && (
+                            <Avatar
+                              avatarUrl={detail.cancelledBy.avatarUrl}
+                              name={detail.cancelledBy.displayName}
+                              size="xs"
+                              alt={`Ảnh đại diện của ${detail.cancelledBy.displayName}`}
+                            />
+                          )}
+                          <span>{detail.cancelledBy?.displayName || 'Hệ thống / Ẩn danh'}</span>
+                        </span>
                       </div>
                       <div>
                         <span className="text-red-700 font-medium">Thời gian hủy:</span>{' '}
