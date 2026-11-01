@@ -8,6 +8,8 @@ import {
   Package,
   ExternalLink,
   MessageSquare,
+  ImagePlus,
+  X,
 } from 'lucide-react';
 import { useAuth } from '@/features/auth';
 import {
@@ -15,6 +17,7 @@ import {
   useMessages,
   useSendMessage,
 } from '../hooks/use-chat';
+import { useImageAttachment } from '../hooks/use-image-attachment';
 import { chatApi } from '../api/chat-api';
 import { MessageBubble } from './MessageBubble';
 import { Avatar } from '@/components/common/Avatar';
@@ -28,13 +31,29 @@ export interface ChatWindowProps {
   className?: string;
 }
 
+function formatFileSize(bytes: number): string {
+  if (bytes >= 1024 * 1024) {
+    return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+  }
+  return `${Math.max(1, Math.round(bytes / 1024))} KB`;
+}
+
 export function ChatWindow({ conversationId, onBack, className }: ChatWindowProps) {
   const { user, isAuthenticated } = useAuth();
   const [content, setContent] = useState('');
   const [sendError, setSendError] = useState<string | null>(null);
+  const [composerNotice, setComposerNotice] = useState<string | null>(null);
   const [olderMessages, setOlderMessages] = useState<ChatMessageResponse[]>([]);
   const [isLoadingOlder, setIsLoadingOlder] = useState(false);
   const [currentOlderPage, setCurrentOlderPage] = useState(0);
+  const {
+    inputRef: imageInputRef,
+    selection: selectedImage,
+    error: imageError,
+    handleInputChange: handleImageInputChange,
+    openPicker: openImagePicker,
+    removeSelectedImage,
+  } = useImageAttachment();
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const scrollContainerRef = useRef<HTMLDivElement>(null);
@@ -152,7 +171,7 @@ export function ChatWindow({ conversationId, onBack, className }: ChatWindowProp
 
   const handleSend = async () => {
     const trimmed = content.trim();
-    if (!trimmed || sendMessageMutation.isPending) {
+    if ((!trimmed && !selectedImage) || sendMessageMutation.isPending) {
       return;
     }
 
@@ -162,6 +181,17 @@ export function ChatWindow({ conversationId, onBack, className }: ChatWindowProp
     }
 
     setSendError(null);
+
+    // Phase 3.1 chỉ chuẩn bị phần chọn và xem trước ảnh; việc tải ảnh lên
+    // và gửi tin nhắn kèm ảnh thuộc giai đoạn tiếp theo.
+    if (selectedImage) {
+      setComposerNotice(
+        'Tính năng gửi ảnh đang được hoàn thiện. Vui lòng xóa ảnh nếu muốn gửi tin nhắn văn bản.'
+      );
+      return;
+    }
+
+    setComposerNotice(null);
 
     try {
       await sendMessageMutation.mutateAsync({
@@ -202,6 +232,16 @@ export function ChatWindow({ conversationId, onBack, className }: ChatWindowProp
         );
       }
     }
+  };
+
+  const handleImageSelection = (event: React.ChangeEvent<HTMLInputElement>) => {
+    setComposerNotice(null);
+    handleImageInputChange(event);
+  };
+
+  const handleRemoveImage = () => {
+    setComposerNotice(null);
+    removeSelectedImage();
   };
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
@@ -408,16 +448,73 @@ export function ChatWindow({ conversationId, onBack, className }: ChatWindowProp
           }}
           className="space-y-2"
         >
+          {selectedImage && (
+            <div className="flex items-center gap-3 rounded-xl border border-emerald-200/80 bg-emerald-50/60 p-2">
+              <img
+                src={selectedImage.previewUrl}
+                alt="Xem trước ảnh đính kèm"
+                className="h-16 w-16 sm:h-20 sm:w-20 shrink-0 rounded-lg object-cover border border-white shadow-2xs"
+              />
+              <div className="min-w-0 flex-1">
+                <p
+                  className="text-xs font-semibold text-slate-800 truncate"
+                  title={selectedImage.file.name}
+                >
+                  {selectedImage.file.name}
+                </p>
+                <p className="text-[11px] text-slate-500">
+                  {formatFileSize(selectedImage.file.size)} · Ảnh đã chọn
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={handleRemoveImage}
+                disabled={sendMessageMutation.isPending}
+                className="p-1.5 shrink-0 rounded-lg text-slate-500 hover:text-rose-600 hover:bg-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 transition-colors cursor-pointer disabled:opacity-50 disabled:pointer-events-none"
+                aria-label="Xóa ảnh đính kèm"
+                title="Xóa ảnh đính kèm"
+              >
+                <X className="w-4 h-4" aria-hidden="true" />
+              </button>
+            </div>
+          )}
+
           <div className="relative flex items-end gap-2 border border-slate-200 rounded-xl p-2 bg-slate-50 focus-within:border-emerald-500 focus-within:ring-1 focus-within:ring-emerald-500 focus-within:bg-white transition-all">
+            <input
+              ref={imageInputRef}
+              type="file"
+              accept="image/jpeg,image/png"
+              onChange={handleImageSelection}
+              disabled={sendMessageMutation.isPending}
+              className="hidden"
+              aria-label="Chọn ảnh đính kèm"
+            />
+
+            <button
+              type="button"
+              onClick={openImagePicker}
+              disabled={sendMessageMutation.isPending}
+              className="h-9 w-9 shrink-0 flex items-center justify-center rounded-xl text-slate-500 hover:text-emerald-700 hover:bg-emerald-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 transition-colors cursor-pointer disabled:opacity-50 disabled:pointer-events-none"
+              aria-label="Đính kèm ảnh"
+              title="Đính kèm ảnh"
+            >
+              <ImagePlus className="w-4 h-4" aria-hidden="true" />
+            </button>
+
             <textarea
               ref={textareaRef}
               value={content}
               onChange={(e) => {
                 setContent(e.target.value);
                 if (sendError) setSendError(null);
+                if (composerNotice) setComposerNotice(null);
               }}
               onKeyDown={handleKeyDown}
-              placeholder="Nhập tin nhắn..."
+              placeholder={
+                selectedImage
+                  ? 'Thêm chú thích cho ảnh (không bắt buộc)...'
+                  : 'Nhập tin nhắn...'
+              }
               rows={1}
               maxLength={2000}
               className="flex-1 bg-transparent border-0 outline-none focus:ring-0 focus:outline-none focus:border-0 resize-none max-h-32 min-h-[38px] p-1.5 text-sm text-slate-900 placeholder:text-slate-400"
@@ -428,7 +525,7 @@ export function ChatWindow({ conversationId, onBack, className }: ChatWindowProp
               type="submit"
               size="sm"
               variant="primary"
-              disabled={!content.trim() || sendMessageMutation.isPending}
+              disabled={(!content.trim() && !selectedImage) || sendMessageMutation.isPending}
               className="rounded-xl h-9 w-9 p-0 shrink-0 flex items-center justify-center cursor-pointer shadow-xs disabled:opacity-50"
               aria-label="Gửi tin nhắn"
             >
@@ -439,6 +536,26 @@ export function ChatWindow({ conversationId, onBack, className }: ChatWindowProp
               )}
             </Button>
           </div>
+
+          {imageError && (
+            <p
+              role="alert"
+              className="flex items-center gap-1.5 px-1 text-xs font-medium text-rose-700"
+            >
+              <AlertCircle className="w-3.5 h-3.5 shrink-0 text-rose-500" aria-hidden="true" />
+              <span>{imageError}</span>
+            </p>
+          )}
+
+          {composerNotice && (
+            <p
+              role="status"
+              className="flex items-center gap-1.5 px-1 text-[11px] font-medium text-amber-700"
+            >
+              <AlertCircle className="w-3.5 h-3.5 shrink-0 text-amber-500" aria-hidden="true" />
+              <span>{composerNotice}</span>
+            </p>
+          )}
 
           <div className="flex items-center justify-between px-2 text-[10px] text-slate-400">
             <span>Enter để gửi · Shift+Enter để xuống dòng</span>
