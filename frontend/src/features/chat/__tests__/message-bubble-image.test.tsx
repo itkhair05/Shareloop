@@ -2,6 +2,7 @@ import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { act, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { chatApi } from '@/features/chat/api/chat-api';
+import { ChatImageLightboxProvider } from '@/features/chat/components/ChatImageLightboxProvider';
 import { MessageBubble } from '@/features/chat/components/MessageBubble';
 import { clearChatImageCache } from '@/lib/chat-image-cache';
 import { ApiError } from '@/lib/api-error';
@@ -58,7 +59,9 @@ function renderBubble(
   extra?: Parameters<typeof MessageBubble>[0]
 ) {
   return renderWithProviders(
-    <MessageBubble message={message} isOwn={isOwn} {...extra} />
+    <ChatImageLightboxProvider>
+      <MessageBubble message={message} isOwn={isOwn} {...extra} />
+    </ChatImageLightboxProvider>
   );
 }
 
@@ -119,7 +122,7 @@ describe('MessageBubble — ảnh riêng tư', () => {
     renderBubble(imageOnlyMessage);
 
     const image = await screen.findByAltText(imageAlt);
-    const bubble = image.parentElement;
+    const bubble = image.parentElement?.parentElement;
 
     expect(bubble?.className).toContain('max-w-[min(320px,100%)]');
     expect(bubble?.className).toContain('overflow-hidden');
@@ -227,10 +230,10 @@ describe('MessageBubble — ảnh riêng tư', () => {
     vi.mocked(chatApi.getChatImage).mockResolvedValue(imageBlob());
 
     const { container } = renderWithProviders(
-      <>
+      <ChatImageLightboxProvider>
         <MessageBubble message={{ ...imageOnlyMessage, id: 'msg-1' }} isOwn={false} />
         <MessageBubble message={{ ...imageOnlyMessage, id: 'msg-2' }} isOwn={true} />
-      </>
+      </ChatImageLightboxProvider>
     );
 
     await screen.findAllByAltText(imageAlt);
@@ -247,10 +250,12 @@ describe('MessageBubble — ảnh riêng tư', () => {
     const firstImage = await screen.findByAltText(imageAlt);
 
     rerender(
-      <MessageBubble
-        message={{ ...imageOnlyMessage, content: null }}
-        isOwn={false}
-      />
+      <ChatImageLightboxProvider>
+        <MessageBubble
+          message={{ ...imageOnlyMessage, content: null }}
+          isOwn={false}
+        />
+      </ChatImageLightboxProvider>
     );
 
     await waitFor(() =>

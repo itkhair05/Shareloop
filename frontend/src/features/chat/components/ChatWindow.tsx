@@ -24,6 +24,7 @@ import {
   type ChatImageSelection,
 } from '../hooks/use-image-attachment';
 import { chatApi, chatKeys } from '../api/chat-api';
+import { ChatImageLightboxProvider } from './ChatImageLightboxProvider';
 import { MessageBubble } from './MessageBubble';
 import { Avatar } from '@/components/common/Avatar';
 import { Button } from '@/components/ui/Button';
@@ -232,6 +233,13 @@ export function ChatWindow({ conversationId, onBack, className }: ChatWindowProp
     return merged;
   }, [messagesPage?.content, olderMessages]);
 
+  // Cuộn khung chat xuống đáy — chỉ tác động lên scrollContainer, không cuộn body/trang
+  const scrollToBottom = (behavior: ScrollBehavior = 'smooth') => {
+    const el = scrollContainerRef.current;
+    if (!el) return;
+    el.scrollTo({ top: el.scrollHeight, behavior });
+  };
+
   // Determine whether the user is near the bottom of the scroll container
   const isNearBottom = () => {
     const el = scrollContainerRef.current;
@@ -240,21 +248,37 @@ export function ChatWindow({ conversationId, onBack, className }: ChatWindowProp
     return el.scrollHeight - el.scrollTop - el.clientHeight <= threshold;
   };
 
-  // Auto-scroll management:
-  // - Initial open: scrolls down to the latest message.
-  // - Subsequent messages: only scrolls down if the user is already near the bottom.
-  // - If the user is reading older messages, polling does NOT force-jump to the bottom.
+  // 1. Reset trạng thái khi đổi cuộc hội thoại
+  useEffect(() => {
+    // Khi đổi hội thoại, bật lại cờ initial scroll để nó tự động cuộn xuống đáy
+    isInitialScrollRef.current = true;
+
+    // Xóa sạch các state cũ để tránh bị lẫn dữ liệu giữa 2 cuộc hội thoại
+    setOlderMessages([]);
+    setCurrentOlderPage(0);
+    setSendError(null);
+    setSuccessNotice(null);
+    setContent('');
+    removeSelectedImage();
+    pendingUploadRef.current = null;
+  }, [conversationId, removeSelectedImage]);
+
+  // 2. Quản lý Auto-scroll — dùng scrollTo trên container, KHÔNG dùng scrollIntoView
   useEffect(() => {
     if (chronologicalMessages.length === 0) return;
 
+    // Nếu là lần đầu load (hoặc vừa đổi hội thoại): cuộn ngay xuống đáy
     if (isInitialScrollRef.current) {
-      messagesEndRef.current?.scrollIntoView?.({ behavior: 'auto' });
-      isInitialScrollRef.current = false;
-      return;
+      const timer = setTimeout(() => {
+        scrollToBottom('auto');
+        isInitialScrollRef.current = false;
+      }, 0);
+      return () => clearTimeout(timer);
     }
 
+    // Nếu không phải lần đầu, chỉ cuộn nếu người dùng đang ở gần cuối
     if (isNearBottom()) {
-      messagesEndRef.current?.scrollIntoView?.({ behavior: 'smooth' });
+      scrollToBottom('smooth');
     }
   }, [chronologicalMessages.length, conversationId]);
 
@@ -280,7 +304,7 @@ export function ChatWindow({ conversationId, onBack, className }: ChatWindowProp
     }
     setSendError(null);
     setSuccessNotice('Đã gửi ảnh thành công.');
-    messagesEndRef.current?.scrollIntoView?.({ behavior: 'smooth' });
+    scrollToBottom('smooth');
   };
 
   const sendTextMessage = async (trimmed: string) => {
@@ -296,7 +320,7 @@ export function ChatWindow({ conversationId, onBack, className }: ChatWindowProp
         textareaRef.current.blur();
       }
       // Force scroll to bottom when the user sends a message
-      messagesEndRef.current?.scrollIntoView?.({ behavior: 'smooth' });
+      scrollToBottom('smooth');
     } catch (err: unknown) {
       // Preserve unsent content in state and provide accurate error feedback
       const apiError = err as {
@@ -466,7 +490,7 @@ export function ChatWindow({ conversationId, onBack, className }: ChatWindowProp
 
   const otherName = conversation.otherParticipant.displayName || 'Người dùng';
 
-  return (
+  const chatWindowContent = (
     <div className={cn('flex flex-col h-full bg-slate-50 overflow-hidden', className)}>
       {/* Header */}
       <div className="px-4 py-3 bg-white border-b border-slate-200 flex items-center justify-between gap-3 shrink-0 shadow-xs">
@@ -509,10 +533,10 @@ export function ChatWindow({ conversationId, onBack, className }: ChatWindowProp
         </div>
       </div>
 
-      {/* Messages Scroll Area */}
+      {/* Messages Scroll Area — overscroll-contain ngăn scroll chaining ra body */}
       <div
         ref={scrollContainerRef}
-        className="flex-1 overflow-y-auto p-4 space-y-3"
+        className="flex-1 overflow-y-auto overscroll-contain p-4 space-y-3"
         role="log"
         aria-live="polite"
         aria-label="Lịch sử tin nhắn"
@@ -751,6 +775,10 @@ export function ChatWindow({ conversationId, onBack, className }: ChatWindowProp
         </form>
       </div>
     </div>
+  );
+
+  return (
+    <ChatImageLightboxProvider>{chatWindowContent}</ChatImageLightboxProvider>
   );
 }
 

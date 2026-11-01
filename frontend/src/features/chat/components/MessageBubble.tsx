@@ -4,9 +4,10 @@ import { formatDateTime, cn } from '@/lib/utils';
 import { Avatar } from '@/components/common/Avatar';
 import { Button } from '@/components/ui/Button';
 import {
+  getChatImageErrorMessage,
   useChatImage,
-  type ChatImageErrorKind,
 } from '../hooks/use-chat-image';
+import { useChatImageLightbox } from '../hooks/use-chat-image-lightbox';
 
 export interface MessageBubbleProps {
   message: ChatMessageResponse;
@@ -15,43 +16,42 @@ export interface MessageBubbleProps {
   showSenderName?: boolean;
 }
 
-function getChatImageErrorMessage(errorKind: ChatImageErrorKind): string {
-  switch (errorKind) {
-    case 'forbidden':
-      return 'Bạn không có quyền xem ảnh này.';
-    case 'unavailable':
-      return 'Ảnh không còn khả dụng.';
-    case 'unauthorized':
-      return 'Phiên đăng nhập đã hết hạn. Vui lòng đăng nhập lại.';
-    case 'network':
-      return 'Không thể tải ảnh. Kiểm tra kết nối và thử lại.';
-    case 'invalid':
-      return 'Ảnh không hợp lệ hoặc không thể hiển thị.';
-    case 'session':
-      return 'Phiên làm việc đã thay đổi. Vui lòng thử lại.';
-    default:
-      return 'Không thể tải ảnh. Vui lòng thử lại.';
-  }
-}
-
 function ChatImageContent({
   imageUrl,
+  caption,
   senderName,
 }: {
   imageUrl: string;
+  caption: string | null;
   senderName: string;
 }) {
-  const { status, objectUrl, errorKind, canRetry, retry } = useChatImage(imageUrl);
+  const { status, objectUrl, errorKind, canRetry, retry } =
+    useChatImage(imageUrl);
+  const { openLightbox } = useChatImageLightbox();
 
   if (status === 'ready' && objectUrl) {
     return (
-      <img
-        src={objectUrl}
-        alt={`Ảnh đính kèm từ ${senderName}`}
-        className="block h-auto max-h-[320px] w-auto max-w-full bg-slate-100 object-contain"
-        loading="lazy"
-        decoding="async"
-      />
+      <button
+        type="button"
+        aria-label={`Xem ảnh đính kèm từ ${senderName}`}
+        onClick={(event) => {
+          openLightbox({
+            imageUrl,
+            caption,
+            senderName,
+            trigger: event.currentTarget,
+          });
+        }}
+        className="block cursor-zoom-in rounded-2xl focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 focus-visible:ring-inset"
+      >
+        <img
+          src={objectUrl}
+          alt={`Ảnh đính kèm từ ${senderName}`}
+          className="block h-auto max-h-[320px] w-auto max-w-full bg-slate-100 object-contain"
+          loading="lazy"
+          decoding="async"
+        />
+      </button>
     );
   }
 
@@ -145,6 +145,7 @@ export function MessageBubble({
           >
             <ChatImageContent
               imageUrl={imageUrl}
+              caption={hasCaption ? message.content : null}
               senderName={message.sender.displayName}
             />
             {hasCaption && (

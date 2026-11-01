@@ -28,6 +28,25 @@ export interface ChatImageState {
   retry: () => void;
 }
 
+export function getChatImageErrorMessage(errorKind: ChatImageErrorKind): string {
+  switch (errorKind) {
+    case 'forbidden':
+      return 'Bạn không có quyền xem ảnh này.';
+    case 'unavailable':
+      return 'Ảnh không còn khả dụng.';
+    case 'unauthorized':
+      return 'Phiên đăng nhập đã hết hạn. Vui lòng đăng nhập lại.';
+    case 'network':
+      return 'Không thể tải ảnh. Kiểm tra kết nối và thử lại.';
+    case 'invalid':
+      return 'Ảnh không hợp lệ hoặc không thể hiển thị.';
+    case 'session':
+      return 'Phiên làm việc đã thay đổi. Vui lòng thử lại.';
+    default:
+      return 'Không thể tải ảnh. Vui lòng thử lại.';
+  }
+}
+
 type ResolvedChatImageState = Omit<ChatImageState, 'retry'>;
 
 const IDLE_STATE: ResolvedChatImageState = {
