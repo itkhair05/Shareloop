@@ -24,6 +24,7 @@ vi.mock('@/features/chat/api/chat-api', () => ({
     getMessageHistory: vi.fn(),
     sendMessage: vi.fn(),
     getOrCreateConversation: vi.fn(),
+    getChatImage: vi.fn(),
   },
   chatKeys: {
     all: ['chat'] as const,

@@ -1,5 +1,7 @@
 import { apiClient } from '@/lib/api-client';
+import { isValidUuid } from '@/lib/utils';
 import type { PageResponse } from '@/types/api';
+import type { FileUploadResponse } from '@/types/file';
 import type {
   ConversationQueryParams,
   ConversationResponse,
@@ -76,6 +78,52 @@ export const chatApi = {
       `/api/v1/conversations/${encodeURIComponent(conversationId)}/messages`,
       { params }
     );
+  },
+
+  /**
+   * Upload a private chat attachment.
+   * POST /api/v1/files/upload (multipart, purpose=CHAT)
+   */
+  async uploadChatImage(file: File): Promise<FileUploadResponse> {
+    const formData = new FormData();
+    formData.append('file', file);
+    formData.append('purpose', 'CHAT');
+
+    // The shared API client strips the default JSON Content-Type for FormData
+    // so the browser can set multipart/form-data with the correct boundary.
+    const response = await apiClient.post<FileUploadResponse, FormData>(
+      '/api/v1/files/upload',
+      formData
+    );
+
+    if (!response || !isValidUuid(response.id)) {
+      throw new Error('Uploaded file response is missing a valid id');
+    }
+
+    return response;
+  },
+
+  /**
+   * Download a private chat image through the authenticated API client.
+   * Only the participant-restricted endpoint returned by the backend is allowed;
+   * public file URLs are rejected so access checks cannot be bypassed.
+   * GET /api/v1/chat-images/{imageId}
+   */
+  async getChatImage(imageUrl: string, signal?: AbortSignal): Promise<Blob> {
+    if (typeof imageUrl !== 'string' || !imageUrl.startsWith('/api/v1/chat-images/')) {
+      throw new Error('Unsupported chat image URL');
+    }
+
+    const blob = await apiClient.get<Blob>(imageUrl, {
+      responseType: 'blob',
+      signal,
+    });
+
+    if (!(blob instanceof Blob) || blob.size === 0 || !blob.type.startsWith('image/')) {
+      throw new Error('Chat image response is not a valid image');
+    }
+
+    return blob;
   },
 };
 

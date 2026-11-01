@@ -23,8 +23,13 @@ export interface ChatMessageResponse {
   id: string;
   conversationId: string;
   sender: UserSummaryDto;
-  content: string;
+  /** Null for image-only messages. */
+  content: string | null;
   createdAt: string;
+  /** TEXT or IMAGE; optional for compatibility with cached fixtures. */
+  type?: 'TEXT' | 'IMAGE';
+  /** Private chat image path (e.g. /api/v1/chat-images/{fileId}) for IMAGE messages. */
+  imageUrl?: string | null;
 }
 
 /**
@@ -45,8 +50,10 @@ export interface CreateConversationRequest {
  * Backend DTO: com.shareloop.dto.chat.SendMessageRequest
  */
 export interface SendMessageRequest {
-  /** Required message content, non-blank, max 2000 chars */
-  content: string;
+  /** Optional caption, max 2000 chars. Omit or send null for image-only messages. */
+  content?: string | null;
+  /** Uploaded CHAT image file ID; required when content is empty. */
+  imageId?: string | null;
 }
 
 /**

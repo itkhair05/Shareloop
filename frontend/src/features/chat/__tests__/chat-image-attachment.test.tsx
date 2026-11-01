@@ -16,6 +16,8 @@ vi.mock('@/features/chat/api/chat-api', () => ({
     getMessageHistory: vi.fn(),
     sendMessage: vi.fn(),
     getOrCreateConversation: vi.fn(),
+    uploadChatImage: vi.fn(),
+    getChatImage: vi.fn(),
   },
   chatKeys: {
     all: ['chat'] as const,
@@ -99,6 +101,14 @@ const sentMessage: ChatMessageResponse = {
   createdAt: '2026-11-01T09:00:00Z',
 };
 
+const uploadedImage = {
+  id: 'f1111111-1111-1111-1111-111111111111',
+  filename: 'stored-image.jpg',
+  contentType: 'image/jpeg',
+  size: 10,
+  url: '/api/v1/files/stored-image.jpg',
+};
+
 let createObjectUrlMock: ReturnType<typeof vi.fn>;
 let revokeObjectUrlMock: ReturnType<typeof vi.fn>;
 
@@ -127,6 +137,7 @@ beforeEach(() => {
   vi.mocked(chatApi.getConversationDetails).mockResolvedValue(mockConversation);
   vi.mocked(chatApi.getMessageHistory).mockResolvedValue(emptyMessagesPage);
   vi.mocked(chatApi.sendMessage).mockResolvedValue(sentMessage);
+  vi.mocked(chatApi.uploadChatImage).mockResolvedValue(uploadedImage);
 });
 
 afterEach(() => {
@@ -314,22 +325,26 @@ describe('Tương thích với ô soạn tin nhắn', () => {
     await waitFor(() => expect(textarea).toHaveValue(''));
   });
 
-  it('chấp nhận bố cục chỉ có ảnh và nút gửi được bật', async () => {
+  it('chấp nhận bố cục chỉ có ảnh và gửi được tin nhắn ảnh', async () => {
     await openComposer();
     const user = userEvent.setup();
+    const file = jpegFile();
 
-    chooseImage(jpegFile());
+    chooseImage(file);
 
     const sendButton = screen.getByRole('button', { name: 'Gửi tin nhắn' });
     expect(sendButton).toBeEnabled();
 
     await user.click(sendButton);
 
-    expect(chatApi.sendMessage).not.toHaveBeenCalled();
-    expect(screen.getByRole('status')).toHaveTextContent(
-      'Tính năng gửi ảnh đang được hoàn thiện.'
+    expect(chatApi.uploadChatImage).toHaveBeenCalledWith(file);
+    expect(chatApi.sendMessage).toHaveBeenCalledWith(conversationId, {
+      imageId: uploadedImage.id,
+    });
+    await waitFor(() =>
+      expect(screen.queryByAltText('Xem trước ảnh đính kèm')).not.toBeInTheDocument()
     );
-    expect(screen.getByAltText('Xem trước ảnh đính kèm')).toBeInTheDocument();
+    expect(screen.getByText('Đã gửi ảnh thành công.')).toBeInTheDocument();
   });
 
   it('chấp nhận bố cục ảnh kèm chú thích', async () => {
@@ -345,9 +360,12 @@ describe('Tương thích với ô soạn tin nhắn', () => {
 
     await user.click(sendButton);
 
-    expect(chatApi.sendMessage).not.toHaveBeenCalled();
-    expect(textarea).toHaveValue('Ảnh chụp lúc chiều nhé');
-    expect(screen.getByAltText('Xem trước ảnh đính kèm')).toBeInTheDocument();
+    expect(chatApi.sendMessage).toHaveBeenCalledWith(conversationId, {
+      content: 'Ảnh chụp lúc chiều nhé',
+      imageId: uploadedImage.id,
+    });
+    await waitFor(() => expect(textarea).toHaveValue(''));
+    expect(screen.queryByAltText('Xem trước ảnh đính kèm')).not.toBeInTheDocument();
   });
 
   it('không cho gửi khi không có cả văn bản lẫn ảnh', async () => {

@@ -3,6 +3,7 @@ import { useQueryClient } from '@tanstack/react-query';
 import { tokenStorage } from '@/lib/token-storage';
 import { setUnauthorizedHandler } from '@/lib/api-client';
 import { ApiError } from '@/lib/api-error';
+import { clearChatImageCache } from '@/lib/chat-image-cache';
 import { authApi } from '../api/auth-api';
 import { AuthContext, type AuthContextValue } from './auth-context-base';
 import type { AuthResponse, LoginRequest, RegisterRequest, UserProfile } from '@/types/auth';
@@ -27,6 +28,8 @@ export function AuthProvider({ children }: AuthProviderProps) {
     tokenStorage.clearAccessToken();
     setUser(null);
     setError(null);
+    // Drop private chat image blobs and their Object URLs before anything else
+    clearChatImageCache();
     // Clear all TanStack query caches to prevent data leakage across users
     queryClient.clear();
   }, [queryClient]);
@@ -49,6 +52,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
     } catch (err) {
       if (err instanceof ApiError && err.isUnauthorized) {
         tokenStorage.clearAccessToken();
+        clearChatImageCache();
         setUser(null);
       } else if (err instanceof ApiError) {
         setError(err);
@@ -63,6 +67,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
       try {
         const response = await authApi.login(credentials);
         tokenStorage.setAccessToken(response.accessToken);
+        clearChatImageCache();
 
         // Fetch complete user profile from /me
         try {
@@ -102,6 +107,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
       try {
         const response = await authApi.loginWithGoogle({ idToken });
         tokenStorage.setAccessToken(response.accessToken);
+        clearChatImageCache();
 
         // Fetch complete user profile from /me
         try {
@@ -141,6 +147,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
       try {
         const response = await authApi.register(data);
         tokenStorage.setAccessToken(response.accessToken);
+        clearChatImageCache();
 
         try {
           const profile = await authApi.getCurrentUser();
@@ -185,6 +192,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
         } catch (err) {
           if (err instanceof ApiError && err.isUnauthorized) {
             tokenStorage.clearAccessToken();
+            clearChatImageCache();
             setUser(null);
           } else if (err instanceof ApiError) {
             setError(err);

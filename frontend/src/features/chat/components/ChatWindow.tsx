@@ -1,10 +1,12 @@
 import { useState, useRef, useEffect, useMemo } from 'react';
 import { Link } from 'react-router-dom';
+import { useQueryClient } from '@tanstack/react-query';
 import {
   Send,
   Loader2,
   ArrowLeft,
   AlertCircle,
+  CheckCircle2,
   Package,
   ExternalLink,
   MessageSquare,
@@ -17,8 +19,11 @@ import {
   useMessages,
   useSendMessage,
 } from '../hooks/use-chat';
-import { useImageAttachment } from '../hooks/use-image-attachment';
-import { chatApi } from '../api/chat-api';
+import {
+  useImageAttachment,
+  type ChatImageSelection,
+} from '../hooks/use-image-attachment';
+import { chatApi, chatKeys } from '../api/chat-api';
 import { MessageBubble } from './MessageBubble';
 import { Avatar } from '@/components/common/Avatar';
 import { Button } from '@/components/ui/Button';
@@ -31,6 +36,8 @@ export interface ChatWindowProps {
   className?: string;
 }
 
+const CHAT_IMAGE_URL_PREFIX = '/api/v1/chat-images/';
+
 function formatFileSize(bytes: number): string {
   if (bytes >= 1024 * 1024) {
     return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
@@ -38,11 +45,86 @@ function formatFileSize(bytes: number): string {
   return `${Math.max(1, Math.round(bytes / 1024))} KB`;
 }
 
+interface FailureShape {
+  status?: number;
+  isNetworkError?: boolean;
+  isTimeout?: boolean;
+  response?: { status?: number };
+}
+
+function getFailureStatus(error: unknown): number | undefined {
+  const failure = error as FailureShape;
+  if (typeof failure?.status === 'number') return failure.status;
+  return failure?.response?.status;
+}
+
+function isAmbiguousFailure(error: unknown): boolean {
+  const failure = error as FailureShape;
+  if (failure?.isNetworkError || failure?.isTimeout) return true;
+  const status = getFailureStatus(error);
+  return status === 0 || status === 408;
+}
+
+async function hasSentChatImage(conversationId: string, imageId: string): Promise<boolean> {
+  try {
+    const page = await chatApi.getMessageHistory(conversationId, { page: 0, size: 50 });
+    const expectedUrl = `${CHAT_IMAGE_URL_PREFIX}${imageId}`;
+    return page.content.some((message) => message.imageUrl === expectedUrl);
+  } catch {
+    return false;
+  }
+}
+
+function getImageUploadErrorMessage(error: unknown): string {
+  if (isAmbiguousFailure(error)) {
+    return 'Không thể kết nối với máy chủ nên ảnh chưa được tải lên. Ảnh và chú thích vẫn được giữ. Vui lòng thử lại.';
+  }
+  const status = getFailureStatus(error);
+  if (status === 400) {
+    return 'Ảnh không hợp lệ hoặc không được hỗ trợ. Vui lòng chọn ảnh JPEG hoặc PNG khác.';
+  }
+  if (status === 401 || status === 403) {
+    return 'Bạn không có quyền tải ảnh lên. Vui lòng đăng nhập lại hoặc liên hệ Ban quản trị.';
+  }
+  if (status === 413) {
+    return 'Ảnh vượt quá dung lượng cho phép (5 MB). Vui lòng chọn ảnh nhỏ hơn.';
+  }
+  if (status && status >= 500) {
+    return `Không thể tải ảnh lên do lỗi hệ thống (mã ${status}). Vui lòng thử lại sau.`;
+  }
+  return 'Không thể tải ảnh lên. Vui lòng thử lại.';
+}
+
+function getImageMessageErrorMessage(error: unknown): string {
+  if (isAmbiguousFailure(error)) {
+    return 'Không thể xác nhận kết nối với máy chủ. Tin nhắn ảnh có thể đã được gửi hoặc chưa. Ảnh và chú thích vẫn được giữ; vui lòng kiểm tra lịch sử trò chuyện trước khi gửi lại.';
+  }
+  const status = getFailureStatus(error);
+  if (status === 400) {
+    return 'Không thể gửi ảnh. Ảnh có thể đã được sử dụng trong một tin nhắn khác hoặc chú thích không hợp lệ.';
+  }
+  if (status === 401 || status === 403) {
+    return 'Bạn không có quyền gửi tin nhắn trong cuộc trò chuyện này.';
+  }
+  if (status === 404) {
+    return 'Cuộc trò chuyện này không còn tồn tại.';
+  }
+  if (status === 429) {
+    return 'Bạn đang gửi tin nhắn quá nhanh. Vui lòng chờ trong giây lát rồi thử lại.';
+  }
+  if (status && status >= 500) {
+    return `Không thể gửi tin nhắn do lỗi hệ thống (mã ${status}). Ảnh và chú thích vẫn được giữ. Vui lòng thử lại sau.`;
+  }
+  return 'Không thể gửi tin nhắn ảnh. Ảnh và chú thích vẫn được giữ. Vui lòng thử lại.';
+}
+
 export function ChatWindow({ conversationId, onBack, className }: ChatWindowProps) {
   const { user, isAuthenticated } = useAuth();
+  const queryClient = useQueryClient();
   const [content, setContent] = useState('');
   const [sendError, setSendError] = useState<string | null>(null);
-  const [composerNotice, setComposerNotice] = useState<string | null>(null);
+  const [successNotice, setSuccessNotice] = useState<string | null>(null);
+  const [isUploadingImage, setIsUploadingImage] = useState(false);
   const [olderMessages, setOlderMessages] = useState<ChatMessageResponse[]>([]);
   const [isLoadingOlder, setIsLoadingOlder] = useState(false);
   const [currentOlderPage, setCurrentOlderPage] = useState(0);
@@ -59,6 +141,11 @@ export function ChatWindow({ conversationId, onBack, className }: ChatWindowProp
   const scrollContainerRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const isInitialScrollRef = useRef(true);
+  // Synchronous guard: React state alone can lag behind rapid Enter/submit events.
+  const isSubmittingRef = useRef(false);
+  // Keeps a successfully uploaded CHAT file ID so a failed message submission
+  // can retry without uploading the same image again.
+  const pendingUploadRef = useRef<{ file: File; imageId: string } | null>(null);
 
   const isIdValid = Boolean(conversationId && isValidUuid(conversationId));
 
@@ -88,6 +175,8 @@ export function ChatWindow({ conversationId, onBack, className }: ChatWindowProp
   );
 
   const sendMessageMutation = useSendMessage();
+  const isSendingMessage = sendMessageMutation.isPending;
+  const isComposerBusy = isUploadingImage || isSendingMessage;
 
   const totalPages = messagesPage?.totalPages ?? 1;
   const hasOlderMessages = totalPages > currentOlderPage + 1;
@@ -169,30 +258,32 @@ export function ChatWindow({ conversationId, onBack, className }: ChatWindowProp
     }
   }, [chronologicalMessages.length, conversationId]);
 
-  const handleSend = async () => {
-    const trimmed = content.trim();
-    if ((!trimmed && !selectedImage) || sendMessageMutation.isPending) {
-      return;
-    }
+  const invalidateConversationQueries = () => {
+    queryClient.invalidateQueries({
+      queryKey: [...chatKeys.messages(), conversationId],
+    });
+    queryClient.invalidateQueries({
+      queryKey: chatKeys.conversationDetail(conversationId),
+    });
+    queryClient.invalidateQueries({
+      queryKey: chatKeys.conversations(),
+    });
+  };
 
-    if (trimmed.length > 2000) {
-      setSendError('Tin nhắn không được vượt quá 2.000 ký tự.');
-      return;
+  const finalizeImageSend = () => {
+    pendingUploadRef.current = null;
+    removeSelectedImage();
+    setContent('');
+    if (textareaRef.current) {
+      textareaRef.current.style.height = 'auto';
+      textareaRef.current.blur();
     }
-
     setSendError(null);
+    setSuccessNotice('Đã gửi ảnh thành công.');
+    messagesEndRef.current?.scrollIntoView?.({ behavior: 'smooth' });
+  };
 
-    // Phase 3.1 chỉ chuẩn bị phần chọn và xem trước ảnh; việc tải ảnh lên
-    // và gửi tin nhắn kèm ảnh thuộc giai đoạn tiếp theo.
-    if (selectedImage) {
-      setComposerNotice(
-        'Tính năng gửi ảnh đang được hoàn thiện. Vui lòng xóa ảnh nếu muốn gửi tin nhắn văn bản.'
-      );
-      return;
-    }
-
-    setComposerNotice(null);
-
+  const sendTextMessage = async (trimmed: string) => {
     try {
       await sendMessageMutation.mutateAsync({
         conversationId,
@@ -234,13 +325,98 @@ export function ChatWindow({ conversationId, onBack, className }: ChatWindowProp
     }
   };
 
+  const sendImageMessage = async (attachment: ChatImageSelection, caption: string) => {
+    const cached = pendingUploadRef.current;
+    let imageId = cached?.file === attachment.file ? cached.imageId : null;
+
+    if (!imageId) {
+      setIsUploadingImage(true);
+      try {
+        const uploaded = await chatApi.uploadChatImage(attachment.file);
+        if (!isValidUuid(uploaded.id)) {
+          throw new Error('Uploaded file response is missing a valid id');
+        }
+        imageId = uploaded.id;
+        pendingUploadRef.current = { file: attachment.file, imageId };
+      } catch (error) {
+        setSendError(getImageUploadErrorMessage(error));
+        return;
+      } finally {
+        setIsUploadingImage(false);
+      }
+    }
+
+    if (!imageId) return;
+
+    try {
+      await sendMessageMutation.mutateAsync({
+        conversationId,
+        payload: caption ? { content: caption, imageId } : { imageId },
+      });
+      finalizeImageSend();
+    } catch (error) {
+      const status = getFailureStatus(error);
+      const ambiguous = isAmbiguousFailure(error);
+
+      // A lost response or an "already attached" rejection may mean a previous
+      // attempt actually committed. Reconcile against history before reporting
+      // failure, so we never blind-retry an already-bound file ID.
+      if (ambiguous || status === 400) {
+        const alreadySent = await hasSentChatImage(conversationId, imageId);
+        if (alreadySent) {
+          invalidateConversationQueries();
+          finalizeImageSend();
+          return;
+        }
+      }
+
+      if (ambiguous) {
+        refetchMessages();
+        refetchConversation();
+      }
+      setSendError(getImageMessageErrorMessage(error));
+    }
+  };
+
+  const handleSend = async () => {
+    // Synchronous re-entry guard: covers Enter key repeats and duplicate submits.
+    if (isSubmittingRef.current || isComposerBusy) return;
+
+    const trimmed = content.trim();
+    if (!trimmed && !selectedImage) {
+      return;
+    }
+
+    if (trimmed.length > 2000) {
+      setSendError('Tin nhắn không được vượt quá 2.000 ký tự.');
+      return;
+    }
+
+    isSubmittingRef.current = true;
+    setSendError(null);
+    setSuccessNotice(null);
+
+    try {
+      if (selectedImage) {
+        await sendImageMessage(selectedImage, trimmed);
+      } else {
+        await sendTextMessage(trimmed);
+      }
+    } finally {
+      isSubmittingRef.current = false;
+    }
+  };
+
   const handleImageSelection = (event: React.ChangeEvent<HTMLInputElement>) => {
-    setComposerNotice(null);
+    setSuccessNotice(null);
+    // A different file invalidates any previously uploaded chat file ID.
+    pendingUploadRef.current = null;
     handleImageInputChange(event);
   };
 
   const handleRemoveImage = () => {
-    setComposerNotice(null);
+    setSuccessNotice(null);
+    pendingUploadRef.current = null;
     removeSelectedImage();
   };
 
@@ -462,14 +638,18 @@ export function ChatWindow({ conversationId, onBack, className }: ChatWindowProp
                 >
                   {selectedImage.file.name}
                 </p>
-                <p className="text-[11px] text-slate-500">
-                  {formatFileSize(selectedImage.file.size)} · Ảnh đã chọn
+                <p className="text-[11px] text-slate-500" aria-live="polite">
+                  {isUploadingImage
+                    ? 'Đang tải ảnh lên...'
+                    : isSendingMessage
+                      ? 'Đang gửi tin nhắn ảnh...'
+                      : `${formatFileSize(selectedImage.file.size)} · Ảnh đã chọn`}
                 </p>
               </div>
               <button
                 type="button"
                 onClick={handleRemoveImage}
-                disabled={sendMessageMutation.isPending}
+                disabled={isComposerBusy}
                 className="p-1.5 shrink-0 rounded-lg text-slate-500 hover:text-rose-600 hover:bg-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 transition-colors cursor-pointer disabled:opacity-50 disabled:pointer-events-none"
                 aria-label="Xóa ảnh đính kèm"
                 title="Xóa ảnh đính kèm"
@@ -485,7 +665,7 @@ export function ChatWindow({ conversationId, onBack, className }: ChatWindowProp
               type="file"
               accept="image/jpeg,image/png"
               onChange={handleImageSelection}
-              disabled={sendMessageMutation.isPending}
+              disabled={isComposerBusy}
               className="hidden"
               aria-label="Chọn ảnh đính kèm"
             />
@@ -493,7 +673,7 @@ export function ChatWindow({ conversationId, onBack, className }: ChatWindowProp
             <button
               type="button"
               onClick={openImagePicker}
-              disabled={sendMessageMutation.isPending}
+              disabled={isComposerBusy}
               className="h-9 w-9 shrink-0 flex items-center justify-center rounded-xl text-slate-500 hover:text-emerald-700 hover:bg-emerald-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 transition-colors cursor-pointer disabled:opacity-50 disabled:pointer-events-none"
               aria-label="Đính kèm ảnh"
               title="Đính kèm ảnh"
@@ -507,9 +687,10 @@ export function ChatWindow({ conversationId, onBack, className }: ChatWindowProp
               onChange={(e) => {
                 setContent(e.target.value);
                 if (sendError) setSendError(null);
-                if (composerNotice) setComposerNotice(null);
+                if (successNotice) setSuccessNotice(null);
               }}
               onKeyDown={handleKeyDown}
+              disabled={Boolean(selectedImage) && isComposerBusy}
               placeholder={
                 selectedImage
                   ? 'Thêm chú thích cho ảnh (không bắt buộc)...'
@@ -517,7 +698,7 @@ export function ChatWindow({ conversationId, onBack, className }: ChatWindowProp
               }
               rows={1}
               maxLength={2000}
-              className="flex-1 bg-transparent border-0 outline-none focus:ring-0 focus:outline-none focus:border-0 resize-none max-h-32 min-h-[38px] p-1.5 text-sm text-slate-900 placeholder:text-slate-400"
+              className="flex-1 bg-transparent border-0 outline-none focus:ring-0 focus:outline-none focus:border-0 resize-none max-h-32 min-h-[38px] p-1.5 text-sm text-slate-900 placeholder:text-slate-400 disabled:opacity-60 disabled:cursor-not-allowed"
               aria-label="Nội dung tin nhắn"
             />
 
@@ -525,11 +706,11 @@ export function ChatWindow({ conversationId, onBack, className }: ChatWindowProp
               type="submit"
               size="sm"
               variant="primary"
-              disabled={(!content.trim() && !selectedImage) || sendMessageMutation.isPending}
+              disabled={(!content.trim() && !selectedImage) || isComposerBusy}
               className="rounded-xl h-9 w-9 p-0 shrink-0 flex items-center justify-center cursor-pointer shadow-xs disabled:opacity-50"
               aria-label="Gửi tin nhắn"
             >
-              {sendMessageMutation.isPending ? (
+              {isComposerBusy ? (
                 <Loader2 className="w-4 h-4 animate-spin" />
               ) : (
                 <Send className="w-4 h-4" />
@@ -547,13 +728,13 @@ export function ChatWindow({ conversationId, onBack, className }: ChatWindowProp
             </p>
           )}
 
-          {composerNotice && (
+          {successNotice && (
             <p
               role="status"
-              className="flex items-center gap-1.5 px-1 text-[11px] font-medium text-amber-700"
+              className="flex items-center gap-1.5 px-1 text-[11px] font-medium text-emerald-700"
             >
-              <AlertCircle className="w-3.5 h-3.5 shrink-0 text-amber-500" aria-hidden="true" />
-              <span>{composerNotice}</span>
+              <CheckCircle2 className="w-3.5 h-3.5 shrink-0 text-emerald-600" aria-hidden="true" />
+              <span>{successNotice}</span>
             </p>
           )}
 
