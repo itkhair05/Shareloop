@@ -528,7 +528,7 @@ class DatabaseSchemaConstraintIntegrationTest {
         }
 
         @Test
-        @DisplayName("Messages content must not be blank or whitespace-only (chk_messages_content_not_empty)")
+        @DisplayName("Messages content must not be blank or whitespace-only without an image (chk_messages_content_or_image)")
         void messagesContentMustNotBeBlank() {
             UUID ownerId = UUID.randomUUID();
             UUID requesterId = UUID.randomUUID();
@@ -544,7 +544,7 @@ class DatabaseSchemaConstraintIntegrationTest {
                     "INSERT INTO messages (id, conversation_id, sender_id, content) VALUES (?, ?, ?, ?)",
                     UUID.randomUUID(), convId, requesterId, "   "
             )).isInstanceOf(DataIntegrityViolationException.class)
-                    .hasMessageContaining("chk_messages_content_not_empty");
+                    .hasMessageContaining("chk_messages_content_or_image");
         }
 
         @Test

@@ -25,3 +25,7 @@ app:
     enabled: false
   admin-bootstrap:
     enabled: false
+  uploads:
+    cleanup:
+      # Background sweep is driven explicitly by tests, never by the scheduler.
+      cron: "-"

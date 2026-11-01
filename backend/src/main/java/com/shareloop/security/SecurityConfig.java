@@ -106,6 +106,8 @@ public class SecurityConfig {
                         .requestMatchers("/api/v1/listings/*/requests", "/api/v1/listing-requests/**").authenticated()
                         // Chat conversations and messages require authentication
                         .requestMatchers("/api/v1/listings/*/conversations", "/api/v1/conversations/**").authenticated()
+                        // Private chat image attachments require authentication (participant check happens in the service)
+                        .requestMatchers("/api/v1/chat-images/**").authenticated()
                         // Transactions require authentication
                         .requestMatchers("/api/v1/listings/*/transaction", "/api/v1/transactions/**").authenticated()
                         // Notifications require authentication

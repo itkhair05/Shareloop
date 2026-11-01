@@ -1,5 +1,6 @@
 package com.shareloop.service;
 
+import com.shareloop.dto.chat.ChatMessagePreview;
 import com.shareloop.dto.chat.ChatMessageResponse;
 import com.shareloop.dto.chat.ConversationResponse;
 import com.shareloop.dto.chat.CreateConversationRequest;
@@ -8,15 +9,18 @@ import com.shareloop.entity.ChatMessage;
 import com.shareloop.entity.Conversation;
 import com.shareloop.entity.Listing;
 import com.shareloop.entity.ListingRequest;
+import com.shareloop.entity.UploadedFile;
 import com.shareloop.entity.User;
 import com.shareloop.entity.enums.ListingStatus;
 import com.shareloop.entity.enums.NotificationType;
+import com.shareloop.entity.enums.UploadPurpose;
 import com.shareloop.exception.RateLimitExceededException;
 import com.shareloop.exception.ResourceNotFoundException;
 import com.shareloop.repository.ChatMessageRepository;
 import com.shareloop.repository.ConversationRepository;
 import com.shareloop.repository.ListingRepository;
 import com.shareloop.repository.ListingRequestRepository;
+import com.shareloop.repository.UploadedFileRepository;
 import com.shareloop.repository.UserRepository;
 import com.shareloop.security.UserPrincipal;
 import com.shareloop.security.ratelimit.RateLimitProperties;
@@ -49,6 +53,7 @@ public class ChatService {
     private final ListingRepository listingRepository;
     private final ListingRequestRepository listingRequestRepository;
     private final UserRepository userRepository;
+    private final UploadedFileRepository uploadedFileRepository;
     private final NotificationService notificationService;
     private final RateLimitProperties rateLimitProperties;
     private final Clock clock;
@@ -63,6 +68,7 @@ public class ChatService {
             ListingRepository listingRepository,
             ListingRequestRepository listingRequestRepository,
             UserRepository userRepository,
+            UploadedFileRepository uploadedFileRepository,
             NotificationService notificationService,
             RateLimitProperties rateLimitProperties,
             Clock clock
@@ -72,6 +78,7 @@ public class ChatService {
         this.listingRepository = listingRepository;
         this.listingRequestRepository = listingRequestRepository;
         this.userRepository = userRepository;
+        this.uploadedFileRepository = uploadedFileRepository;
         this.notificationService = notificationService;
         this.rateLimitProperties = rateLimitProperties;
         this.clock = clock;
@@ -109,7 +116,7 @@ public class ChatService {
         if (existingOpt.isPresent()) {
             Conversation existing = existingOpt.get();
             String preview = chatMessageRepository.findFirstByConversationIdOrderByCreatedAtDescIdDesc(existing.getId())
-                    .map(ChatMessage::getContent)
+                    .map(ChatMessagePreview::from)
                     .orElse(null);
             return ConversationResponse.fromEntity(existing, principal.getId(), preview);
         }
@@ -146,7 +153,7 @@ public class ChatService {
             Conversation canonical = conversationRepository.findByListingIdAndRequesterId(listingId, principal.getId())
                     .orElseThrow(() -> ex);
             String preview = chatMessageRepository.findFirstByConversationIdOrderByCreatedAtDescIdDesc(canonical.getId())
-                    .map(ChatMessage::getContent)
+                    .map(ChatMessagePreview::from)
                     .orElse(null);
             return ConversationResponse.fromEntity(canonical, principal.getId(), preview);
         }
@@ -200,7 +207,7 @@ public class ChatService {
             ChatMessage savedMessage = chatMessageRepository.saveAndFlush(message);
             savedConversation.setLastMessageAt(savedMessage.getCreatedAt());
             savedConversation = conversationRepository.saveAndFlush(savedConversation);
-            messagePreview = savedMessage.getContent();
+            messagePreview = ChatMessagePreview.from(savedMessage);
 
             String senderName = (requester != null && requester.getDisplayName() != null && !requester.getDisplayName().isBlank())
                     ? requester.getDisplayName().trim()
@@ -250,7 +257,7 @@ public class ChatService {
         if (!convIds.isEmpty()) {
             List<ChatMessage> latestMessages = chatMessageRepository.findLatestMessagesForConversations(convIds);
             for (ChatMessage m : latestMessages) {
-                previewMap.put(m.getConversation().getId(), m.getContent());
+                previewMap.put(m.getConversation().getId(), ChatMessagePreview.from(m));
             }
         }
 
@@ -275,7 +282,7 @@ public class ChatService {
         }
 
         String preview = chatMessageRepository.findFirstByConversationIdOrderByCreatedAtDescIdDesc(conversationId)
-                .map(ChatMessage::getContent)
+                .map(ChatMessagePreview::from)
                 .orElse(null);
 
         return ConversationResponse.fromEntity(conversation, principal.getId(), preview);
@@ -286,9 +293,11 @@ public class ChatService {
      * Enforces:
      * - Authentication.
      * - Participant authorization (only owner or requester).
-     * - Non-empty, non-whitespace content <= 2000 characters.
+     * - Text and/or a single owned, unbound CHAT upload <= 2000 characters of caption.
      * - Listing status: messages cannot be sent if listing has been REMOVED.
      * - Pessimistic row locking on Conversation to serialize concurrent sends and maintain atomic lastMessageAt.
+     * - Pessimistic row locking on the upload so a file can only be attached once; the attachment
+     *   binding is committed atomically with the message.
      */
     @Transactional
     public ChatMessageResponse sendMessage(UUID conversationId, SendMessageRequest request, UserPrincipal principal) {
@@ -328,15 +337,41 @@ public class ChatService {
         }
 
         String content = request != null && request.getContent() != null ? request.getContent().trim() : "";
-        if (content.isEmpty()) {
-            throw new IllegalArgumentException("Message content cannot be blank");
+        UUID imageId = request != null ? request.getImageId() : null;
+
+        if (content.isEmpty() && imageId == null) {
+            throw new IllegalArgumentException("Message must contain text or an image");
         }
         if (content.length() > 2000) {
             throw new IllegalArgumentException("Message content cannot exceed 2000 characters");
         }
+        if (content.isEmpty()) {
+            content = null;
+        }
 
-        ChatMessage message = new ChatMessage(conversation, sender, content);
+        UploadedFile upload = null;
+        if (imageId != null) {
+            upload = uploadedFileRepository.findByIdForUpdate(imageId)
+                    .orElseThrow(() -> new ResourceNotFoundException("Uploaded image not found with id: " + imageId));
+
+            if (!upload.getOwner().getId().equals(sender.getId())) {
+                throw new AccessDeniedException("You are not authorized to attach this image");
+            }
+            if (upload.getPurpose() != UploadPurpose.CHAT) {
+                throw new IllegalArgumentException("Uploaded file is not a chat attachment");
+            }
+            if (upload.isBound()) {
+                throw new IllegalArgumentException("Uploaded image has already been attached to a message");
+            }
+        }
+
+        ChatMessage message = new ChatMessage(conversation, sender, content, imageId);
         ChatMessage savedMessage = chatMessageRepository.saveAndFlush(message);
+
+        if (upload != null) {
+            upload.bindTo(savedMessage);
+            uploadedFileRepository.saveAndFlush(upload);
+        }
 
         Instant messageTime = savedMessage.getCreatedAt();
         if (conversation.getLastMessageAt() != null && messageTime.isBefore(conversation.getLastMessageAt())) {

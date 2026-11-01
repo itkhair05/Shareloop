@@ -94,6 +94,12 @@ app:
       access-key-id: ${R2_ACCESS_KEY_ID:}
       secret-access-key: ${R2_SECRET_ACCESS_KEY:}
       public-url-prefix: ${R2_PUBLIC_URL_PREFIX:}
+  uploads:
+    cleanup:
+      # Hourly sweep of unbound CHAT uploads older than the TTL.
+      cron: ${UPLOAD_CLEANUP_CRON:0 0 * * * *}
+      ttl-hours: ${UPLOAD_CLEANUP_TTL_HOURS:24}
+      batch-size: ${UPLOAD_CLEANUP_BATCH_SIZE:100}
 
 springdoc:
   api-docs:

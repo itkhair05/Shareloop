@@ -173,7 +173,7 @@ export function ReportDetailModal({
                       <button
                         type="button"
                         onClick={() => copyToClipboard(report.reporterId!, 'reporter')}
-                        className="text-slate-400 hover:text-slate-600 p-1 rounded"
+                        className="text-slate-400 hover:text-slate-600 p-1 rounded cursor-pointer transition-colors"
                         title="Sao chép User ID"
                       >
                         {copiedField === 'reporter' ? (
@@ -185,21 +185,23 @@ export function ReportDetailModal({
                     )}
                   </div>
                   <div className="flex items-center gap-3">
-                    <Avatar
-                      avatarUrl={report.reporterAvatarUrl}
-                      name={report.reporterDisplayName}
-                      size="md"
-                      alt={
-                        report.reporterDisplayName
-                          ? `Ảnh đại diện của ${report.reporterDisplayName}`
-                          : 'Ảnh đại diện người gửi báo cáo'
-                      }
-                    />
+                    <div className="shrink-0">
+                      <Avatar
+                        avatarUrl={report.reporterAvatarUrl}
+                        name={report.reporterDisplayName || 'U'}
+                        size="md"
+                        alt={
+                          report.reporterDisplayName
+                            ? `Ảnh đại diện của ${report.reporterDisplayName}`
+                            : 'Ảnh đại diện người gửi báo cáo'
+                        }
+                      />
+                    </div>
                     <div className="min-w-0">
-                      <div className="font-semibold text-slate-900 text-sm">
+                      <div className="font-semibold text-slate-900 text-sm truncate">
                         {report.reporterDisplayName || 'Chưa cập nhật'}
                       </div>
-                      <div className="text-xs text-slate-500 font-mono mt-0.5">
+                      <div className="text-xs text-slate-500 font-mono mt-0.5 truncate">
                         {report.reporterEmail || '—'}
                       </div>
                     </div>
@@ -216,7 +218,7 @@ export function ReportDetailModal({
                     <button
                       type="button"
                       onClick={() => copyToClipboard(report.targetId, 'target')}
-                      className="text-slate-400 hover:text-slate-600 p-1 rounded"
+                      className="text-slate-400 hover:text-slate-600 p-1 rounded cursor-pointer transition-colors"
                       title="Sao chép Target ID"
                     >
                       {copiedField === 'target' ? (
@@ -226,34 +228,56 @@ export function ReportDetailModal({
                       )}
                     </button>
                   </div>
+
                   {report.targetType === 'USER' ? (
-                    <div className="flex items-center gap-3">
-                      <Avatar
-                        avatarUrl={report.targetUserAvatarUrl}
-                        name={report.targetUserDisplayName}
-                        size="md"
-                        alt={
-                          report.targetUserDisplayName
-                            ? `Ảnh đại diện của ${report.targetUserDisplayName}`
-                            : 'Ảnh đại diện người dùng bị báo cáo'
-                        }
-                      />
-                      <div className="min-w-0">
-                        <div className="font-semibold text-slate-900 text-sm">
-                          {report.targetUserDisplayName || 'Người dùng bị báo cáo'}
-                        </div>
-                        <div className="font-mono text-xs text-slate-700 break-all select-all mt-0.5">
+                    <div className="flex items-start gap-3">
+                      {/* Đảm bảo Avatar không bị bóp méo bởi thẻ Link */}
+                      <div className="shrink-0 mt-0.5">
+                        <Avatar
+                          avatarUrl={report.targetUserAvatarUrl}
+                          name={report.targetUserDisplayName || 'U'}
+                          size="md"
+                          alt={report.targetUserDisplayName ? `Ảnh đại diện của ${report.targetUserDisplayName}` : 'Ảnh đại diện người dùng bị báo cáo'}
+                        />
+                      </div>
+                      <div className="min-w-0 flex-1">
+                        <Link 
+                          to={`/users/${report.targetId}`} 
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="font-semibold text-emerald-600 hover:text-emerald-700 hover:underline text-sm flex items-center gap-1 w-fit truncate"
+                        >
+                          <span className="truncate">{report.targetUserDisplayName || 'Người dùng bị báo cáo'}</span>
+                          <ExternalLink className="w-3 h-3 shrink-0" />
+                        </Link>
+                        <div className="font-mono text-[11px] text-slate-500 break-all select-all mt-1">
                           {report.targetId}
                         </div>
                       </div>
                     </div>
                   ) : (
-                    <div>
-                      <div className="font-mono text-xs text-slate-700 break-all select-all">
-                        {report.targetId}
+                    <div className="space-y-2">
+                      {/* Hiển thị Link trực tiếp nếu là LISTING */}
+                      {report.targetType === 'LISTING' && (
+                        <Link
+                          to={`/listings/${report.targetId}`}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="inline-flex items-center gap-1.5 text-sm font-semibold text-emerald-600 hover:text-emerald-700 hover:underline bg-emerald-50 px-3 py-1.5 rounded-md border border-emerald-100 transition-colors"
+                        >
+                          <ExternalLink className="w-4 h-4" />
+                          Xem chi tiết bài đăng này
+                        </Link>
+                      )}
+
+                      {/* Hiển thị mã UUID bên dưới cho Admin dễ tra cứu DB */}
+                      <div className="font-mono text-[11px] text-slate-500 break-all select-all bg-slate-50 p-2 rounded border border-slate-100">
+                        ID: {report.targetId}
                       </div>
+
+                      {/* Logic cho REVIEW giữ nguyên */}
                       {report.targetType === 'REVIEW' && (
-                        <div className="mt-2">
+                        <div className="mt-1">
                           {onViewReviewTarget ? (
                             <button
                               type="button"
@@ -261,7 +285,7 @@ export function ReportDetailModal({
                                 onClose();
                                 onViewReviewTarget(report.targetId);
                               }}
-                              className="text-xs font-medium text-emerald-600 hover:text-emerald-700 hover:underline flex items-center gap-1"
+                              className="text-xs font-medium text-emerald-600 hover:text-emerald-700 hover:underline flex items-center gap-1 cursor-pointer"
                             >
                               <FileText className="w-3 h-3" />
                               Xem và kiểm duyệt đánh giá này

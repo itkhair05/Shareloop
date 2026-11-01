@@ -1,8 +1,9 @@
 package com.shareloop.entity;
 
 import jakarta.persistence.*;
-import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.AssertTrue;
 import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.Size;
 
 import java.time.Instant;
 import java.util.Objects;
@@ -27,9 +28,12 @@ public class ChatMessage {
     @JoinColumn(name = "sender_id", nullable = false)
     private User sender;
 
-    @NotBlank
-    @Column(name = "content", columnDefinition = "TEXT", nullable = false)
+    @Size(max = 2000)
+    @Column(name = "content", columnDefinition = "TEXT")
     private String content;
+
+    @Column(name = "image_file_id")
+    private UUID imageFileId;
 
     @Column(name = "created_at", nullable = false, updatable = false)
     private Instant createdAt;
@@ -45,9 +49,30 @@ public class ChatMessage {
     }
 
     public ChatMessage(Conversation conversation, User sender, String content) {
+        this(conversation, sender, content, null);
+    }
+
+    public ChatMessage(Conversation conversation, User sender, String content, UUID imageFileId) {
         this.conversation = conversation;
         this.sender = sender;
-        this.content = content != null ? content.trim() : null;
+        this.content = normalizeContent(content);
+        this.imageFileId = imageFileId;
+        if (this.content == null && this.imageFileId == null) {
+            throw new IllegalArgumentException("Message must contain text or an image");
+        }
+    }
+
+    private static String normalizeContent(String content) {
+        if (content == null) {
+            return null;
+        }
+        String trimmed = content.trim();
+        return trimmed.isEmpty() ? null : trimmed;
+    }
+
+    @AssertTrue(message = "Message must contain text or an image")
+    public boolean isContentOrImagePresent() {
+        return content != null || imageFileId != null;
     }
 
     public UUID getId() {
@@ -79,7 +104,15 @@ public class ChatMessage {
     }
 
     public void setContent(String content) {
-        this.content = content != null ? content.trim() : null;
+        this.content = normalizeContent(content);
+    }
+
+    public UUID getImageFileId() {
+        return imageFileId;
+    }
+
+    public void setImageFileId(UUID imageFileId) {
+        this.imageFileId = imageFileId;
     }
 
     public Instant getCreatedAt() {
@@ -108,6 +141,7 @@ public class ChatMessage {
         return "ChatMessage{" +
                 "id=" + id +
                 ", content='" + content + '\'' +
+                ", imageFileId=" + imageFileId +
                 ", createdAt=" + createdAt +
                 '}';
     }
