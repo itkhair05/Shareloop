@@ -7,7 +7,6 @@ import {
   ChevronLeft,
   ChevronRight,
   Clock,
-  Copy,
   Check,
   Edit3,
   FileText,

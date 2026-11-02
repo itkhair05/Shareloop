@@ -30,6 +30,7 @@ import { AdminCategoriesPage } from '@/features/admin/AdminCategoriesPage';
 import { AdminReviewsPage } from '@/features/admin/AdminReviewsPage';
 import { AdminReportsPage } from '@/features/admin/AdminReportsPage';
 import { AdminSupportPage } from '@/features/admin/AdminSupportPage';
+import { ReportingPage } from '@/features/admin/reporting/ReportingPage';
 import { NotFoundPage } from '@/features/not-found/NotFoundPage';
 
 export const router = createBrowserRouter([
@@ -169,6 +170,10 @@ export const router = createBrowserRouter([
       {
         index: true,
         element: <AdminOverviewPage />,
+      },
+      {
+        path: 'reporting',
+        element: <ReportingPage />,
       },
       {
         path: 'listings',

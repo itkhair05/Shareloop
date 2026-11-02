@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { Link, NavLink, Outlet, useNavigate } from 'react-router-dom';
 import {
   ShieldAlert,
+  BarChart3,
   FolderTree,
   MessageSquareWarning,
   LayoutDashboard,
@@ -34,6 +35,12 @@ export function AdminLayout() {
       label: 'Tổng quan quản trị',
       icon: LayoutDashboard,
       end: true,
+    },
+    {
+      to: '/admin/reporting',
+      label: 'Báo cáo & Thống kê',
+      icon: BarChart3,
+      end: false,
     },
     {
       to: '/admin/listings',
