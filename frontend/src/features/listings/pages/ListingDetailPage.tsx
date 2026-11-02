@@ -18,6 +18,7 @@ import {
   Ruler,
   Send,
   ShieldCheck,
+  Share2,
   Tag,
   Users,
   X,
@@ -117,7 +118,7 @@ export function ListingDetailPage() {
     }
   };
 
-  const handleCopyListingId = async (event: MouseEvent<HTMLButtonElement>) => {
+  const handleCopyListingLink = async (event: MouseEvent<HTMLButtonElement>) => {
     event.preventDefault();
     event.stopPropagation();
 
@@ -129,7 +130,8 @@ export function ListingDetailPage() {
       if (!navigator.clipboard?.writeText || !listing) {
         throw new Error('Clipboard API unavailable');
       }
-      await navigator.clipboard.writeText(listing.id);
+      const shareUrl = `${window.location.origin}/listings/${listing.id}`;
+      await navigator.clipboard.writeText(shareUrl);
       setCopyFeedback('success');
     } catch {
       setCopyFeedback('error');
@@ -458,27 +460,22 @@ export function ListingDetailPage() {
                 </dd>
               </div>
 
-              <div className="p-3.5 rounded-xl bg-slate-50 border border-slate-100 sm:col-span-2">
-                <dt className="text-xs font-medium text-slate-500 uppercase tracking-wider">Mã tin</dt>
-                <dd className="mt-1 font-semibold text-slate-900">
-                  <div className="flex items-start gap-2 min-w-0">
-                    <code className="font-mono text-xs sm:text-sm text-slate-700 break-all">
-                      {listing.id}
-                    </code>
-                    <button
-                      type="button"
-                      onClick={handleCopyListingId}
-                      aria-label="Sao chép mã tin"
-                      title="Sao chép mã tin"
-                      className="shrink-0 inline-flex items-center justify-center w-7 h-7 rounded-lg text-slate-500 hover:text-emerald-700 hover:bg-emerald-50 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500"
-                    >
-                      {copyFeedback === 'success' ? (
-                        <Check className="w-4 h-4" aria-hidden="true" />
-                      ) : (
-                        <Copy className="w-4 h-4" aria-hidden="true" />
-                      )}
-                    </button>
-                  </div>
+              {/* Chia sẻ bài đăng: chỉ nút, không hiển thị URL dài */}
+              <div className="p-3.5 rounded-xl bg-slate-50 border border-slate-100">
+                <dt className="text-xs font-medium text-slate-500 uppercase tracking-wider">Chia sẻ bài đăng</dt>
+                <dd className="mt-1">
+                  <button
+                    type="button"
+                    onClick={handleCopyListingLink}
+                    className="inline-flex items-center gap-1.5 text-sm font-semibold text-emerald-700 hover:text-emerald-800 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 rounded"
+                  >
+                    {copyFeedback === 'success' ? (
+                      <Check className="w-4 h-4 shrink-0" aria-hidden="true" />
+                    ) : (
+                      <Share2 className="w-4 h-4 shrink-0" aria-hidden="true" />
+                    )}
+                    <span>Sao chép liên kết</span>
+                  </button>
                   <span
                     aria-live="polite"
                     className={`mt-1 block text-xs font-medium ${
@@ -486,9 +483,9 @@ export function ListingDetailPage() {
                     }`}
                   >
                     {copyFeedback === 'success'
-                      ? 'Đã sao chép mã tin'
+                      ? 'Đã sao chép liên kết bài đăng'
                       : copyFeedback === 'error'
-                        ? 'Không thể sao chép mã tin'
+                        ? 'Không thể sao chép liên kết'
                         : ''}
                   </span>
                 </dd>
@@ -814,7 +811,7 @@ export function ListingDetailPage() {
             </div>
             <ul className="space-y-1.5 text-emerald-800 list-disc list-inside leading-relaxed">
               <li>Ưu tiên gặp gỡ trực tiếp tại địa điểm công cộng an toàn.</li>
-              <li>Kiểm tra cẩn thận món đồ trước khi nhận hoặc hoàn tất trao đổi.</li>
+              <li>Kiểm tra cẩn thận món đồ trước khi nhận hoàn tất trao đổi.</li>
               <li>Không chuyển khoản đặt cọc trước khi xác thực món đồ.</li>
             </ul>
           </div>
