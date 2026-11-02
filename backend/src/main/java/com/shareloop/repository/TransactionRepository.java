@@ -1,5 +1,7 @@
 package com.shareloop.repository;
 
+import com.shareloop.dto.reporting.projection.ReportBucketCountProjection;
+import com.shareloop.dto.reporting.projection.TransactionStatusCountProjection;
 import com.shareloop.entity.Transaction;
 import com.shareloop.entity.enums.TransactionStatus;
 import jakarta.persistence.LockModeType;
@@ -15,6 +17,7 @@ import org.springframework.data.jpa.domain.Specification;
 import org.springframework.data.jpa.repository.EntityGraph;
 import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
 
+import java.time.Instant;
 import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
@@ -62,4 +65,36 @@ public interface TransactionRepository extends JpaRepository<Transaction, UUID>,
     Page<Transaction> findByRequesterIdAndOptionalStatus(@Param("userId") UUID userId, @Param("status") TransactionStatus status, Pageable pageable);
 
     long countByStatus(TransactionStatus status);
+
+    @Query("SELECT COUNT(t) FROM Transaction t " +
+            "WHERE t.createdAt >= :from AND t.createdAt < :to " +
+            "AND (:status IS NULL OR t.status = :status)")
+    long countCreatedInRange(
+            @Param("from") Instant from,
+            @Param("to") Instant to,
+            @Param("status") TransactionStatus status
+    );
+
+    @Query("SELECT t.status AS status, COUNT(t) AS count FROM Transaction t " +
+            "WHERE t.createdAt >= :from AND t.createdAt < :to " +
+            "AND (:status IS NULL OR t.status = :status) " +
+            "GROUP BY t.status")
+    List<TransactionStatusCountProjection> countCreatedInRangeByStatus(
+            @Param("from") Instant from,
+            @Param("to") Instant to,
+            @Param("status") TransactionStatus status
+    );
+
+    @Query(value = "SELECT CAST(date_trunc(CAST(:granularity AS text), t.created_at AT TIME ZONE CAST(:timezone AS text)) AS date) AS bucket, " +
+            "COUNT(*) AS count " +
+            "FROM transactions t " +
+            "WHERE t.created_at >= :fromInstant AND t.created_at < :toInstant " +
+            "GROUP BY bucket " +
+            "ORDER BY bucket", nativeQuery = true)
+    List<ReportBucketCountProjection> countCreatedInRangeByBucket(
+            @Param("fromInstant") Instant fromInstant,
+            @Param("toInstant") Instant toInstant,
+            @Param("granularity") String granularity,
+            @Param("timezone") String timezone
+    );
 }

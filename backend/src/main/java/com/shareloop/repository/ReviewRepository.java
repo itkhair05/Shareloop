@@ -1,5 +1,6 @@
 package com.shareloop.repository;
 
+import com.shareloop.dto.reporting.projection.ReportBucketCountProjection;
 import com.shareloop.dto.review.RatingCountProjection;
 import com.shareloop.entity.Review;
 import org.springframework.data.domain.Page;
@@ -11,6 +12,7 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
+import java.time.Instant;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
@@ -86,4 +88,27 @@ public interface ReviewRepository extends JpaRepository<Review, UUID>, JpaSpecif
             "LEFT JOIN FETCH r.moderatedBy mb " +
             "WHERE r.id = :id")
     Optional<Review> findWithDetailsById(@Param("id") UUID id);
+
+    @Query("SELECT r.rating AS rating, COUNT(r) AS count FROM Review r " +
+            "WHERE r.createdAt >= :from AND r.createdAt < :to " +
+            "AND (:visibleOnly = false OR r.isHidden = false) " +
+            "GROUP BY r.rating")
+    List<RatingCountProjection> countCreatedInRangeByRating(
+            @Param("from") Instant from,
+            @Param("to") Instant to,
+            @Param("visibleOnly") boolean visibleOnly
+    );
+
+    @Query(value = "SELECT CAST(date_trunc(CAST(:granularity AS text), r.created_at AT TIME ZONE CAST(:timezone AS text)) AS date) AS bucket, " +
+            "COUNT(*) AS count " +
+            "FROM reviews r " +
+            "WHERE r.created_at >= :fromInstant AND r.created_at < :toInstant " +
+            "GROUP BY bucket " +
+            "ORDER BY bucket", nativeQuery = true)
+    List<ReportBucketCountProjection> countCreatedInRangeByBucket(
+            @Param("fromInstant") Instant fromInstant,
+            @Param("toInstant") Instant toInstant,
+            @Param("granularity") String granularity,
+            @Param("timezone") String timezone
+    );
 }

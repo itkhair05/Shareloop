@@ -1,12 +1,22 @@
 package com.shareloop.controller;
 
 import com.shareloop.dto.reporting.ListingsSummaryResponse;
+import com.shareloop.dto.reporting.ModerationSummaryResponse;
 import com.shareloop.dto.reporting.ReportTimeseriesResponse;
 import com.shareloop.dto.reporting.ReportingOverviewResponse;
+import com.shareloop.dto.reporting.ReviewsSummaryResponse;
+import com.shareloop.dto.reporting.SupportSummaryResponse;
 import com.shareloop.dto.reporting.TopRequestedListingsResponse;
+import com.shareloop.dto.reporting.TransactionsSummaryResponse;
 import com.shareloop.dto.reporting.UsersSummaryResponse;
 import com.shareloop.entity.enums.ListingStatus;
 import com.shareloop.entity.enums.ListingType;
+import com.shareloop.entity.enums.ReportCategory;
+import com.shareloop.entity.enums.ReportStatus;
+import com.shareloop.entity.enums.ReportTargetType;
+import com.shareloop.entity.enums.SupportCategory;
+import com.shareloop.entity.enums.SupportRequestStatus;
+import com.shareloop.entity.enums.TransactionStatus;
 import com.shareloop.entity.enums.UserRole;
 import com.shareloop.entity.enums.UserStatus;
 import com.shareloop.service.reporting.AdminReportAggregationService;
@@ -30,7 +40,7 @@ import java.util.UUID;
 
 @Tag(
         name = "Admin Reporting",
-        description = "Read-only aggregated reporting for users and listings (Phase 2)"
+        description = "Read-only aggregated reporting for users, listings, transactions, moderation reports, reviews and support requests"
 )
 @SecurityRequirement(name = "bearerAuth")
 @RestController
@@ -206,10 +216,238 @@ public class AdminReportingController {
     }
 
     @Operation(
-            summary = "Get Phase 2 reporting overview (Admin only)",
-            description = "Returns users and listings metrics for the requested [from, to) period. Response metadata "
-                    + "explicitly lists the included domains and metrics; transactions, moderation, reviews and revenue "
-                    + "are excluded from this phase."
+            summary = "Get aggregated transaction reporting metrics (Admin only)",
+            description = "Counts transactions created within the requested [from, to) period and returns the current "
+                    + "status distribution. " + AdminReportAggregationService.TRANSACTION_STATUS_SEMANTICS
+                    + " Financial, revenue, GMV, payment and fee metrics are not available."
+    )
+    @PreAuthorize("hasRole('ADMIN')")
+    @GetMapping("/transactions/summary")
+    public ResponseEntity<TransactionsSummaryResponse> getTransactionsSummary(
+            @Parameter(description = FROM_DESCRIPTION) @RequestParam(required = false)
+            @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate from,
+
+            @Parameter(description = TO_DESCRIPTION) @RequestParam(required = false)
+            @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate to,
+
+            @Parameter(description = TIMEZONE_DESCRIPTION) @RequestParam(defaultValue = ReportDateRange.DEFAULT_TIMEZONE)
+            String timezone,
+
+            @Parameter(description = "Optional filter by current status (PENDING, IN_PROGRESS, COMPLETED or CANCELLED).")
+            @RequestParam(required = false) TransactionStatus status
+    ) {
+        ReportDateRange range = ReportDateRange.of(from, to, timezone);
+        return ResponseEntity.ok(adminReportAggregationService.getTransactionsSummary(
+                AdminReportFilter.forTransactions(range, status)
+        ));
+    }
+
+    @Operation(
+            summary = "Get transaction creation time series (Admin only)",
+            description = "Returns TRANSACTION_CREATIONS counts for the requested [from, to) period, aggregated in the "
+                    + "database and zero-filled for every bucket in the period. Status history is not recorded."
+    )
+    @PreAuthorize("hasRole('ADMIN')")
+    @GetMapping("/transactions/timeseries")
+    public ResponseEntity<ReportTimeseriesResponse> getTransactionsTimeseries(
+            @Parameter(description = FROM_DESCRIPTION) @RequestParam(required = false)
+            @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate from,
+
+            @Parameter(description = TO_DESCRIPTION) @RequestParam(required = false)
+            @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate to,
+
+            @Parameter(description = TIMEZONE_DESCRIPTION) @RequestParam(defaultValue = ReportDateRange.DEFAULT_TIMEZONE)
+            String timezone,
+
+            @Parameter(description = GRANULARITY_DESCRIPTION) @RequestParam(defaultValue = "DAY")
+            ReportGranularity granularity
+    ) {
+        ReportDateRange range = ReportDateRange.of(from, to, timezone);
+        return ResponseEntity.ok(adminReportAggregationService.getTransactionsTimeseries(range, granularity));
+    }
+
+    @Operation(
+            summary = "Get aggregated moderation report metrics (Admin only)",
+            description = "Counts moderation reports created within the requested [from, to) period and returns current "
+                    + "status, category and target-type distributions. " + AdminReportAggregationService.MODERATION_STATUS_SEMANTICS
+                    + " Aggregate counts are computed directly from the reports table; polymorphic targets are not joined."
+    )
+    @PreAuthorize("hasRole('ADMIN')")
+    @GetMapping("/moderation/summary")
+    public ResponseEntity<ModerationSummaryResponse> getModerationSummary(
+            @Parameter(description = FROM_DESCRIPTION) @RequestParam(required = false)
+            @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate from,
+
+            @Parameter(description = TO_DESCRIPTION) @RequestParam(required = false)
+            @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate to,
+
+            @Parameter(description = TIMEZONE_DESCRIPTION) @RequestParam(defaultValue = ReportDateRange.DEFAULT_TIMEZONE)
+            String timezone,
+
+            @Parameter(description = "Optional filter by current status (PENDING, INVESTIGATING, RESOLVED or DISMISSED).")
+            @RequestParam(required = false) ReportStatus status,
+
+            @Parameter(description = "Optional filter by report category.")
+            @RequestParam(required = false) ReportCategory category,
+
+            @Parameter(description = "Optional filter by target type (USER, LISTING, TRANSACTION or REVIEW).")
+            @RequestParam(required = false) ReportTargetType targetType
+    ) {
+        ReportDateRange range = ReportDateRange.of(from, to, timezone);
+        return ResponseEntity.ok(adminReportAggregationService.getModerationSummary(
+                AdminReportFilter.forModeration(range, status, category, targetType)
+        ));
+    }
+
+    @Operation(
+            summary = "Get moderation report creation time series (Admin only)",
+            description = "Returns MODERATION_REPORT_CREATIONS counts for the requested [from, to) period, aggregated "
+                    + "in the database and zero-filled for every bucket in the period. Current status is not a "
+                    + "time-series filter; status history is not recorded."
+    )
+    @PreAuthorize("hasRole('ADMIN')")
+    @GetMapping("/moderation/timeseries")
+    public ResponseEntity<ReportTimeseriesResponse> getModerationTimeseries(
+            @Parameter(description = FROM_DESCRIPTION) @RequestParam(required = false)
+            @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate from,
+
+            @Parameter(description = TO_DESCRIPTION) @RequestParam(required = false)
+            @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate to,
+
+            @Parameter(description = TIMEZONE_DESCRIPTION) @RequestParam(defaultValue = ReportDateRange.DEFAULT_TIMEZONE)
+            String timezone,
+
+            @Parameter(description = GRANULARITY_DESCRIPTION) @RequestParam(defaultValue = "DAY")
+            ReportGranularity granularity,
+
+            @Parameter(description = "Optional filter by report category.")
+            @RequestParam(required = false) ReportCategory category,
+
+            @Parameter(description = "Optional filter by target type (USER, LISTING, TRANSACTION or REVIEW).")
+            @RequestParam(required = false) ReportTargetType targetType
+    ) {
+        ReportDateRange range = ReportDateRange.of(from, to, timezone);
+        return ResponseEntity.ok(adminReportAggregationService.getModerationTimeseries(
+                range, granularity, category, targetType
+        ));
+    }
+
+    @Operation(
+            summary = "Get aggregated review metrics (Admin only)",
+            description = "Counts all reviews created within the requested [from, to) period, including currently hidden "
+                    + "reviews. Returns current visibility counts, rating distributions for all and visible reviews, and "
+                    + "both average ratings. " + AdminReportAggregationService.REVIEW_VISIBILITY_SEMANTICS
+    )
+    @PreAuthorize("hasRole('ADMIN')")
+    @GetMapping("/reviews/summary")
+    public ResponseEntity<ReviewsSummaryResponse> getReviewsSummary(
+            @Parameter(description = FROM_DESCRIPTION) @RequestParam(required = false)
+            @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate from,
+
+            @Parameter(description = TO_DESCRIPTION) @RequestParam(required = false)
+            @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate to,
+
+            @Parameter(description = TIMEZONE_DESCRIPTION) @RequestParam(defaultValue = ReportDateRange.DEFAULT_TIMEZONE)
+            String timezone
+    ) {
+        ReportDateRange range = ReportDateRange.of(from, to, timezone);
+        return ResponseEntity.ok(adminReportAggregationService.getReviewsSummary(range));
+    }
+
+    @Operation(
+            summary = "Get review creation time series (Admin only)",
+            description = "Returns REVIEW_CREATIONS counts for the requested [from, to) period, aggregated in the "
+                    + "database and zero-filled for every bucket in the period. Hidden reviews are included."
+    )
+    @PreAuthorize("hasRole('ADMIN')")
+    @GetMapping("/reviews/timeseries")
+    public ResponseEntity<ReportTimeseriesResponse> getReviewsTimeseries(
+            @Parameter(description = FROM_DESCRIPTION) @RequestParam(required = false)
+            @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate from,
+
+            @Parameter(description = TO_DESCRIPTION) @RequestParam(required = false)
+            @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate to,
+
+            @Parameter(description = TIMEZONE_DESCRIPTION) @RequestParam(defaultValue = ReportDateRange.DEFAULT_TIMEZONE)
+            String timezone,
+
+            @Parameter(description = GRANULARITY_DESCRIPTION) @RequestParam(defaultValue = "DAY")
+            ReportGranularity granularity
+    ) {
+        ReportDateRange range = ReportDateRange.of(from, to, timezone);
+        return ResponseEntity.ok(adminReportAggregationService.getReviewsTimeseries(range, granularity));
+    }
+
+    @Operation(
+            summary = "Get aggregated support request metrics (Admin only)",
+            description = "Counts support requests created within the requested [from, to) period and returns current "
+                    + "status and category distributions. " + AdminReportAggregationService.SUPPORT_STATUS_SEMANTICS
+                    + " The separate currentOpenWorkload field is system-wide across all dates, is not affected by from, "
+                    + "to, status or category filters, and must not be interpreted as period-scoped data."
+    )
+    @PreAuthorize("hasRole('ADMIN')")
+    @GetMapping("/support/summary")
+    public ResponseEntity<SupportSummaryResponse> getSupportSummary(
+            @Parameter(description = FROM_DESCRIPTION) @RequestParam(required = false)
+            @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate from,
+
+            @Parameter(description = TO_DESCRIPTION) @RequestParam(required = false)
+            @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate to,
+
+            @Parameter(description = TIMEZONE_DESCRIPTION) @RequestParam(defaultValue = ReportDateRange.DEFAULT_TIMEZONE)
+            String timezone,
+
+            @Parameter(description = "Optional filter by current status (PENDING, IN_PROGRESS, RESOLVED or CLOSED).")
+            @RequestParam(required = false) SupportRequestStatus status,
+
+            @Parameter(description = "Optional filter by support category.")
+            @RequestParam(required = false) SupportCategory category
+    ) {
+        ReportDateRange range = ReportDateRange.of(from, to, timezone);
+        return ResponseEntity.ok(adminReportAggregationService.getSupportSummary(
+                AdminReportFilter.forSupport(range, status, category)
+        ));
+    }
+
+    @Operation(
+            summary = "Get support request creation time series (Admin only)",
+            description = "Returns SUPPORT_REQUEST_CREATIONS counts for the requested [from, to) period, aggregated in "
+                    + "the database and zero-filled for every bucket in the period. Optional status and category filters "
+                    + "apply to the current state of the creation cohort. currentOpenWorkload is never included."
+    )
+    @PreAuthorize("hasRole('ADMIN')")
+    @GetMapping("/support/timeseries")
+    public ResponseEntity<ReportTimeseriesResponse> getSupportTimeseries(
+            @Parameter(description = FROM_DESCRIPTION) @RequestParam(required = false)
+            @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate from,
+
+            @Parameter(description = TO_DESCRIPTION) @RequestParam(required = false)
+            @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate to,
+
+            @Parameter(description = TIMEZONE_DESCRIPTION) @RequestParam(defaultValue = ReportDateRange.DEFAULT_TIMEZONE)
+            String timezone,
+
+            @Parameter(description = GRANULARITY_DESCRIPTION) @RequestParam(defaultValue = "DAY")
+            ReportGranularity granularity,
+
+            @Parameter(description = "Optional filter by current status of the creation cohort.")
+            @RequestParam(required = false) SupportRequestStatus status,
+
+            @Parameter(description = "Optional filter by support category.")
+            @RequestParam(required = false) SupportCategory category
+    ) {
+        ReportDateRange range = ReportDateRange.of(from, to, timezone);
+        return ResponseEntity.ok(adminReportAggregationService.getSupportTimeseries(
+                range, granularity, status, category
+        ));
+    }
+
+    @Operation(
+            summary = "Get reporting overview across all six domains (Admin only)",
+            description = "Returns users, listings, transactions, moderation reports, reviews and support metrics for "
+                    + "the requested [from, to) period. Response metadata explicitly lists the included domains and metrics. "
+                    + "Support currentOpenWorkload is intentionally excluded because this overview is period-scoped. "
+                    + "Financial, resolution-time, response-time and SLA metrics are not included."
     )
     @PreAuthorize("hasRole('ADMIN')")
     @GetMapping("/overview")

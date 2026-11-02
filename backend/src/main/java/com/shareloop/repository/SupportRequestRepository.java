@@ -1,5 +1,8 @@
 package com.shareloop.repository;
 
+import com.shareloop.dto.reporting.projection.ReportBucketCountProjection;
+import com.shareloop.dto.reporting.projection.SupportCategoryCountProjection;
+import com.shareloop.dto.reporting.projection.SupportStatusCountProjection;
 import com.shareloop.entity.SupportRequest;
 import com.shareloop.entity.enums.SupportCategory;
 import com.shareloop.entity.enums.SupportRequestStatus;
@@ -10,6 +13,8 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
+import java.time.Instant;
+import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -43,4 +48,56 @@ public interface SupportRequestRepository extends JpaRepository<SupportRequest, 
     Optional<SupportRequest> findWithDetailsById(@Param("id") UUID id);
 
     long countByStatus(SupportRequestStatus status);
+
+    @Query("SELECT COUNT(s) FROM SupportRequest s " +
+            "WHERE s.createdAt >= :from AND s.createdAt < :to " +
+            "AND (:status IS NULL OR s.status = :status) " +
+            "AND (:category IS NULL OR s.category = :category)")
+    long countCreatedInRange(
+            @Param("from") Instant from,
+            @Param("to") Instant to,
+            @Param("status") SupportRequestStatus status,
+            @Param("category") SupportCategory category
+    );
+
+    @Query("SELECT s.status AS status, COUNT(s) AS count FROM SupportRequest s " +
+            "WHERE s.createdAt >= :from AND s.createdAt < :to " +
+            "AND (:status IS NULL OR s.status = :status) " +
+            "AND (:category IS NULL OR s.category = :category) " +
+            "GROUP BY s.status")
+    List<SupportStatusCountProjection> countCreatedInRangeByStatus(
+            @Param("from") Instant from,
+            @Param("to") Instant to,
+            @Param("status") SupportRequestStatus status,
+            @Param("category") SupportCategory category
+    );
+
+    @Query("SELECT s.category AS category, COUNT(s) AS count FROM SupportRequest s " +
+            "WHERE s.createdAt >= :from AND s.createdAt < :to " +
+            "AND (:status IS NULL OR s.status = :status) " +
+            "AND (:category IS NULL OR s.category = :category) " +
+            "GROUP BY s.category")
+    List<SupportCategoryCountProjection> countCreatedInRangeByCategory(
+            @Param("from") Instant from,
+            @Param("to") Instant to,
+            @Param("status") SupportRequestStatus status,
+            @Param("category") SupportCategory category
+    );
+
+    @Query(value = "SELECT CAST(date_trunc(CAST(:granularity AS text), s.created_at AT TIME ZONE CAST(:timezone AS text)) AS date) AS bucket, " +
+            "COUNT(*) AS count " +
+            "FROM support_requests s " +
+            "WHERE s.created_at >= :fromInstant AND s.created_at < :toInstant " +
+            "AND (CAST(:status AS text) IS NULL OR s.status = CAST(:status AS text)) " +
+            "AND (CAST(:category AS text) IS NULL OR s.category = CAST(:category AS text)) " +
+            "GROUP BY bucket " +
+            "ORDER BY bucket", nativeQuery = true)
+    List<ReportBucketCountProjection> countCreatedInRangeByBucket(
+            @Param("fromInstant") Instant fromInstant,
+            @Param("toInstant") Instant toInstant,
+            @Param("granularity") String granularity,
+            @Param("timezone") String timezone,
+            @Param("status") String status,
+            @Param("category") String category
+    );
 }

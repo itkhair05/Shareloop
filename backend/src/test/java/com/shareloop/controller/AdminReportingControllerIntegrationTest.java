@@ -467,7 +467,9 @@ class AdminReportingControllerIntegrationTest {
 
         JsonNode overview = getJson(BASE + "/overview" + RANGE, adminToken);
 
-        assertThat(texts(overview.at("/includedDomains"))).containsExactly("USERS", "LISTINGS");
+        assertThat(texts(overview.at("/includedDomains"))).containsExactly(
+                "USERS", "LISTINGS", "TRANSACTIONS", "MODERATION", "REVIEWS", "SUPPORT"
+        );
         assertThat(texts(overview.at("/includedMetrics"))).containsExactly(
                 "USERS_CREATED",
                 "USERS_BY_ROLE",
@@ -475,7 +477,22 @@ class AdminReportingControllerIntegrationTest {
                 "LISTINGS_CREATED",
                 "LISTINGS_BY_CURRENT_STATUS",
                 "LISTINGS_BY_TYPE",
-                "LISTINGS_BY_CATEGORY"
+                "LISTINGS_BY_CATEGORY",
+                "TRANSACTIONS_CREATED",
+                "TRANSACTIONS_BY_CURRENT_STATUS",
+                "MODERATION_REPORTS_CREATED",
+                "MODERATION_BY_CURRENT_STATUS",
+                "MODERATION_BY_CATEGORY",
+                "MODERATION_BY_TARGET_TYPE",
+                "REVIEWS_CREATED",
+                "REVIEWS_BY_VISIBILITY",
+                "REVIEWS_BY_RATING_ALL",
+                "REVIEWS_BY_RATING_VISIBLE",
+                "REVIEWS_AVERAGE_RATING_VISIBLE",
+                "REVIEWS_AVERAGE_RATING_ALL",
+                "SUPPORT_REQUESTS_CREATED",
+                "SUPPORT_BY_CURRENT_STATUS",
+                "SUPPORT_BY_CATEGORY"
         );
         assertThat(overview.at("/users/totalUsers").asLong()).isEqualTo(2);
         assertThat(keys(overview.at("/users/byStatus")))
@@ -485,7 +502,9 @@ class AdminReportingControllerIntegrationTest {
         assertThat(keys(overview.at("/listings/byStatus")))
                 .containsExactly("DRAFT", "ACTIVE", "RESERVED", "COMPLETED", "CANCELLED", "REMOVED");
         assertThat(values(overview.at("/listings/byStatus"))).containsExactly(1L, 1L, 0L, 0L, 0L, 0L);
-        assertThat(overview.at("/disclaimer").asText()).contains("Transactions");
+        assertThat(overview.at("/disclaimer").asText())
+                .contains("support requests")
+                .contains("Financial");
         assertThat(keys(overview.at("/users/byStatus"))).doesNotContain("OTHER");
         assertThat(keys(overview.at("/listings/byStatus"))).doesNotContain("OTHER");
 
