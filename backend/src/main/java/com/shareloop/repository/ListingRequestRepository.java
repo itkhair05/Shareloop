@@ -1,5 +1,6 @@
 package com.shareloop.repository;
 
+import com.shareloop.dto.reporting.projection.TopRequestedListingProjection;
 import com.shareloop.entity.ListingRequest;
 import com.shareloop.entity.enums.ListingRequestStatus;
 import org.springframework.data.domain.Page;
@@ -10,6 +11,7 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
+import java.time.Instant;
 import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
@@ -47,5 +49,24 @@ public interface ListingRequestRepository extends JpaRepository<ListingRequest, 
     long countByListingIdAndStatusIn(
             @Param("listingId") UUID listingId,
             @Param("statuses") Collection<ListingRequestStatus> statuses
+    );
+
+    @Query("SELECT l.id AS listingId, l.title AS title, o.id AS ownerId, o.displayName AS ownerDisplayName, " +
+            "c.id AS categoryId, c.name AS categoryName, l.listingType AS listingType, COUNT(r.id) AS requestCount " +
+            "FROM ListingRequest r " +
+            "JOIN r.listing l " +
+            "JOIN l.owner o " +
+            "JOIN l.category c " +
+            "WHERE r.createdAt >= :from AND r.createdAt < :to " +
+            "AND r.status IN :statuses " +
+            "AND (:categoryId IS NULL OR c.id = :categoryId) " +
+            "GROUP BY l.id, l.title, o.id, o.displayName, c.id, c.name, l.listingType " +
+            "ORDER BY COUNT(r.id) DESC, l.id ASC")
+    List<TopRequestedListingProjection> findTopRequestedListings(
+            @Param("from") Instant from,
+            @Param("to") Instant to,
+            @Param("statuses") Collection<ListingRequestStatus> statuses,
+            @Param("categoryId") UUID categoryId,
+            Pageable pageable
     );
 }
