@@ -7,6 +7,7 @@ import com.shareloop.entity.enums.UserStatus;
 import com.shareloop.repository.UserRepository;
 import com.shareloop.security.JwtService;
 import com.shareloop.service.filestorage.LocalStorageService;
+import com.shareloop.testsupport.TestStorageSupport;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -19,6 +20,8 @@ import org.springframework.http.MediaType;
 import org.springframework.mock.web.MockMultipartFile;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.test.context.ActiveProfiles;
+import org.springframework.test.context.DynamicPropertyRegistry;
+import org.springframework.test.context.DynamicPropertySource;
 import org.springframework.test.web.servlet.MockMvc;
 
 import javax.imageio.ImageIO;
@@ -27,6 +30,8 @@ import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.HashSet;
+import java.util.Set;
 import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -61,8 +66,17 @@ class FileControllerIntegrationTest {
     private User alice;
     private String aliceToken;
 
+    private final Set<String> uploadedFilenames = new HashSet<>();
+
+    @DynamicPropertySource
+    static void storageProperties(DynamicPropertyRegistry registry) {
+        TestStorageSupport.registerIsolatedRoot(registry);
+    }
+
     @BeforeEach
     void setUp() {
+        TestStorageSupport.assertEffectiveRootIsIsolated(localStorageService.getRootPath());
+
         alice = userRepository.saveAndFlush(new User(
                 "Alice Uploader",
                 "alice.upload." + UUID.randomUUID() + "@example.com",
@@ -75,21 +89,17 @@ class FileControllerIntegrationTest {
     }
 
     @AfterEach
-    void tearDown() throws IOException {
-        Path root = localStorageService.getRootPath();
-        if (root != null && Files.exists(root)) {
-            try (var stream = Files.list(root)) {
-                stream.filter(Files::isRegularFile).forEach(p -> {
-                    try {
-                        Files.deleteIfExists(p);
-                    } catch (Exception ignored) {
-                    }
-                });
-            }
-        }
+    void tearDown() {
+        TestStorageSupport.deleteOwnedFiles(localStorageService.getRootPath(), uploadedFilenames);
+        uploadedFilenames.clear();
+
         if (alice != null && alice.getId() != null) {
             userRepository.deleteById(alice.getId());
         }
+    }
+
+    private void trackUploadResponse(String responseContent) throws IOException {
+        uploadedFilenames.add(objectMapper.readTree(responseContent).get("filename").asText());
     }
 
     private byte[] createValidImage(String format, int width, int height) throws IOException {
@@ -161,6 +171,7 @@ class FileControllerIntegrationTest {
 
         // Verify file actually exists in storage root
         String filename = objectMapper.readTree(responseContent).get("filename").asText();
+        uploadedFilenames.add(filename);
         Path savedPath = localStorageService.getRootPath().resolve(filename);
         assertThat(Files.exists(savedPath)).isTrue();
         assertThat(Files.readAllBytes(savedPath)).isEqualTo(jpegBytes);
@@ -178,7 +189,7 @@ class FileControllerIntegrationTest {
                 pngBytes
         );
 
-        mockMvc.perform(multipart("/api/v1/files/upload")
+        String responseContent = mockMvc.perform(multipart("/api/v1/files/upload")
                         .file(file)
                         .header(HttpHeaders.AUTHORIZATION, aliceToken))
                 .andExpect(status().isCreated())
@@ -186,7 +197,10 @@ class FileControllerIntegrationTest {
                 .andExpect(jsonPath("$.filename", endsWith(".png")))
                 .andExpect(jsonPath("$.contentType", is("image/png")))
                 .andExpect(jsonPath("$.size", is(pngBytes.length)))
-                .andExpect(jsonPath("$.url", startsWith("/api/v1/files/")));
+                .andExpect(jsonPath("$.url", startsWith("/api/v1/files/")))
+                .andReturn().getResponse().getContentAsString();
+
+        trackUploadResponse(responseContent);
     }
 
     @Test
@@ -254,12 +268,15 @@ class FileControllerIntegrationTest {
                 jpegBytes
         );
 
-        mockMvc.perform(multipart("/api/v1/files/upload")
+        String responseContent = mockMvc.perform(multipart("/api/v1/files/upload")
                         .file(file)
                         .header(HttpHeaders.AUTHORIZATION, aliceToken))
                 .andExpect(status().isCreated())
                 .andExpect(jsonPath("$.filename", endsWith(".jpg")))
-                .andExpect(jsonPath("$.contentType").value("image/jpeg"));
+                .andExpect(jsonPath("$.contentType").value("image/jpeg"))
+                .andReturn().getResponse().getContentAsString();
+
+        trackUploadResponse(responseContent);
     }
 
     @Test
@@ -274,12 +291,15 @@ class FileControllerIntegrationTest {
                 pngBytes
         );
 
-        mockMvc.perform(multipart("/api/v1/files/upload")
+        String responseContent = mockMvc.perform(multipart("/api/v1/files/upload")
                         .file(file)
                         .header(HttpHeaders.AUTHORIZATION, aliceToken))
                 .andExpect(status().isCreated())
                 .andExpect(jsonPath("$.filename", endsWith(".png")))
-                .andExpect(jsonPath("$.contentType").value("image/png"));
+                .andExpect(jsonPath("$.contentType").value("image/png"))
+                .andReturn().getResponse().getContentAsString();
+
+        trackUploadResponse(responseContent);
     }
 
     @Test
@@ -368,6 +388,7 @@ class FileControllerIntegrationTest {
                 .andReturn().getResponse().getContentAsString();
 
         String generatedFilename = objectMapper.readTree(responseContent).get("filename").asText();
+        uploadedFilenames.add(generatedFilename);
 
         // Generated filename must be a clean UUID + .jpg, not the malicious client string
         assertThat(generatedFilename).doesNotContain("..");
@@ -420,6 +441,7 @@ class FileControllerIntegrationTest {
                 .andReturn().getResponse().getContentAsString();
 
         String filename = objectMapper.readTree(responseContent).get("filename").asText();
+        uploadedFilenames.add(filename);
 
         // Anonymous retrieval of uploaded image must succeed
         mockMvc.perform(get("/api/v1/files/" + filename))

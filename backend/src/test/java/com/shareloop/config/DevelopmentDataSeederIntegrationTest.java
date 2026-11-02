@@ -9,7 +9,10 @@ import com.shareloop.repository.CategoryRepository;
 import com.shareloop.repository.ListingRepository;
 import com.shareloop.repository.UserRepository;
 import com.shareloop.service.ListingService;
+import com.shareloop.service.filestorage.LocalStorageService;
+import com.shareloop.testsupport.TestStorageSupport;
 import org.junit.jupiter.api.AfterAll;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -18,6 +21,8 @@ import org.springframework.data.domain.Page;
 import org.springframework.mock.env.MockEnvironment;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.test.context.ActiveProfiles;
+import org.springframework.test.context.DynamicPropertyRegistry;
+import org.springframework.test.context.DynamicPropertySource;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
@@ -55,6 +60,19 @@ class DevelopmentDataSeederIntegrationTest {
 
     @Autowired
     private org.springframework.jdbc.core.JdbcTemplate jdbcTemplate;
+
+    @Autowired
+    private LocalStorageService localStorageService;
+
+    @DynamicPropertySource
+    static void storageProperties(DynamicPropertyRegistry registry) {
+        TestStorageSupport.registerIsolatedRoot(registry);
+    }
+
+    @BeforeEach
+    void assertStorageIsolation() {
+        TestStorageSupport.assertEffectiveRootIsIsolated(localStorageService.getRootPath());
+    }
 
     @Test
     @DisplayName("Verify Flyway V8 migration localizes all 9 categories to Vietnamese with stable slugs")

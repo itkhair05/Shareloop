@@ -25,6 +25,7 @@ import com.shareloop.repository.UploadedFileRepository;
 import com.shareloop.repository.UserRepository;
 import com.shareloop.security.JwtService;
 import com.shareloop.service.filestorage.LocalStorageService;
+import com.shareloop.testsupport.TestStorageSupport;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -37,6 +38,8 @@ import org.springframework.http.MediaType;
 import org.springframework.mock.web.MockMultipartFile;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.test.context.ActiveProfiles;
+import org.springframework.test.context.DynamicPropertyRegistry;
+import org.springframework.test.context.DynamicPropertySource;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.ResultActions;
 
@@ -45,7 +48,6 @@ import java.awt.image.BufferedImage;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.nio.file.Files;
-import java.nio.file.Path;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
@@ -111,8 +113,15 @@ class ChatImageAttachmentIntegrationTest {
 
     private final Set<String> uploadedFilenames = new HashSet<>();
 
+    @DynamicPropertySource
+    static void storageProperties(DynamicPropertyRegistry registry) {
+        TestStorageSupport.registerIsolatedRoot(registry);
+    }
+
     @BeforeEach
     void setUp() {
+        TestStorageSupport.assertEffectiveRootIsIsolated(localStorageService.getRootPath());
+
         ownerAlice = userRepository.saveAndFlush(new User(
                 "Alice Owner",
                 "alice.chat.img." + UUID.randomUUID() + "@example.com",
@@ -173,13 +182,8 @@ class ChatImageAttachmentIntegrationTest {
             }
         }
 
-        Path root = localStorageService.getRootPath();
-        for (String filename : uploadedFilenames) {
-            try {
-                Files.deleteIfExists(root.resolve(filename));
-            } catch (IOException ignored) {
-            }
-        }
+        TestStorageSupport.deleteOwnedFiles(localStorageService.getRootPath(), uploadedFilenames);
+        uploadedFilenames.clear();
     }
 
     // -------------------------------------------------------------------------

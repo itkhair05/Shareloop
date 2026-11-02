@@ -9,6 +9,8 @@ import com.shareloop.repository.UserRepository;
 import com.shareloop.security.JwtService;
 import com.shareloop.service.AvatarService;
 import com.shareloop.service.filestorage.LocalStorageService;
+import com.shareloop.testsupport.TestStorageSupport;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -19,6 +21,8 @@ import org.springframework.http.HttpMethod;
 import org.springframework.mock.web.MockMultipartFile;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.test.context.ActiveProfiles;
+import org.springframework.test.context.DynamicPropertyRegistry;
+import org.springframework.test.context.DynamicPropertySource;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.request.MockMvcRequestBuilders;
 import org.springframework.transaction.annotation.Transactional;
@@ -29,6 +33,8 @@ import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.HashSet;
+import java.util.Set;
 import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -66,8 +72,17 @@ class AvatarControllerIntegrationTest {
     private User testUser;
     private String userToken;
 
+    private final Set<String> uploadedFilenames = new HashSet<>();
+
+    @DynamicPropertySource
+    static void storageProperties(DynamicPropertyRegistry registry) {
+        TestStorageSupport.registerIsolatedRoot(registry);
+    }
+
     @BeforeEach
     void setUp() {
+        TestStorageSupport.assertEffectiveRootIsIsolated(localStorageService.getRootPath());
+
         testUser = new User(
                 "Avatar Tester",
                 "avatar.tester." + UUID.randomUUID() + "@example.com",
@@ -84,6 +99,20 @@ class AvatarControllerIntegrationTest {
                 testUser.getRole(),
                 testUser.getStatus()
         );
+    }
+
+    @AfterEach
+    void tearDown() {
+        TestStorageSupport.deleteOwnedFiles(localStorageService.getRootPath(), uploadedFilenames);
+        uploadedFilenames.clear();
+    }
+
+    private void trackAvatar(String responseBody) throws IOException {
+        UserProfileResponse response = objectMapper.readValue(responseBody, UserProfileResponse.class);
+        String filename = avatarService.extractManagedFilename(response.getAvatarUrl());
+        if (filename != null) {
+            uploadedFilenames.add(filename);
+        }
     }
 
     private byte[] createTestImage(String format) throws IOException {
@@ -118,6 +147,7 @@ class AvatarControllerIntegrationTest {
         // Verify file exists on disk
         String filename = avatarService.extractManagedFilename(response.getAvatarUrl());
         assertThat(filename).isNotNull();
+        uploadedFilenames.add(filename);
         Path filePath = localStorageService.getRootPath().resolve(filename);
         assertThat(Files.exists(filePath)).isTrue();
     }
@@ -128,14 +158,17 @@ class AvatarControllerIntegrationTest {
         byte[] pngBytes = createTestImage("png");
         MockMultipartFile file = new MockMultipartFile("file", "avatar.png", "image/png", pngBytes);
 
-        mockMvc.perform(
+        String responseBody = mockMvc.perform(
                 MockMvcRequestBuilders.multipart(HttpMethod.PUT, "/api/v1/auth/me/avatar")
                         .file(file)
                         .header("Authorization", "Bearer " + userToken)
         )
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.avatarUrl").value(org.hamcrest.Matchers.endsWith(".png")))
-                .andExpect(jsonPath("$.customAvatarUrl").value(org.hamcrest.Matchers.endsWith(".png")));
+                .andExpect(jsonPath("$.customAvatarUrl").value(org.hamcrest.Matchers.endsWith(".png")))
+                .andReturn().getResponse().getContentAsString();
+
+        trackAvatar(responseBody);
     }
 
     @Test
@@ -144,14 +177,17 @@ class AvatarControllerIntegrationTest {
         byte[] jpegBytes = createTestImage("jpg");
         MockMultipartFile file = new MockMultipartFile("file", "avatar.png", "image/png", jpegBytes);
 
-        mockMvc.perform(
+        String responseBody = mockMvc.perform(
                 MockMvcRequestBuilders.multipart(HttpMethod.PUT, "/api/v1/auth/me/avatar")
                         .file(file)
                         .header("Authorization", "Bearer " + userToken)
         )
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.avatarUrl").value(org.hamcrest.Matchers.endsWith(".jpg")))
-                .andExpect(jsonPath("$.customAvatarUrl").value(org.hamcrest.Matchers.endsWith(".jpg")));
+                .andExpect(jsonPath("$.customAvatarUrl").value(org.hamcrest.Matchers.endsWith(".jpg")))
+                .andReturn().getResponse().getContentAsString();
+
+        trackAvatar(responseBody);
     }
 
     @Test
@@ -160,14 +196,17 @@ class AvatarControllerIntegrationTest {
         byte[] pngBytes = createTestImage("png");
         MockMultipartFile file = new MockMultipartFile("file", "avatar.jpg", "image/jpeg", pngBytes);
 
-        mockMvc.perform(
+        String responseBody = mockMvc.perform(
                 MockMvcRequestBuilders.multipart(HttpMethod.PUT, "/api/v1/auth/me/avatar")
                         .file(file)
                         .header("Authorization", "Bearer " + userToken)
         )
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.avatarUrl").value(org.hamcrest.Matchers.endsWith(".png")))
-                .andExpect(jsonPath("$.customAvatarUrl").value(org.hamcrest.Matchers.endsWith(".png")));
+                .andExpect(jsonPath("$.customAvatarUrl").value(org.hamcrest.Matchers.endsWith(".png")))
+                .andReturn().getResponse().getContentAsString();
+
+        trackAvatar(responseBody);
     }
 
     @Test
@@ -184,6 +223,7 @@ class AvatarControllerIntegrationTest {
 
         UserProfileResponse firstResp = objectMapper.readValue(firstRespBody, UserProfileResponse.class);
         String firstFilename = avatarService.extractManagedFilename(firstResp.getAvatarUrl());
+        uploadedFilenames.add(firstFilename);
         Path firstPath = localStorageService.getRootPath().resolve(firstFilename);
         assertThat(Files.exists(firstPath)).isTrue();
 
@@ -198,6 +238,7 @@ class AvatarControllerIntegrationTest {
 
         UserProfileResponse secondResp = objectMapper.readValue(secondRespBody, UserProfileResponse.class);
         String secondFilename = avatarService.extractManagedFilename(secondResp.getAvatarUrl());
+        uploadedFilenames.add(secondFilename);
         Path secondPath = localStorageService.getRootPath().resolve(secondFilename);
 
         assertThat(secondFilename).isNotEqualTo(firstFilename);
@@ -286,6 +327,7 @@ class AvatarControllerIntegrationTest {
 
         UserProfileResponse profileAfterUpload = objectMapper.readValue(uploadResp, UserProfileResponse.class);
         String filename = avatarService.extractManagedFilename(profileAfterUpload.getAvatarUrl());
+        uploadedFilenames.add(filename);
         Path filePath = localStorageService.getRootPath().resolve(filename);
         assertThat(Files.exists(filePath)).isTrue();
 

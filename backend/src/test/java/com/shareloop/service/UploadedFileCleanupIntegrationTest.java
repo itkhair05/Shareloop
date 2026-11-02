@@ -18,6 +18,7 @@ import com.shareloop.repository.ListingRepository;
 import com.shareloop.repository.UploadedFileRepository;
 import com.shareloop.repository.UserRepository;
 import com.shareloop.service.filestorage.LocalStorageService;
+import com.shareloop.testsupport.TestStorageSupport;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -26,6 +27,8 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.test.context.ActiveProfiles;
+import org.springframework.test.context.DynamicPropertyRegistry;
+import org.springframework.test.context.DynamicPropertySource;
 import org.springframework.transaction.PlatformTransactionManager;
 import org.springframework.transaction.support.TransactionTemplate;
 
@@ -86,8 +89,15 @@ class UploadedFileCleanupIntegrationTest {
 
     private final Set<String> trackedFilenames = new HashSet<>();
 
+    @DynamicPropertySource
+    static void storageProperties(DynamicPropertyRegistry registry) {
+        TestStorageSupport.registerIsolatedRoot(registry);
+    }
+
     @BeforeEach
     void setUp() {
+        TestStorageSupport.assertEffectiveRootIsIsolated(localStorageService.getRootPath());
+
         transactionTemplate = new TransactionTemplate(transactionManager);
 
         owner = userRepository.saveAndFlush(new User(

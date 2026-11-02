@@ -25,6 +25,12 @@ app:
     enabled: false
   admin-bootstrap:
     enabled: false
+  storage:
+    provider: local
+    local:
+      # Isolated from the development uploads directory; guarded by TestStorageSupport.
+      root-dir: target/test-uploads
+      base-url: /api/v1/files
   uploads:
     cleanup:
       # Background sweep is driven explicitly by tests, never by the scheduler.
