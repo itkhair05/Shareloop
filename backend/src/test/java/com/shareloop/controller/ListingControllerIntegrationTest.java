@@ -141,6 +141,25 @@ class ListingControllerIntegrationTest {
         return listingRepository.saveAndFlush(listing);
     }
 
+    private User createUser(String name) {
+        return userRepository.saveAndFlush(new User(
+                name,
+                name.toLowerCase().replace(" ", ".") + "." + UUID.randomUUID() + "@example.com",
+                passwordEncoder.encode("Password123!"),
+                UserRole.USER,
+                UserStatus.ACTIVE
+        ));
+    }
+
+    private void createRequest(Listing listing, User requester, ListingRequestStatus status) {
+        listingRequestRepository.saveAndFlush(new ListingRequest(
+                listing,
+                requester,
+                "Request with status " + status,
+                status
+        ));
+    }
+
     @Nested
     @DisplayName("Public Listings Browsing & Filtering")
     class PublicBrowsingTests {
@@ -271,6 +290,41 @@ class ListingControllerIntegrationTest {
             mockMvc.perform(get("/api/v1/listings/{id}", UUID.randomUUID()))
                     .andExpect(status().isNotFound())
                     .andExpect(jsonPath("$.message").value(containsString("Listing not found")));
+        }
+
+        @Test
+        @DisplayName("Expose aggregate request count for PENDING, ACCEPTED and REJECTED only")
+        void exposeAggregateRequestCountForCountedStatuses() throws Exception {
+            Listing listing = createListing(userAlice, electronicsCategory, ListingType.GIVEAWAY, "Request Counted Item", "Ha Noi", ListingStatus.ACTIVE);
+            listing.setQuantity(4);
+            listingRepository.saveAndFlush(listing);
+
+            createRequest(listing, userBob, ListingRequestStatus.PENDING);
+            createRequest(listing, adminUser, ListingRequestStatus.ACCEPTED);
+            createRequest(listing, createUser("Count Rejected"), ListingRequestStatus.REJECTED);
+            createRequest(listing, createUser("Count Withdrawn"), ListingRequestStatus.WITHDRAWN);
+            createRequest(listing, createUser("Count Cancelled"), ListingRequestStatus.CANCELLED);
+
+            mockMvc.perform(get("/api/v1/listings/{id}", listing.getId()))
+                    .andExpect(status().isOk())
+                    .andExpect(jsonPath("$.requestCount").value(3))
+                    .andExpect(jsonPath("$.quantity").value(4))
+                    .andExpect(jsonPath("$.requests").doesNotExist())
+                    .andExpect(jsonPath("$.requester").doesNotExist())
+                    .andExpect(jsonPath("$.requesterId").doesNotExist());
+        }
+
+        @Test
+        @DisplayName("Expose requestCount 0 and omit absent optional specifications")
+        void exposeZeroRequestCountAndAbsentSpecifications() throws Exception {
+            Listing listing = createListing(userAlice, electronicsCategory, ListingType.GIVEAWAY, "No Requests Item", "Ha Noi", ListingStatus.ACTIVE);
+
+            mockMvc.perform(get("/api/v1/listings/{id}", listing.getId()))
+                    .andExpect(status().isOk())
+                    .andExpect(jsonPath("$.requestCount").value(0))
+                    .andExpect(jsonPath("$.size").doesNotExist())
+                    .andExpect(jsonPath("$.condition").doesNotExist())
+                    .andExpect(jsonPath("$.quantity").doesNotExist());
         }
 
         @Test
@@ -508,9 +562,85 @@ class ListingControllerIntegrationTest {
         }
 
         @Test
-        @DisplayName("Reject unauthenticated listing creation with 401")
-        void rejectUnauthenticatedCreation() throws Exception {
+        @DisplayName("Create listing with optional size, condition and quantity")
+        void createListingWithOptionalSpecifications() throws Exception {
             CreateListingRequest request = new CreateListingRequest(
+                    ListingType.SALE,
+                    electronicsCategory.getId(),
+                    "Vintage Desk Lamp",
+                    "Working lamp with minor scratches",
+                    "Ha Noi"
+            );
+            request.setPrice(new BigDecimal("120000.00"));
+            request.setCurrency("VND");
+            request.setSize("  30 x 20 x 40 cm  ");
+            request.setCondition(ListingCondition.USED);
+            request.setQuantity(2);
+
+            mockMvc.perform(post("/api/v1/listings")
+                            .header(HttpHeaders.AUTHORIZATION, aliceToken)
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content(objectMapper.writeValueAsString(request)))
+                    .andExpect(status().isCreated())
+                    .andExpect(jsonPath("$.size").value("30 x 20 x 40 cm"))
+                    .andExpect(jsonPath("$.condition").value("USED"))
+                    .andExpect(jsonPath("$.quantity").value(2));
+        }
+
+        @Test
+        @DisplayName("Reject invalid specification values on creation")
+        void rejectInvalidSpecificationsOnCreation() throws Exception {
+            CreateListingRequest zeroQuantity = new CreateListingRequest(
+                    ListingType.GIVEAWAY,
+                    electronicsCategory.getId(),
+                    "Zero Quantity Item",
+                    "Should be rejected",
+                    "Ha Noi"
+            );
+            zeroQuantity.setQuantity(0);
+
+            mockMvc.perform(post("/api/v1/listings")
+                            .header(HttpHeaders.AUTHORIZATION, aliceToken)
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content(objectMapper.writeValueAsString(zeroQuantity)))
+                    .andExpect(status().isBadRequest())
+                    .andExpect(jsonPath("$.errors.quantity").exists());
+
+            CreateListingRequest oversizedSize = new CreateListingRequest(
+                    ListingType.GIVEAWAY,
+                    electronicsCategory.getId(),
+                    "Oversized Label Item",
+                    "Should be rejected",
+                    "Ha Noi"
+            );
+            oversizedSize.setSize("x".repeat(31));
+
+            mockMvc.perform(post("/api/v1/listings")
+                            .header(HttpHeaders.AUTHORIZATION, aliceToken)
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content(objectMapper.writeValueAsString(oversizedSize)))
+                    .andExpect(status().isBadRequest())
+                    .andExpect(jsonPath("$.errors.size").exists());
+
+            mockMvc.perform(post("/api/v1/listings")
+                            .header(HttpHeaders.AUTHORIZATION, aliceToken)
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content("""
+                                    {
+                                      "listingType": "GIVEAWAY",
+                                      "categoryId": "%s",
+                                      "title": "Unknown Condition Item",
+                                      "description": "Should be rejected",
+                                      "city": "Ha Noi",
+                                      "condition": "BROKEN"
+                                    }
+                                    """.formatted(electronicsCategory.getId())))
+                    .andExpect(status().isBadRequest());
+        }
+
+        @Test
+        @DisplayName("Reject unauthenticated listing creation with 401")
+        void rejectUnauthenticatedCreation() throws Exception {            CreateListingRequest request = new CreateListingRequest(
                     ListingType.GIVEAWAY,
                     electronicsCategory.getId(),
                     "Free Mouse",
@@ -742,6 +872,46 @@ class ListingControllerIntegrationTest {
                             .content(objectMapper.writeValueAsString(request)))
                     .andExpect(status().isBadRequest())
                     .andExpect(jsonPath("$.message").value(containsString("Cannot manually transition listing to protected status")));
+        }
+
+        @Test
+        @DisplayName("Owner can selectively update or clear optional specifications")
+        void ownerSelectivelyUpdatesSpecifications() throws Exception {
+            Listing listing = createListing(userAlice, electronicsCategory, ListingType.SALE, "Spec Item", "Ha Noi", ListingStatus.ACTIVE);
+            listing.setSize("Size M");
+            listing.setCondition(ListingCondition.USED);
+            listing.setQuantity(3);
+            listingRepository.saveAndFlush(listing);
+
+            mockMvc.perform(put("/api/v1/listings/{id}", listing.getId())
+                            .header(HttpHeaders.AUTHORIZATION, aliceToken)
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content("{\"size\": null, \"condition\": \"NEW\"}"))
+                    .andExpect(status().isOk())
+                    .andExpect(jsonPath("$.size").doesNotExist())
+                    .andExpect(jsonPath("$.condition").value("NEW"))
+                    .andExpect(jsonPath("$.quantity").value(3));
+
+            mockMvc.perform(put("/api/v1/listings/{id}", listing.getId())
+                            .header(HttpHeaders.AUTHORIZATION, aliceToken)
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content("{\"quantity\": null}"))
+                    .andExpect(status().isOk())
+                    .andExpect(jsonPath("$.quantity").doesNotExist())
+                    .andExpect(jsonPath("$.condition").value("NEW"));
+        }
+
+        @Test
+        @DisplayName("Reject non-positive quantity on update")
+        void rejectNonPositiveQuantityOnUpdate() throws Exception {
+            Listing listing = createListing(userAlice, electronicsCategory, ListingType.SALE, "Spec Item", "Ha Noi", ListingStatus.ACTIVE);
+
+            mockMvc.perform(put("/api/v1/listings/{id}", listing.getId())
+                            .header(HttpHeaders.AUTHORIZATION, aliceToken)
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content("{\"quantity\": 0}"))
+                    .andExpect(status().isBadRequest())
+                    .andExpect(jsonPath("$.errors.quantity").exists());
         }
 
         @Test

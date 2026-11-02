@@ -75,6 +75,9 @@ const mockExistingListing: ListingResponse = {
   description: 'Nồi cơm điện dùng tốt, lòng nồi chống dính không trầy xước.',
   price: 500000,
   currency: 'VND',
+  size: '1.8L',
+  condition: 'USED',
+  quantity: 2,
   status: 'ACTIVE',
   neighborhood: 'Phường 25',
   city: 'Bình Thạnh',
@@ -250,6 +253,9 @@ describe('CreateListingPage & ListingForm', () => {
         categoryId: 'cat-1',
         price: null,
         currency: null,
+        size: null,
+        condition: null,
+        quantity: null,
         city: 'Hà Nội',
         neighborhood: 'Cầu Giấy',
         stateProvince: null,
@@ -258,6 +264,52 @@ describe('CreateListingPage & ListingForm', () => {
         images: [{ imageUrl: '/api/v1/files/sample.jpg', sortOrder: 0 }],
       });
     });
+  });
+
+  it('submits optional size, condition, and quantity specifications', async () => {
+    const user = userEvent.setup();
+    vi.mocked(listingApi.createListing).mockResolvedValue({
+      ...mockExistingListing,
+      id: 'b0000000-0000-0000-0000-000000000003',
+    });
+
+    renderWithProviders(<CreateListingPage />);
+
+    await user.type(screen.getByLabelText(/tiêu đề bài đăng/i), 'Bàn phím cơ');
+    await user.type(screen.getByLabelText(/mô tả chi tiết/i), 'Bàn phím còn tốt');
+    await user.selectOptions(screen.getByLabelText(/danh mục/i), 'cat-2');
+    await user.type(screen.getByLabelText(/thành phố \/ tỉnh/i), 'Đà Nẵng');
+    await user.type(screen.getByLabelText(/kích thước \/ size/i), '40 x 15 cm');
+    await user.selectOptions(screen.getByLabelText(/tình trạng/i), 'USED');
+    await user.type(screen.getByLabelText(/số lượng/i), '3');
+
+    await user.click(screen.getByRole('button', { name: /^đăng bài ngay$/i }));
+
+    await waitFor(() => {
+      expect(listingApi.createListing).toHaveBeenCalledWith(
+        expect.objectContaining({
+          size: '40 x 15 cm',
+          condition: 'USED',
+          quantity: 3,
+        })
+      );
+    });
+  });
+
+  it('validates non-positive quantity before submission', async () => {
+    const user = userEvent.setup();
+    renderWithProviders(<CreateListingPage />);
+
+    await user.type(screen.getByLabelText(/tiêu đề bài đăng/i), 'Bàn phím cơ');
+    await user.type(screen.getByLabelText(/mô tả chi tiết/i), 'Bàn phím còn tốt');
+    await user.selectOptions(screen.getByLabelText(/danh mục/i), 'cat-2');
+    await user.type(screen.getByLabelText(/thành phố \/ tỉnh/i), 'Đà Nẵng');
+    await user.type(screen.getByLabelText(/số lượng/i), '0');
+
+    await user.click(screen.getByRole('button', { name: /^đăng bài ngay$/i }));
+
+    expect(screen.getByText(/số lượng phải là số nguyên lớn hơn 0/i)).toBeInTheDocument();
+    expect(listingApi.createListing).not.toHaveBeenCalled();
   });
 
   it('navigates back to /my-listings when clicking Quay lại button', async () => {
@@ -338,6 +390,9 @@ describe('EditListingPage', () => {
     );
     expect(screen.getByLabelText(/danh mục/i)).toHaveValue('cat-1');
     expect(screen.getByLabelText(/giá bán/i)).toHaveValue(500000);
+    expect(screen.getByLabelText(/kích thước \/ size/i)).toHaveValue('1.8L');
+    expect(screen.getByLabelText(/tình trạng/i)).toHaveValue('USED');
+    expect(screen.getByLabelText(/số lượng/i)).toHaveValue(2);
 
     // Modify title
     await user.clear(titleInput);
@@ -354,6 +409,9 @@ describe('EditListingPage', () => {
           title: 'Nồi cơm điện Cuckoo 1.8L (Đã cập nhật)',
           price: 500000,
           currency: 'VND',
+          size: '1.8L',
+          condition: 'USED',
+          quantity: 2,
         })
       );
     });

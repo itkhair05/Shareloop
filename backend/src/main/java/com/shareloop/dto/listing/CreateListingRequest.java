@@ -1,7 +1,9 @@
 package com.shareloop.dto.listing;
 
+import com.shareloop.entity.enums.ListingCondition;
 import com.shareloop.entity.enums.ListingType;
 import jakarta.validation.Valid;
+import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
@@ -30,6 +32,14 @@ public class CreateListingRequest {
 
     @Size(max = 3, message = "Currency code must be 3 characters")
     private String currency;
+
+    @Size(max = 30, message = "Size must not exceed 30 characters")
+    private String size;
+
+    private ListingCondition condition;
+
+    @Min(value = 1, message = "Quantity must be at least 1")
+    private Integer quantity;
 
     @Size(max = 100, message = "Neighborhood must not exceed 100 characters")
     private String neighborhood;
@@ -113,6 +123,30 @@ public class CreateListingRequest {
 
     public void setCurrency(String currency) {
         this.currency = currency != null ? currency.trim().toUpperCase() : null;
+    }
+
+    public String getSize() {
+        return size;
+    }
+
+    public void setSize(String size) {
+        this.size = size != null ? size.trim() : null;
+    }
+
+    public ListingCondition getCondition() {
+        return condition;
+    }
+
+    public void setCondition(ListingCondition condition) {
+        this.condition = condition;
+    }
+
+    public Integer getQuantity() {
+        return quantity;
+    }
+
+    public void setQuantity(Integer quantity) {
+        this.quantity = quantity;
     }
 
     public String getNeighborhood() {

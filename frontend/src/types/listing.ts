@@ -14,6 +14,8 @@
 
 export type ListingType = 'GIVEAWAY' | 'SALE' | 'WANTED';
 
+export type ListingCondition = 'NEW' | 'USED';
+
 export type ListingStatus =
   | 'DRAFT'
   | 'ACTIVE'
@@ -82,6 +84,10 @@ export interface ListingResponse {
   price: number | null;
   currency: string | null;
   status: ListingStatus;
+  size?: string | null;
+  condition?: ListingCondition | null;
+  quantity?: number | null;
+  requestCount?: number | null;
   neighborhood: string | null;
   city: string | null;
   stateProvince: string | null;
@@ -131,6 +137,9 @@ export interface CreateListingRequest {
   categoryId: string;
   price?: number | null;
   currency?: string | null;
+  size?: string | null;
+  condition?: ListingCondition | null;
+  quantity?: number | null;
   neighborhood?: string | null;
   city: string;
   stateProvince?: string | null;
@@ -150,6 +159,9 @@ export interface UpdateListingRequest {
   price?: number | null;
   currency?: string | null;
   status?: ListingStatus;
+  size?: string | null;
+  condition?: ListingCondition | null;
+  quantity?: number | null;
   neighborhood?: string | null;
   city?: string;
   stateProvince?: string | null;

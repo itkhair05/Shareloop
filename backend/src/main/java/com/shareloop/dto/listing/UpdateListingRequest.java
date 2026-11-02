@@ -1,8 +1,10 @@
 package com.shareloop.dto.listing;
 
+import com.shareloop.entity.enums.ListingCondition;
 import com.shareloop.entity.enums.ListingStatus;
 import com.shareloop.entity.enums.ListingType;
 import jakarta.validation.Valid;
+import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.Size;
 
 import java.math.BigDecimal;
@@ -47,6 +49,14 @@ public class UpdateListingRequest {
 
     @Size(max = 3, message = "Currency code must be 3 characters")
     private String currency;
+
+    @Size(max = 30, message = "Size must not exceed 30 characters")
+    private String size;
+
+    private ListingCondition condition;
+
+    @Min(value = 1, message = "Quantity must be at least 1")
+    private Integer quantity;
 
     private ListingStatus status;
 
@@ -148,6 +158,45 @@ public class UpdateListingRequest {
     public void setCurrency(String currency) {
         this.currency = currency != null ? currency.trim().toUpperCase() : null;
         this.presentFields.add("currency");
+    }
+
+    public boolean hasSize() {
+        return presentFields.contains("size");
+    }
+
+    public String getSize() {
+        return size;
+    }
+
+    public void setSize(String size) {
+        this.size = size != null ? size.trim() : null;
+        this.presentFields.add("size");
+    }
+
+    public boolean hasCondition() {
+        return presentFields.contains("condition");
+    }
+
+    public ListingCondition getCondition() {
+        return condition;
+    }
+
+    public void setCondition(ListingCondition condition) {
+        this.condition = condition;
+        this.presentFields.add("condition");
+    }
+
+    public boolean hasQuantity() {
+        return presentFields.contains("quantity");
+    }
+
+    public Integer getQuantity() {
+        return quantity;
+    }
+
+    public void setQuantity(Integer quantity) {
+        this.quantity = quantity;
+        this.presentFields.add("quantity");
     }
 
     public boolean hasStatus() {

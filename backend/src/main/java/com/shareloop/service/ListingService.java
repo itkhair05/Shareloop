@@ -7,6 +7,7 @@ import com.shareloop.entity.ListingImage;
 import com.shareloop.entity.User;
 import com.shareloop.entity.enums.ListingStatus;
 import com.shareloop.entity.enums.ListingType;
+import com.shareloop.entity.enums.ListingRequestStatus;
 import com.shareloop.entity.enums.TransactionStatus;
 import com.shareloop.entity.enums.UserRole;
 import com.shareloop.entity.ListingCreationEvent;
@@ -44,6 +45,12 @@ public class ListingService {
             TransactionStatus.PENDING,
             TransactionStatus.IN_PROGRESS,
             TransactionStatus.COMPLETED
+    );
+
+    private static final Set<ListingRequestStatus> COUNTED_REQUEST_STATUSES = Set.of(
+            ListingRequestStatus.PENDING,
+            ListingRequestStatus.ACCEPTED,
+            ListingRequestStatus.REJECTED
     );
 
     private final ListingRepository listingRepository;
@@ -126,7 +133,10 @@ public class ListingService {
             }
         }
 
-        return ListingResponse.fromEntity(listing);
+        ListingResponse response = ListingResponse.fromEntity(listing);
+        long requestCount = listingRequestRepository.countByListingIdAndStatusIn(id, COUNTED_REQUEST_STATUSES);
+        response.setRequestCount(Math.toIntExact(requestCount));
+        return response;
     }
 
     @Transactional
@@ -173,6 +183,9 @@ public class ListingService {
 
         listing.setPrice(priceAndCurrency.price());
         listing.setCurrency(priceAndCurrency.currency());
+        listing.setSize(normalizeOptionalText(request.getSize()));
+        listing.setCondition(request.getCondition());
+        listing.setQuantity(request.getQuantity());
         listing.setNeighborhood(request.getNeighborhood());
         listing.setStateProvince(request.getStateProvince());
         listing.setPostalCode(request.getPostalCode());
@@ -325,6 +338,15 @@ public class ListingService {
         }
 
         // 4. Optional attributes: explicit null clears, non-null updates, omitted preserves
+        if (request.hasSize()) {
+            listing.setSize(normalizeOptionalText(request.getSize()));
+        }
+        if (request.hasCondition()) {
+            listing.setCondition(request.getCondition());
+        }
+        if (request.hasQuantity()) {
+            listing.setQuantity(request.getQuantity());
+        }
         if (request.hasNeighborhood()) {
             listing.setNeighborhood(request.getNeighborhood() != null ? request.getNeighborhood().trim() : null);
         }
@@ -524,6 +546,10 @@ public class ListingService {
         if (size <= 0 || size > 100) {
             throw new IllegalArgumentException("Page size must be between 1 and 100");
         }
+    }
+
+    private static String normalizeOptionalText(String value) {
+        return StringUtils.hasText(value) ? value.trim() : null;
     }
 
     private PriceAndCurrency validateAndNormalizePriceAndCurrency(

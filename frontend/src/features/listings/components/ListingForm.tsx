@@ -10,8 +10,7 @@ import {
   Tag,
   Trash2,
   Upload,
-} from 'lucide-react';
-import { Button } from '@/components/ui/Button';
+} from 'lucide-react';import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
 import { Badge } from '@/components/ui/Badge';
 import { ErrorAlert } from '@/components/ui/Feedback';
@@ -20,6 +19,7 @@ import { useUploadImage } from '../hooks/use-listings';
 import { resolveImageUrl } from '@/lib/utils';
 import type {
   CreateListingRequest,
+  ListingCondition,
   ListingImageDto,
   ListingResponse,
   ListingType,
@@ -61,6 +61,13 @@ export function ListingForm({
     initialData?.price != null ? String(initialData.price) : ''
   );
   const currency = initialData?.currency || 'VND';
+  const [size, setSize] = useState(initialData?.size || '');
+  const [condition, setCondition] = useState<ListingCondition | ''>(
+    initialData?.condition || ''
+  );
+  const [quantity, setQuantity] = useState<string>(
+    initialData?.quantity != null ? String(initialData.quantity) : ''
+  );
   const [city, setCity] = useState(initialData?.city || '');
   const [neighborhood, setNeighborhood] = useState(initialData?.neighborhood || '');
   const stateProvince = initialData?.stateProvince || '';
@@ -105,6 +112,17 @@ export function ListingForm({
 
     if (neighborhood.trim().length > 100) {
       newErrors.neighborhood = 'Tên khu vực không được vượt quá 100 ký tự';
+    }
+
+    if (size.trim().length > 30) {
+      newErrors.size = 'Kích thước không được vượt quá 30 ký tự';
+    }
+
+    if (quantity.trim()) {
+      const parsedQuantity = Number(quantity);
+      if (!Number.isInteger(parsedQuantity) || parsedQuantity < 1) {
+        newErrors.quantity = 'Số lượng phải là số nguyên lớn hơn 0';
+      }
     }
 
     // Price rules based on ListingType
@@ -205,6 +223,9 @@ export function ListingForm({
       categoryId,
       price: finalPrice,
       currency: finalCurrency,
+      size: size.trim() || null,
+      condition: condition || null,
+      quantity: quantity.trim() ? parseInt(quantity, 10) : null,
       city: city.trim(),
       neighborhood: neighborhood.trim() || null,
       stateProvince: stateProvince.trim() || null,
@@ -413,6 +434,61 @@ export function ListingForm({
               <span>Giới hạn 5000 ký tự</span>
             )}
             <span>{description.length}/5000</span>
+          </div>
+        </div>
+
+        {/* Optional item specifications */}
+        <div className="pt-2 border-t border-slate-100 space-y-4">
+          <div>
+            <h3 className="text-sm font-bold text-slate-900">Thông số món đồ (không bắt buộc)</h3>
+            <p className="text-xs text-slate-500 mt-1">
+              Bỏ trống nếu thông số không phù hợp với loại món đồ này.
+            </p>
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+            <Input
+              label="Kích thước / Size"
+              placeholder="Ví dụ: 30 x 20 x 10 cm hoặc size M"
+              value={size}
+              onChange={(e) => setSize(e.target.value)}
+              error={errors.size}
+              maxLength={30}
+            />
+
+            <div className="space-y-1.5">
+              <label htmlFor="condition-select" className="block text-sm font-medium text-slate-700">
+                Tình trạng
+              </label>
+              <select
+                id="condition-select"
+                value={condition}
+                onChange={(e) => setCondition(e.target.value as ListingCondition | '')}
+                className={`w-full px-3.5 py-2 text-sm bg-white border rounded-lg transition-colors focus:outline-none focus:ring-2 ${
+                  errors.condition
+                    ? 'border-red-500 focus:ring-red-400 text-red-900'
+                    : 'border-slate-300 focus:border-emerald-500 focus:ring-emerald-400 text-slate-900'
+                }`}
+              >
+                <option value="">-- Không xác định --</option>
+                <option value="NEW">Mới</option>
+                <option value="USED">Đã qua sử dụng</option>
+              </select>
+              {errors.condition && (
+                <p className="text-xs text-red-600 font-medium">{errors.condition}</p>
+              )}
+            </div>
+
+            <Input
+              label="Số lượng"
+              type="number"
+              placeholder="Ví dụ: 2"
+              value={quantity}
+              onChange={(e) => setQuantity(e.target.value)}
+              error={errors.quantity}
+              min="1"
+              step="1"
+            />
           </div>
         </div>
       </div>

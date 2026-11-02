@@ -1,5 +1,6 @@
 package com.shareloop.entity;
 
+import com.shareloop.entity.enums.ListingCondition;
 import com.shareloop.entity.enums.ListingStatus;
 import com.shareloop.entity.enums.ListingType;
 import jakarta.persistence.*;
@@ -60,6 +61,17 @@ public class Listing {
     @Enumerated(EnumType.STRING)
     @Column(name = "status", length = 20, nullable = false)
     private ListingStatus status = ListingStatus.ACTIVE;
+
+    @Size(max = 30)
+    @Column(name = "item_size", length = 30)
+    private String size;
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = "item_condition", length = 20)
+    private ListingCondition condition;
+
+    @Column(name = "quantity")
+    private Integer quantity;
 
     @Size(max = 100)
     @Column(name = "neighborhood", length = 100)
@@ -212,6 +224,30 @@ public class Listing {
 
     public void setStatus(ListingStatus status) {
         this.status = status;
+    }
+
+    public String getSize() {
+        return size;
+    }
+
+    public void setSize(String size) {
+        this.size = size;
+    }
+
+    public ListingCondition getCondition() {
+        return condition;
+    }
+
+    public void setCondition(ListingCondition condition) {
+        this.condition = condition;
+    }
+
+    public Integer getQuantity() {
+        return quantity;
+    }
+
+    public void setQuantity(Integer quantity) {
+        this.quantity = quantity;
     }
 
     public String getNeighborhood() {

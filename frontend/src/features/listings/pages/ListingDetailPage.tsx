@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useRef, useState, type MouseEvent } from 'react';
 import { useParams, useNavigate, Link, useLocation } from 'react-router-dom';
 import {
   ArrowLeft,
@@ -7,14 +7,19 @@ import {
   ChevronLeft,
   ChevronRight,
   Clock,
+  Copy,
+  Check,
   Edit3,
   FileText,
   Folder,
   MapPin,
   Package,
+  PackageCheck,
+  Ruler,
   Send,
   ShieldCheck,
   Tag,
+  Users,
   X,
   MessageSquare,
   ShieldAlert,
@@ -30,7 +35,7 @@ import { useAuth } from '@/features/auth';
 import { CreateRequestModal, ListingRequestsManager, useMyRequests } from '@/features/requests';
 import { StartChatModal } from '@/features/chat';
 import { CreateReportModal } from '@/features/reports';
-import type { ListingStatus, ListingType } from '@/types/listing';
+import type { ListingCondition, ListingStatus, ListingType } from '@/types/listing';
 
 const listingTypeConfig: Record<
   ListingType,
@@ -39,6 +44,11 @@ const listingTypeConfig: Record<
   GIVEAWAY: { label: 'Cho tặng', variant: 'success' },
   SALE: { label: 'Thanh lý', variant: 'warning' },
   WANTED: { label: 'Cần tìm', variant: 'neutral' },
+};
+
+const listingConditionLabel: Record<ListingCondition, string> = {
+  NEW: 'Mới',
+  USED: 'Đã qua sử dụng',
 };
 
 const listingStatusConfig: Record<
@@ -67,6 +77,16 @@ export function ListingDetailPage() {
   const [isReportModalOpen, setIsReportModalOpen] = useState(false);
   const [requestSuccessBanner, setRequestSuccessBanner] = useState<string | null>(null);
   const [hasConflictPendingRequest, setHasConflictPendingRequest] = useState(false);
+  const [copyFeedback, setCopyFeedback] = useState<'success' | 'error' | null>(null);
+  const copyFeedbackTimeout = useRef<number | null>(null);
+
+  useEffect(() => {
+    return () => {
+      if (copyFeedbackTimeout.current !== null) {
+        window.clearTimeout(copyFeedbackTimeout.current);
+      }
+    };
+  }, []);
 
   const isIdValid = Boolean(id && isValidUuid(id));
 
@@ -95,6 +115,27 @@ export function ListingDetailPage() {
     } else {
       navigate('/explore');
     }
+  };
+
+  const handleCopyListingId = async (event: MouseEvent<HTMLButtonElement>) => {
+    event.preventDefault();
+    event.stopPropagation();
+
+    if (copyFeedbackTimeout.current !== null) {
+      window.clearTimeout(copyFeedbackTimeout.current);
+    }
+
+    try {
+      if (!navigator.clipboard?.writeText || !listing) {
+        throw new Error('Clipboard API unavailable');
+      }
+      await navigator.clipboard.writeText(listing.id);
+      setCopyFeedback('success');
+    } catch {
+      setCopyFeedback('error');
+    }
+
+    copyFeedbackTimeout.current = window.setTimeout(() => setCopyFeedback(null), 2500);
   };
 
   // State: Invalid Listing ID format
@@ -408,6 +449,80 @@ export function ListingDetailPage() {
                   <Badge variant={statusInfo.variant}>{statusInfo.label}</Badge>
                 </dd>
               </div>
+
+              <div className="p-3.5 rounded-xl bg-slate-50 border border-slate-100">
+                <dt className="text-xs font-medium text-slate-500 uppercase tracking-wider">Số lượt yêu cầu</dt>
+                <dd className="mt-1 font-semibold text-slate-900 flex items-center gap-1.5">
+                  <Users className="w-4 h-4 text-slate-400 shrink-0" aria-hidden="true" />
+                  <span>{listing.requestCount ?? 0}</span>
+                </dd>
+              </div>
+
+              <div className="p-3.5 rounded-xl bg-slate-50 border border-slate-100 sm:col-span-2">
+                <dt className="text-xs font-medium text-slate-500 uppercase tracking-wider">Mã tin</dt>
+                <dd className="mt-1 font-semibold text-slate-900">
+                  <div className="flex items-start gap-2 min-w-0">
+                    <code className="font-mono text-xs sm:text-sm text-slate-700 break-all">
+                      {listing.id}
+                    </code>
+                    <button
+                      type="button"
+                      onClick={handleCopyListingId}
+                      aria-label="Sao chép mã tin"
+                      title="Sao chép mã tin"
+                      className="shrink-0 inline-flex items-center justify-center w-7 h-7 rounded-lg text-slate-500 hover:text-emerald-700 hover:bg-emerald-50 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500"
+                    >
+                      {copyFeedback === 'success' ? (
+                        <Check className="w-4 h-4" aria-hidden="true" />
+                      ) : (
+                        <Copy className="w-4 h-4" aria-hidden="true" />
+                      )}
+                    </button>
+                  </div>
+                  <span
+                    aria-live="polite"
+                    className={`mt-1 block text-xs font-medium ${
+                      copyFeedback === 'error' ? 'text-red-600' : 'text-emerald-700'
+                    }`}
+                  >
+                    {copyFeedback === 'success'
+                      ? 'Đã sao chép mã tin'
+                      : copyFeedback === 'error'
+                        ? 'Không thể sao chép mã tin'
+                        : ''}
+                  </span>
+                </dd>
+              </div>
+
+              {Boolean(listing.size?.trim()) && (
+                <div className="p-3.5 rounded-xl bg-slate-50 border border-slate-100">
+                  <dt className="text-xs font-medium text-slate-500 uppercase tracking-wider">Kích thước</dt>
+                  <dd className="mt-1 font-medium text-slate-800 flex items-center gap-1.5">
+                    <Ruler className="w-4 h-4 text-slate-400 shrink-0" aria-hidden="true" />
+                    <span>{listing.size}</span>
+                  </dd>
+                </div>
+              )}
+
+              {listing.condition && (
+                <div className="p-3.5 rounded-xl bg-slate-50 border border-slate-100">
+                  <dt className="text-xs font-medium text-slate-500 uppercase tracking-wider">Tình trạng</dt>
+                  <dd className="mt-1 font-medium text-slate-800 flex items-center gap-1.5">
+                    <PackageCheck className="w-4 h-4 text-slate-400 shrink-0" aria-hidden="true" />
+                    <span>{listingConditionLabel[listing.condition]}</span>
+                  </dd>
+                </div>
+              )}
+
+              {listing.quantity != null && (
+                <div className="p-3.5 rounded-xl bg-slate-50 border border-slate-100">
+                  <dt className="text-xs font-medium text-slate-500 uppercase tracking-wider">Số lượng</dt>
+                  <dd className="mt-1 font-medium text-slate-800 flex items-center gap-1.5">
+                    <Package className="w-4 h-4 text-slate-400 shrink-0" aria-hidden="true" />
+                    <span>{listing.quantity} sản phẩm</span>
+                  </dd>
+                </div>
+              )}
 
               <div className="p-3.5 rounded-xl bg-slate-50 border border-slate-100">
                 <dt className="text-xs font-medium text-slate-500 uppercase tracking-wider">Ngày đăng</dt>

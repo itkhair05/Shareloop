@@ -1,5 +1,5 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { screen, waitFor, fireEvent } from '@testing-library/react';
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
+import { screen, waitFor, fireEvent, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { Routes, Route } from 'react-router-dom';
 import { ListingDetailPage } from '../pages/ListingDetailPage';
@@ -128,6 +128,14 @@ describe('ListingDetailPage & Marketplace Navigation', () => {
     vi.clearAllMocks();
   });
 
+  afterEach(() => {
+    vi.useRealTimers();
+    Object.defineProperty(navigator, 'clipboard', {
+      value: undefined,
+      configurable: true,
+    });
+  });
+
   it('renders loading state initially while fetching listing data', async () => {
     // Return a pending promise that does not resolve immediately
     vi.mocked(listingApi.getListingById).mockReturnValue(new Promise(() => {}));
@@ -193,8 +201,7 @@ describe('ListingDetailPage & Marketplace Navigation', () => {
     expect(screen.getAllByText('Đã đặt trước').length).toBeGreaterThanOrEqual(1);
   });
 
-  it('renders wanted listing with budget label and empty description fallback', async () => {
-    vi.mocked(listingApi.getListingById).mockResolvedValue(mockWantedListing);
+  it('renders wanted listing with budget label and empty description fallback', async () => {    vi.mocked(listingApi.getListingById).mockResolvedValue(mockWantedListing);
 
     renderListingDetailPage(`/listings/${mockWantedListing.id}`);
 
@@ -215,6 +222,90 @@ describe('ListingDetailPage & Marketplace Navigation', () => {
 
     // Fallback for no images
     expect(screen.getByText('Bài đăng không có hình ảnh')).toBeInTheDocument();
+  });
+
+  it('renders aggregate request count and optional specifications when present', async () => {
+    vi.mocked(listingApi.getListingById).mockResolvedValue({
+      ...mockGiveawayListing,
+      requestCount: 7,
+      size: '30 x 20 x 10 cm',
+      condition: 'USED',
+      quantity: 2,
+    });
+
+    renderListingDetailPage(`/listings/${mockGiveawayListing.id}`);
+
+    await waitFor(() => {
+      expect(screen.getByRole('heading', { level: 1 })).toBeInTheDocument();
+    });
+
+    const requestCountLabel = screen.getByText('Số lượt yêu cầu');
+    expect(within(requestCountLabel.closest('div') as HTMLElement).getByText('7')).toBeInTheDocument();
+    expect(screen.getByText('Kích thước')).toBeInTheDocument();
+    expect(screen.getByText('30 x 20 x 10 cm')).toBeInTheDocument();
+    expect(screen.getByText('Tình trạng')).toBeInTheDocument();
+    expect(screen.getByText('Đã qua sử dụng')).toBeInTheDocument();
+    expect(screen.getByText('Số lượng')).toBeInTheDocument();
+    expect(screen.getByText('2 sản phẩm')).toBeInTheDocument();
+  });
+
+  it('renders zero request count and hides absent optional specifications', async () => {
+    vi.mocked(listingApi.getListingById).mockResolvedValue({
+      ...mockGiveawayListing,
+      requestCount: 0,
+      size: null,
+      condition: null,
+      quantity: null,
+    });
+
+    renderListingDetailPage(`/listings/${mockGiveawayListing.id}`);
+
+    await waitFor(() => {
+      expect(screen.getByRole('heading', { level: 1 })).toBeInTheDocument();
+    });
+
+    const requestCountLabel = screen.getByText('Số lượt yêu cầu');
+    expect(within(requestCountLabel.closest('div') as HTMLElement).getByText('0')).toBeInTheDocument();
+    expect(screen.queryByText('Kích thước')).not.toBeInTheDocument();
+    expect(screen.queryByText('Tình trạng')).not.toBeInTheDocument();
+    expect(screen.queryByText('Số lượng')).not.toBeInTheDocument();
+    expect(screen.getByText('Mã tin')).toBeInTheDocument();
+  });
+
+  it('copies the full listing ID and shows success feedback', async () => {
+    const user = userEvent.setup();
+    const writeText = vi.fn().mockResolvedValue(undefined);
+    Object.defineProperty(navigator, 'clipboard', {
+      value: { writeText },
+      configurable: true,
+    });
+    vi.mocked(listingApi.getListingById).mockResolvedValue(mockGiveawayListing);
+
+    renderListingDetailPage(`/listings/${mockGiveawayListing.id}`);
+
+    const copyButton = await screen.findByRole('button', { name: 'Sao chép mã tin' });
+    await user.click(copyButton);
+
+    expect(writeText).toHaveBeenCalledTimes(1);
+    expect(writeText).toHaveBeenCalledWith(mockGiveawayListing.id);
+    expect(await screen.findByText('Đã sao chép mã tin')).toBeInTheDocument();
+  });
+
+  it('shows failure feedback when clipboard copy is rejected', async () => {
+    const user = userEvent.setup();
+    const writeText = vi.fn().mockRejectedValue(new Error('Clipboard denied'));
+    Object.defineProperty(navigator, 'clipboard', {
+      value: { writeText },
+      configurable: true,
+    });
+    vi.mocked(listingApi.getListingById).mockResolvedValue(mockGiveawayListing);
+
+    renderListingDetailPage(`/listings/${mockGiveawayListing.id}`);
+
+    const copyButton = await screen.findByRole('button', { name: 'Sao chép mã tin' });
+    await user.click(copyButton);
+
+    expect(await screen.findByText('Không thể sao chép mã tin')).toBeInTheDocument();
   });
 
   it('supports image gallery thumbnail switching and next/prev navigation', async () => {

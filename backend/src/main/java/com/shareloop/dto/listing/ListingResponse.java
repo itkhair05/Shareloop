@@ -1,6 +1,7 @@
 package com.shareloop.dto.listing;
 
 import com.shareloop.entity.Listing;
+import com.shareloop.entity.enums.ListingCondition;
 import com.shareloop.entity.enums.ListingStatus;
 import com.shareloop.entity.enums.ListingType;
 
@@ -22,6 +23,10 @@ public class ListingResponse {
     private BigDecimal price;
     private String currency;
     private ListingStatus status;
+    private String size;
+    private ListingCondition condition;
+    private Integer quantity;
+    private Integer requestCount;
     private String neighborhood;
     private String city;
     private String stateProvince;
@@ -50,6 +55,9 @@ public class ListingResponse {
         response.setPrice(listing.getPrice());
         response.setCurrency(listing.getCurrency());
         response.setStatus(listing.getStatus());
+        response.setSize(listing.getSize());
+        response.setCondition(listing.getCondition());
+        response.setQuantity(listing.getQuantity());
         response.setNeighborhood(listing.getNeighborhood());
         response.setCity(listing.getCity());
         response.setStateProvince(listing.getStateProvince());
@@ -142,6 +150,38 @@ public class ListingResponse {
 
     public void setStatus(ListingStatus status) {
         this.status = status;
+    }
+
+    public String getSize() {
+        return size;
+    }
+
+    public void setSize(String size) {
+        this.size = size;
+    }
+
+    public ListingCondition getCondition() {
+        return condition;
+    }
+
+    public void setCondition(ListingCondition condition) {
+        this.condition = condition;
+    }
+
+    public Integer getQuantity() {
+        return quantity;
+    }
+
+    public void setQuantity(Integer quantity) {
+        this.quantity = quantity;
+    }
+
+    public Integer getRequestCount() {
+        return requestCount;
+    }
+
+    public void setRequestCount(Integer requestCount) {
+        this.requestCount = requestCount;
     }
 
     public String getNeighborhood() {
