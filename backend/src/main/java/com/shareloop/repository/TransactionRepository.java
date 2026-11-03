@@ -49,6 +49,9 @@ public interface TransactionRepository extends JpaRepository<Transaction, UUID>,
     @Query("SELECT t FROM Transaction t JOIN FETCH t.listing l JOIN FETCH t.owner o JOIN FETCH t.requester r LEFT JOIN FETCH t.listingRequest lr LEFT JOIN FETCH t.cancelledBy cb WHERE t.id = :id")
     Optional<Transaction> findWithDetailsById(@Param("id") UUID id);
 
+    @Query("SELECT t FROM Transaction t JOIN FETCH t.listing l JOIN FETCH l.category c JOIN FETCH t.owner o JOIN FETCH t.requester r WHERE t.id = :id")
+    Optional<Transaction> findWithProofDetailsById(@Param("id") UUID id);
+
     @Query("SELECT t FROM Transaction t JOIN FETCH t.listing l JOIN FETCH t.owner o JOIN FETCH t.requester r LEFT JOIN FETCH t.listingRequest lr LEFT JOIN FETCH t.cancelledBy cb WHERE l.id = :listingId AND t.status IN :statuses")
     Optional<Transaction> findActiveByListingId(@Param("listingId") UUID listingId, @Param("statuses") Collection<TransactionStatus> statuses);
 

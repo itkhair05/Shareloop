@@ -18,6 +18,7 @@ vi.mock('@/features/transactions/api/transaction-api', () => ({
     getListingTransaction: vi.fn(),
     completeTransaction: vi.fn(),
     cancelTransaction: vi.fn(),
+    downloadTransactionProof: vi.fn(),
   },
   transactionKeys: {
     all: ['transactions'] as const,

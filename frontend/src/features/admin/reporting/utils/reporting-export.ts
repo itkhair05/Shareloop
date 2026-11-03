@@ -1,9 +1,15 @@
 import { ApiError } from '@/lib/api-error';
+import {
+  downloadBlobFile,
+  parseContentDispositionFilename,
+} from '@/lib/file-download';
 import type {
   ReportingExportDataset,
   ReportingExportFilters,
   ReportingExportSection,
 } from '@/types/reporting';
+
+export { parseContentDispositionFilename };
 
 export const REPORTING_EXPORT_DATASETS: Record<
   ReportingExportSection,
@@ -114,53 +120,6 @@ export function buildReportingExportParams(
   return params;
 }
 
-const FILENAME_STAR_PATTERN = /filename\*\s*=\s*([^;]+)/i;
-const FILENAME_PATTERN = /filename\s*=\s*(?:"([^"]*)"|([^;]+))/i;
-
-function sanitizeFilename(raw: string): string | null {
-  const stripped = raw.trim().replace(/^"+|"+$/g, '');
-  const basename = stripped.split(/[\\/]/).pop() ?? '';
-  const cleaned = Array.from(basename)
-    .filter((char) => {
-      const code = char.codePointAt(0) ?? 0;
-      return code > 0x1f && code !== 0x7f;
-    })
-    .join('')
-    .trim();
-  if (!cleaned || cleaned === '.' || cleaned === '..') return null;
-  return cleaned.slice(0, 255);
-}
-
-function decodeExtendedFilename(raw: string): string | null {
-  const value = raw.trim();
-  const extended = /^[^']*'[^']*'(.*)$/.exec(value);
-  const encoded = extended ? extended[1] : value;
-  try {
-    return decodeURIComponent(encoded);
-  } catch {
-    return null;
-  }
-}
-
-export function parseContentDispositionFilename(
-  header: string | null | undefined
-): string | null {
-  if (!header) return null;
-
-  const extendedValue = FILENAME_STAR_PATTERN.exec(header)?.[1];
-  if (extendedValue) {
-    const decoded = decodeExtendedFilename(extendedValue);
-    if (decoded) {
-      const safe = sanitizeFilename(decoded);
-      if (safe) return safe;
-    }
-  }
-
-  const match = FILENAME_PATTERN.exec(header);
-  const value = match?.[1] ?? match?.[2];
-  return value ? sanitizeFilename(value) : null;
-}
-
 export function resolveReportingExportFilename(
   header: string | null | undefined,
   section: ReportingExportSection,
@@ -174,16 +133,7 @@ export function resolveReportingExportFilename(
 }
 
 export function downloadReportingCsv(blob: Blob, filename: string): void {
-  const objectUrl = URL.createObjectURL(blob);
-  const link = document.createElement('a');
-  link.href = objectUrl;
-  link.download = filename;
-  link.rel = 'noopener';
-  link.style.display = 'none';
-  document.body.appendChild(link);
-  link.click();
-  link.remove();
-  window.setTimeout(() => URL.revokeObjectURL(objectUrl), 0);
+  downloadBlobFile(blob, filename);
 }
 
 export function getReportingExportErrorMessage(error: unknown): string {

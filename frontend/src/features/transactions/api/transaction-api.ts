@@ -1,10 +1,50 @@
-import { apiClient } from '@/lib/api-client';
+import { AxiosError } from 'axios';
+import { apiClient, rawAxiosClient } from '@/lib/api-client';
+import { ApiError, normalizeApiError } from '@/lib/api-error';
+import { parseContentDispositionFilename } from '@/lib/file-download';
 import type { PageResponse } from '@/types/api';
 import type {
   CancelTransactionRequest,
   TransactionQueryParams,
   TransactionResponse,
 } from '@/types/transaction';
+
+/**
+ * PDF proof document downloaded for a COMPLETED transaction.
+ */
+export interface TransactionProofDownload {
+  blob: Blob;
+  filename: string;
+}
+
+/**
+ * Error responses for the proof endpoint arrive as JSON inside a Blob
+ * (the request uses responseType 'blob'), so they must be parsed manually
+ * before they can be normalized into an ApiError.
+ */
+async function normalizeProofDownloadError(error: unknown): Promise<ApiError> {
+  if (
+    error instanceof AxiosError &&
+    error.response?.data instanceof Blob
+  ) {
+    const status = error.response.status ?? 500;
+    let message = 'Transaction proof download failed';
+    try {
+      const parsed = JSON.parse(await error.response.data.text()) as {
+        message?: string;
+      };
+      if (parsed?.message) message = parsed.message;
+    } catch {
+      // Keep the generic message when the Blob body is not readable JSON.
+    }
+    return new ApiError({
+      message,
+      status,
+      error: 'Request failed',
+    });
+  }
+  return normalizeApiError(error);
+}
 
 /**
  * Service for Transaction operations (dual-confirmation handoff lifecycle and status management).
@@ -65,6 +105,36 @@ export const transactionApi = {
       `/api/v1/transactions/${encodeURIComponent(id)}/cancel`,
       payload
     );
+  },
+
+  /**
+   * Download the PDF confirmation document for a COMPLETED transaction.
+   * GET /api/v1/transactions/{id}/proof
+   * Errors arrive as JSON inside a Blob and are normalized into ApiError.
+   */
+  async downloadTransactionProof(id: string): Promise<TransactionProofDownload> {
+    try {
+      const response = await rawAxiosClient.get<Blob>(
+        `/api/v1/transactions/${encodeURIComponent(id)}/proof`,
+        {
+          responseType: 'blob',
+          headers: { Accept: 'application/pdf, application/json' },
+        }
+      );
+
+      const rawDisposition = response.headers?.['content-disposition'];
+      const disposition = Array.isArray(rawDisposition) ? rawDisposition[0] : rawDisposition;
+
+      return {
+        blob: response.data,
+        filename:
+          parseContentDispositionFilename(
+            typeof disposition === 'string' ? disposition : null
+          ) ?? `shareloop-transaction-proof-${id}.pdf`,
+      };
+    } catch (error) {
+      throw await normalizeProofDownloadError(error);
+    }
   },
 };
 

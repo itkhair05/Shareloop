@@ -168,7 +168,8 @@ public class GlobalExceptionHandler {
             AccountAlreadyLinkedException.class,
             GoogleAccountAlreadyInUseException.class,
             PasswordNotSetException.class,
-            PasswordAlreadySetException.class
+            PasswordAlreadySetException.class,
+            TransactionNotCompletedException.class
     })
     public ResponseEntity<ErrorResponse> handleDuplicateResource(
             RuntimeException ex,

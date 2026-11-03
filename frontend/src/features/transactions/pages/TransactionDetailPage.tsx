@@ -7,6 +7,7 @@ import {
   CheckCircle2,
   Clock,
   ExternalLink,
+  FileDown,
   Handshake,
   MapPin,
   Package,
@@ -26,6 +27,7 @@ import {
   useCompleteTransaction,
   useTransactionDetails,
 } from '../hooks/use-transactions';
+import { useTransactionProof } from '../hooks/use-transaction-proof';
 import { CancelTransactionModal } from '../components/CancelTransactionModal';
 import { CreateReviewModal, useTransactionReviews } from '@/features/reviews';
 import { CreateSupportRequestModal } from '@/features/support';
@@ -70,6 +72,7 @@ export function TransactionDetailPage() {
   } = useTransactionDetails(id);
 
   const completeMutation = useCompleteTransaction();
+  const proofDownload = useTransactionProof();
 
   const { data: transactionReviews } = useTransactionReviews(
     id,
@@ -186,6 +189,10 @@ export function TransactionDetailPage() {
   // Transaction must be in COMPLETED status.
   const canReview = status === 'COMPLETED' && isParticipant;
 
+  // Proof Document Eligibility:
+  // ONLY participants can download the confirmation document, once the transaction is COMPLETED.
+  const canDownloadProof = status === 'COMPLETED' && isParticipant;
+
   const myExistingReview = transactionReviews?.find(
     (r) => r.reviewer?.id === user?.id
   );
@@ -219,6 +226,17 @@ export function TransactionDetailPage() {
         setActionErrorMessage('Đã xảy ra lỗi khi hoàn tất giao dịch.');
       }
       setIsConfirmCompleteOpen(false);
+    }
+  };
+
+  const handleDownloadProof = async () => {
+    setActionSuccessMessage(null);
+    const message = await proofDownload.downloadProof(transaction.id);
+    if (message) {
+      setActionErrorMessage(message);
+    } else {
+      setActionErrorMessage(null);
+      setActionSuccessMessage('Đã tải tài liệu xác nhận giao dịch thành công!');
     }
   };
 
@@ -551,8 +569,22 @@ export function TransactionDetailPage() {
         </div>
 
         {/* Section 3: Action Buttons */}
-        {(canComplete || canCancel) && (
+        {(canComplete || canCancel || canDownloadProof) && (
           <div className="pt-2 flex flex-col sm:flex-row items-center justify-end gap-3 border-t border-slate-100">
+            {canDownloadProof && (
+              <Button
+                variant="outline"
+                size="md"
+                onClick={handleDownloadProof}
+                isLoading={proofDownload.isDownloading}
+                disabled={proofDownload.isDownloading}
+                leftIcon={<FileDown className="w-4 h-4" />}
+                className="w-full sm:w-auto text-emerald-700 border-emerald-200 hover:bg-emerald-50 hover:border-emerald-300"
+              >
+                Tải tài liệu xác nhận
+              </Button>
+            )}
+
             {canCancel && (
               <Button
                 variant="outline"

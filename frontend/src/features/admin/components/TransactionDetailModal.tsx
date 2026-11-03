@@ -9,6 +9,7 @@ import {
   Clock,
   Copy,
   ExternalLink,
+  FileDown,
   Layers,
   RotateCcw,
   ShieldAlert,
@@ -20,6 +21,7 @@ import { Badge } from '@/components/ui/Badge';
 import { Button } from '@/components/ui/Button';
 import { formatDateTime } from '@/lib/utils';
 import { useAdminTransactionDetail } from '../hooks/use-admin-transactions';
+import { useTransactionProof } from '@/features/transactions/hooks/use-transaction-proof';
 import type { AdminTransactionResponse } from '@/types/admin-transaction';
 
 export interface TransactionDetailModalProps {
@@ -39,6 +41,12 @@ export function TransactionDetailModal({
     isOpen ? transactionId : null
   );
   const [copiedField, setCopiedField] = useState<string | null>(null);
+  const proofDownload = useTransactionProof();
+
+  const handleDownloadProof = async () => {
+    if (!detail) return;
+    await proofDownload.downloadProof(detail.id);
+  };
 
   useEffect(() => {
     if (!isOpen) return;
@@ -433,46 +441,66 @@ export function TransactionDetailModal({
 
         {/* Modal Footer */}
         <div className="p-4 border-t border-slate-100 bg-slate-50 flex items-center justify-between shrink-0">
-          <div>
-            {detail && canCancel && (
-              <Button
-                variant="destructive"
-                size="sm"
-                onClick={() => {
-                  if (onOpenCancelModal && detail) {
-                    // Convert TransactionResponse to AdminTransactionResponse compatible structure
-                    const adminTx: AdminTransactionResponse = {
-                      id: detail.id,
-                      listingId: detail.listing?.id || '',
-                      listingTitle: detail.listing?.title || '',
-                      listingRequestId: detail.listingRequestId,
-                      ownerId: detail.owner?.id || '',
-                      ownerDisplayName: detail.owner?.displayName || '',
-                      owner: detail.owner,
-                      requesterId: detail.requester?.id || '',
-                      requesterDisplayName: detail.requester?.displayName || '',
-                      requester: detail.requester,
-                      status: detail.status,
-                      ownerCompleted: detail.ownerCompleted,
-                      requesterCompleted: detail.requesterCompleted,
-                      ownerCompletedAt: detail.ownerCompletedAt,
-                      requesterCompletedAt: detail.requesterCompletedAt,
-                      cancelledById: detail.cancelledBy?.id || null,
-                      cancelledByDisplayName: detail.cancelledBy?.displayName || null,
-                      cancelledBy: detail.cancelledBy,
-                      cancelledAt: detail.cancelledAt,
-                      cancellationReason: detail.cancellationReason,
-                      createdAt: detail.createdAt,
-                      updatedAt: detail.updatedAt,
-                    };
-                    onOpenCancelModal(adminTx);
-                  }
-                }}
-                className="gap-1.5 text-xs cursor-pointer"
-              >
-                <Ban className="w-3.5 h-3.5" />
-                <span>Hủy giao dịch (Can thiệp)</span>
-              </Button>
+          <div className="flex flex-col items-start gap-1.5">
+            <div className="flex items-center gap-2">
+              {detail && detail.status === 'COMPLETED' && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => void handleDownloadProof()}
+                  isLoading={proofDownload.isDownloading}
+                  disabled={proofDownload.isDownloading}
+                  className="gap-1.5 text-xs text-emerald-700 border-emerald-200 hover:bg-emerald-50 hover:border-emerald-300 cursor-pointer"
+                >
+                  <FileDown className="w-3.5 h-3.5" />
+                  <span>Tải tài liệu xác nhận</span>
+                </Button>
+              )}
+              {detail && canCancel && (
+                <Button
+                  variant="destructive"
+                  size="sm"
+                  onClick={() => {
+                    if (onOpenCancelModal && detail) {
+                      // Convert TransactionResponse to AdminTransactionResponse compatible structure
+                      const adminTx: AdminTransactionResponse = {
+                        id: detail.id,
+                        listingId: detail.listing?.id || '',
+                        listingTitle: detail.listing?.title || '',
+                        listingRequestId: detail.listingRequestId,
+                        ownerId: detail.owner?.id || '',
+                        ownerDisplayName: detail.owner?.displayName || '',
+                        owner: detail.owner,
+                        requesterId: detail.requester?.id || '',
+                        requesterDisplayName: detail.requester?.displayName || '',
+                        requester: detail.requester,
+                        status: detail.status,
+                        ownerCompleted: detail.ownerCompleted,
+                        requesterCompleted: detail.requesterCompleted,
+                        ownerCompletedAt: detail.ownerCompletedAt,
+                        requesterCompletedAt: detail.requesterCompletedAt,
+                        cancelledById: detail.cancelledBy?.id || null,
+                        cancelledByDisplayName: detail.cancelledBy?.displayName || null,
+                        cancelledBy: detail.cancelledBy,
+                        cancelledAt: detail.cancelledAt,
+                        cancellationReason: detail.cancellationReason,
+                        createdAt: detail.createdAt,
+                        updatedAt: detail.updatedAt,
+                      };
+                      onOpenCancelModal(adminTx);
+                    }
+                  }}
+                  className="gap-1.5 text-xs cursor-pointer"
+                >
+                  <Ban className="w-3.5 h-3.5" />
+                  <span>Hủy giao dịch (Can thiệp)</span>
+                </Button>
+              )}
+            </div>
+            {proofDownload.error && (
+              <p className="text-[11px] text-red-600" role="alert">
+                {proofDownload.error}
+              </p>
             )}
           </div>
           <Button variant="outline" size="sm" onClick={onClose} className="text-xs">

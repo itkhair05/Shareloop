@@ -4,11 +4,14 @@ import com.shareloop.dto.transaction.CancelTransactionRequest;
 import com.shareloop.dto.transaction.TransactionResponse;
 import com.shareloop.entity.enums.TransactionStatus;
 import com.shareloop.security.UserPrincipal;
+import com.shareloop.service.TransactionProofService;
 import com.shareloop.service.TransactionService;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import org.springframework.data.domain.Page;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
@@ -21,9 +24,12 @@ import java.util.UUID;
 public class TransactionController {
 
     private final TransactionService transactionService;
+    private final TransactionProofService transactionProofService;
 
-    public TransactionController(TransactionService transactionService) {
+    public TransactionController(TransactionService transactionService,
+                                 TransactionProofService transactionProofService) {
         this.transactionService = transactionService;
+        this.transactionProofService = transactionProofService;
     }
 
     /**
@@ -88,5 +94,26 @@ public class TransactionController {
     ) {
         TransactionResponse response = transactionService.cancelTransaction(id, request, principal);
         return ResponseEntity.ok(response);
+    }
+
+    /**
+     * Download the proof PDF for a completed transaction.
+     * Available to the two participants and administrators.
+     */
+    @GetMapping(value = "/api/v1/transactions/{id}/proof", produces = MediaType.APPLICATION_PDF_VALUE)
+    public ResponseEntity<byte[]> downloadTransactionProof(
+            @PathVariable UUID id,
+            @AuthenticationPrincipal UserPrincipal principal
+    ) {
+        byte[] pdf = transactionProofService.generateProof(id, principal);
+
+        HttpHeaders headers = new HttpHeaders();
+        headers.setContentType(MediaType.APPLICATION_PDF);
+        headers.setContentLength(pdf.length);
+        headers.set(HttpHeaders.CONTENT_DISPOSITION,
+                "attachment; filename=\"shareloop-transaction-proof-" + id + ".pdf\"");
+        headers.set(HttpHeaders.CACHE_CONTROL, "private, no-store");
+        headers.set("X-Content-Type-Options", "nosniff");
+        return ResponseEntity.ok().headers(headers).body(pdf);
     }
 }
