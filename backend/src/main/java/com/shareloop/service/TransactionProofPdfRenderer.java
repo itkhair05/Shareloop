@@ -17,6 +17,7 @@ import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Locale;
 
 /**
  * Renders an A4 transaction proof document in memory. Text is measured with
@@ -33,25 +34,47 @@ public class TransactionProofPdfRenderer {
     private static final float MARGIN_BOTTOM = 58f;
     private static final float CONTENT_WIDTH = PAGE_SIZE.getWidth() - 2 * MARGIN_X;
 
-    private static final float BRAND_SIZE = 12f;
-    private static final float TITLE_SIZE = 17f;
+    private static final float BRAND_SIZE = 15f;
+    private static final float DESCRIPTOR_SIZE = 8.5f;
+    private static final float TITLE_SIZE = 19f;
+    private static final float PILL_SIZE = 8.5f;
     private static final float SECTION_SIZE = 11f;
     private static final float BODY_SIZE = 10f;
     private static final float SMALL_SIZE = 8.5f;
     private static final float FOOTER_SIZE = 7.5f;
 
     private static final float LINE_HEIGHT = 13.5f;
-    private static final float SECTION_GAP = 14f;
+    private static final float SECTION_GAP = 16f;
     private static final float ROW_GAP = 4f;
     private static final float LABEL_WIDTH = 132f;
     private static final float FIELD_WIDTH = CONTENT_WIDTH - LABEL_WIDTH;
     private static final int MAX_VALUE_LINES = 4;
+    private static final int MAX_NAME_LINES = 2;
+
+    private static final float PANEL_PAD = 10f;
+    private static final float PANEL_GAP = 8f;
+    private static final float PILL_HEIGHT = 15f;
+    private static final float PILL_PAD_X = 9f;
+
+    private static final float[] EMERALD = {0.043f, 0.431f, 0.310f};
+    private static final float[] SLATE = {0.11f, 0.15f, 0.20f};
+    private static final float[] BODY_COLOR = {0.15f, 0.17f, 0.21f};
+    private static final float[] MUTED = {0.42f, 0.46f, 0.52f};
+    private static final float[] RULE_COLOR = {0.85f, 0.87f, 0.90f};
+    private static final float[] PANEL_BG = {0.965f, 0.972f, 0.978f};
+    private static final float[] PILL_BG = {0.90f, 0.96f, 0.93f};
+    private static final float[] PILL_TEXT = {0.05f, 0.45f, 0.30f};
 
     private static final ZoneId TIME_ZONE = ZoneId.of("Asia/Ho_Chi_Minh");
     private static final DateTimeFormatter TIMESTAMP_FORMATTER =
             DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm:ss").withZone(TIME_ZONE);
 
     private static final String UNKNOWN_CATEGORY = "Không xác định";
+    private static final String BRAND = "ShareLoop";
+    private static final String DESCRIPTOR = "Nền tảng chia sẻ đồ dùng cộng đồng";
+    private static final String DOCUMENT_TITLE = "BIÊN NHẬN GIAO DỊCH";
+    private static final String CONFIRMED_PREFIX = "Đã xác nhận lúc ";
+    private static final String NOT_CONFIRMED = "Chưa xác nhận";
     private static final String DISCLAIMER =
             "Tài liệu được tạo tự động từ dữ liệu hệ thống ShareLoop. Tài liệu ghi nhận việc hai bên đã xác nhận hoàn tất giao dịch trên nền tảng. "
                     + "Đây không phải hợp đồng pháp lý, hóa đơn, biên lai hoặc chứng từ thuế. "
@@ -93,44 +116,63 @@ public class TransactionProofPdfRenderer {
     }
 
     private void drawDocument(Layout layout, TransactionProofData data) throws IOException {
-        layout.drawText(layout.bold, BRAND_SIZE, "SHARELOOP", MARGIN_X, layout.y);
-        layout.moveDown(22f);
-        layout.drawText(layout.bold, TITLE_SIZE, "XÁC NHẬN HOÀN TẤT GIAO DỊCH", MARGIN_X, layout.y);
-        layout.moveDown(16f);
-        layout.drawText(layout.regular, 9f, "Tài liệu được tạo tự động từ dữ liệu hệ thống ShareLoop", MARGIN_X, layout.y);
-        layout.moveDown(10f);
-        layout.drawRule(MARGIN_X, layout.y, CONTENT_WIDTH);
+        drawHeader(layout, data);
 
-        drawSection(layout, "THÔNG TIN GIAO DỊCH");
+        drawSection(layout, "01", "THÔNG TIN GIAO DỊCH");
         drawField(layout, "Mã giao dịch", data.transactionId().toString());
         drawField(layout, "Ngày tạo giao dịch", formatTimestamp(data.transactionCreatedAt()));
-        drawField(layout, "Trạng thái giao dịch", statusLabel(data.transactionStatus()));
+        drawField(layout, "Trạng thái giao dịch", TransactionProofLabels.transactionStatusLabel(data.transactionStatus()));
         drawField(layout, "Thời điểm hoàn tất", formatTimestamp(data.completionAt()));
 
-        drawSection(layout, "XÁC NHẬN CỦA HAI BÊN");
-        drawField(layout, "Chủ bài đăng", data.ownerDisplayName());
-        drawField(layout, "Xác nhận lúc", formatTimestamp(data.ownerCompletedAt()));
-        drawField(layout, "Người nhận", data.requesterDisplayName());
-        drawField(layout, "Xác nhận lúc", formatTimestamp(data.requesterCompletedAt()));
+        drawSection(layout, "02", "XÁC NHẬN CỦA HAI BÊN");
+        drawParticipantPanel(layout, "CHỦ BÀI ĐĂNG", data.ownerDisplayName(), data.ownerCompletedAt());
+        layout.moveDown(PANEL_GAP);
+        drawParticipantPanel(layout, "NGƯỜI NHẬN", data.requesterDisplayName(), data.requesterCompletedAt());
 
-        drawSection(layout, "THÔNG TIN BÀI ĐĂNG (DỮ LIỆU HIỆN TẠI)");
+        drawSection(layout, "03", "THÔNG TIN BÀI ĐĂNG (DỮ LIỆU HIỆN TẠI)");
         drawField(layout, "Mã bài đăng", data.listingId().toString());
         drawField(layout, "Tiêu đề", data.listingTitle());
-        drawField(layout, "Loại bài đăng", data.listingType());
+        drawField(layout, "Hình thức", TransactionProofLabels.listingTypeLabel(data.listingType()));
         drawField(layout, "Danh mục", data.listingCategory() == null || data.listingCategory().isBlank()
                 ? UNKNOWN_CATEGORY
                 : data.listingCategory());
 
-        drawSection(layout, "GHI CHÚ");
+        drawSection(layout, "04", "GHI CHÚ");
         drawDisclaimer(layout);
     }
 
-    private void drawSection(Layout layout, String title) throws IOException {
+    private void drawHeader(Layout layout, TransactionProofData data) throws IOException {
+        layout.drawText(layout.bold, BRAND_SIZE, BRAND, MARGIN_X, layout.y, EMERALD);
+        float descriptorWidth = textWidth(layout.regular, DESCRIPTOR_SIZE, DESCRIPTOR);
+        layout.drawText(layout.regular, DESCRIPTOR_SIZE, DESCRIPTOR,
+                MARGIN_X + CONTENT_WIDTH - descriptorWidth, layout.y, MUTED);
+        layout.moveDown(24f);
+
+        layout.drawText(layout.bold, TITLE_SIZE, DOCUMENT_TITLE, MARGIN_X, layout.y, SLATE);
+        layout.moveDown(28f);
+
+        String badge = TransactionProofLabels.transactionStatusLabel(data.transactionStatus())
+                .toUpperCase(Locale.ROOT);
+        float badgeWidth = textWidth(layout.bold, PILL_SIZE, badge) + 2 * PILL_PAD_X;
+        float pillBottom = layout.y - PILL_HEIGHT + 3f;
+        layout.fillRect(MARGIN_X, pillBottom, badgeWidth, PILL_HEIGHT, PILL_BG[0], PILL_BG[1], PILL_BG[2]);
+        layout.drawText(layout.bold, PILL_SIZE, badge, MARGIN_X + PILL_PAD_X, layout.y - 2f, PILL_TEXT);
+
+        String idLine = "Mã giao dịch: " + data.transactionId();
+        layout.drawText(layout.regular, SMALL_SIZE, idLine,
+                MARGIN_X + badgeWidth + 12f, layout.y - 2f, MUTED);
+        layout.moveDown(PILL_HEIGHT + 12f);
+        layout.drawRule(MARGIN_X, layout.y, CONTENT_WIDTH, RULE_COLOR);
+    }
+
+    private void drawSection(Layout layout, String number, String title) throws IOException {
         layout.moveDown(SECTION_GAP);
         layout.ensureSpace(LINE_HEIGHT + 8f);
-        layout.drawText(layout.bold, SECTION_SIZE, title, MARGIN_X, layout.y);
+        layout.drawText(layout.bold, SECTION_SIZE, number, MARGIN_X, layout.y, EMERALD);
+        float numberWidth = textWidth(layout.bold, SECTION_SIZE, number);
+        layout.drawText(layout.bold, SECTION_SIZE, title, MARGIN_X + numberWidth + 8f, layout.y, SLATE);
         layout.moveDown(LINE_HEIGHT - 2f);
-        layout.drawRule(MARGIN_X, layout.y, CONTENT_WIDTH, 0.82f, 0.84f, 0.88f);
+        layout.drawRule(MARGIN_X, layout.y, CONTENT_WIDTH, RULE_COLOR);
         layout.moveDown(6f);
     }
 
@@ -148,11 +190,43 @@ public class TransactionProofPdfRenderer {
 
         float textY = layout.y;
         for (String line : lines) {
-            layout.drawText(layout.regular, BODY_SIZE, line, MARGIN_X + LABEL_WIDTH, textY);
+            layout.drawText(layout.regular, BODY_SIZE, line, MARGIN_X + LABEL_WIDTH, textY, BODY_COLOR);
             textY -= LINE_HEIGHT;
         }
-        layout.drawText(layout.bold, BODY_SIZE, label + ":", MARGIN_X, layout.y);
+        layout.drawText(layout.bold, BODY_SIZE, label + ":", MARGIN_X, layout.y, SLATE);
         layout.y = textY - ROW_GAP;
+    }
+
+    private void drawParticipantPanel(Layout layout, String role, String name, Instant confirmedAt) throws IOException {
+        float innerWidth = CONTENT_WIDTH - 2 * PANEL_PAD - 6f;
+        List<String> nameLines = wrapLines(name, layout.bold, BODY_SIZE, innerWidth);
+        boolean truncated = nameLines.size() > MAX_NAME_LINES;
+        if (truncated) {
+            nameLines = new ArrayList<>(nameLines.subList(0, MAX_NAME_LINES));
+            nameLines.set(MAX_NAME_LINES - 1,
+                    truncateLine(nameLines.get(MAX_NAME_LINES - 1), layout.bold, BODY_SIZE, innerWidth));
+        }
+
+        String confirmLine = confirmedAt != null ? CONFIRMED_PREFIX + formatTimestamp(confirmedAt) : NOT_CONFIRMED;
+
+        float height = PANEL_PAD + 9f + 4f + nameLines.size() * LINE_HEIGHT + 4f + 9f + PANEL_PAD;
+        layout.ensureSpace(height + 4f);
+        float top = layout.y;
+
+        layout.fillRect(MARGIN_X, top - height, CONTENT_WIDTH, height, PANEL_BG[0], PANEL_BG[1], PANEL_BG[2]);
+        layout.fillRect(MARGIN_X, top - height, 2.5f, height, EMERALD[0], EMERALD[1], EMERALD[2]);
+
+        float textY = top - PANEL_PAD;
+        layout.drawText(layout.bold, 8f, role, MARGIN_X + PANEL_PAD + 4f, textY, MUTED);
+        textY -= 13f;
+        for (String line : nameLines) {
+            layout.drawText(layout.bold, BODY_SIZE, line, MARGIN_X + PANEL_PAD + 4f, textY, SLATE);
+            textY -= LINE_HEIGHT;
+        }
+        textY -= 4f;
+        layout.drawText(layout.regular, SMALL_SIZE, confirmLine, MARGIN_X + PANEL_PAD + 4f, textY, MUTED);
+
+        layout.y = top - height;
     }
 
     private void drawDisclaimer(Layout layout) throws IOException {
@@ -164,17 +238,17 @@ public class TransactionProofPdfRenderer {
         layout.ensureSpace(boxHeight + 8f);
         float top = layout.y;
 
-        layout.fillRect(MARGIN_X, top - boxHeight, CONTENT_WIDTH, boxHeight, 0.96f, 0.965f, 0.985f);
+        layout.fillRect(MARGIN_X, top - boxHeight, CONTENT_WIDTH, boxHeight, PANEL_BG[0], PANEL_BG[1], PANEL_BG[2]);
 
         float textY = top - 12f;
         for (String line : lines) {
-            layout.drawText(layout.regular, SMALL_SIZE, line, MARGIN_X + 12f, textY);
+            layout.drawText(layout.regular, SMALL_SIZE, line, MARGIN_X + 12f, textY, MUTED);
             textY -= lineHeight;
         }
         layout.y = top - boxHeight - 10f;
     }
 
-    private void stampFooters(PDDocument document, PDFont regular, Instant generatedAt) throws IOException {
+    static void stampFooters(PDDocument document, PDFont regular, Instant generatedAt) throws IOException {
         int pageCount = document.getNumberOfPages();
         String generated = "Tài liệu được tạo lúc: " + formatTimestamp(generatedAt);
         for (int i = 0; i < pageCount; i++) {
@@ -263,12 +337,8 @@ public class TransactionProofPdfRenderer {
         return font.getStringWidth(text) / 1000f * fontSize;
     }
 
-    private String formatTimestamp(Instant instant) {
+    private static String formatTimestamp(Instant instant) {
         return TIMESTAMP_FORMATTER.format(instant) + " (GMT+7)";
-    }
-
-    private String statusLabel(String status) {
-        return "COMPLETED".equals(status) ? "Đã hoàn tất" : status;
     }
 
     /**
@@ -307,21 +377,17 @@ public class TransactionProofPdfRenderer {
             y -= amount;
         }
 
-        void drawText(PDFont font, float fontSize, String text, float x, float topY) throws IOException {
+        void drawText(PDFont font, float fontSize, String text, float x, float topY, float[] rgb) throws IOException {
             content.beginText();
             content.setFont(font, fontSize);
-            content.setNonStrokingColor(0.12f, 0.14f, 0.18f);
+            content.setNonStrokingColor(rgb[0], rgb[1], rgb[2]);
             content.newLineAtOffset(x, topY - fontSize);
             content.showText(text);
             content.endText();
         }
 
-        void drawRule(float x, float topY, float width) throws IOException {
-            drawRule(x, topY, width, 0.12f, 0.14f, 0.18f);
-        }
-
-        void drawRule(float x, float topY, float width, float r, float g, float b) throws IOException {
-            content.setStrokingColor(r, g, b);
+        void drawRule(float x, float topY, float width, float[] rgb) throws IOException {
+            content.setStrokingColor(rgb[0], rgb[1], rgb[2]);
             content.setLineWidth(0.8f);
             float baseline = topY - 1f;
             content.moveTo(x, baseline);

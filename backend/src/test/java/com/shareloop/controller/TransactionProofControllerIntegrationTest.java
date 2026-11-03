@@ -229,7 +229,8 @@ class TransactionProofControllerIntegrationTest {
         assertThat(text).contains("Alice Owner");
         assertThat(text).contains("Bob Requester");
         assertThat(text).contains("Exchange Desk");
-        assertThat(text).contains("GIVEAWAY");
+        assertThat(text).contains("Cho tặng");
+        assertThat(text).doesNotContain("GIVEAWAY");
         assertThat(text).contains(generalCategory.getName());
         assertThat(text).contains("Đã hoàn tất");
         assertThat(text).contains("Trang 1/1");
