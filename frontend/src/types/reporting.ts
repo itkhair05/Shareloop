@@ -218,3 +218,34 @@ export interface TopRequestedQuery extends ReportingRangeQuery {
   limit: number;
   categoryId?: string;
 }
+
+export type ReportingExportSection =
+  | 'overview'
+  | 'users'
+  | 'listings'
+  | 'transactions'
+  | 'moderation'
+  | 'reviews'
+  | 'support';
+
+export type ReportingExportDataset = 'summary' | 'timeseries' | 'top-requested';
+
+/**
+ * Applied dashboard state sent to the CSV export endpoint. The export layer
+ * includes only the parameters each section/dataset actually supports.
+ */
+export interface ReportingExportFilters extends ReportingRangeQuery {
+  granularity?: ReportGranularity;
+  role?: UserRole;
+  status?: UserStatus | ListingStatus | TransactionStatus | ReportStatus | SupportRequestStatus;
+  listingType?: ListingType;
+  categoryId?: string;
+  category?: ReportCategory | SupportCategory;
+  targetType?: ReportTargetType;
+  limit?: number;
+}
+
+export interface ReportingCsvDownload {
+  blob: Blob;
+  filename: string;
+}

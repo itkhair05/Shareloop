@@ -1,6 +1,7 @@
 import { Users, Package, ArrowLeftRight, ShieldAlert, MessageSquare, LifeBuoy } from 'lucide-react';
 import { useReportingOverview } from '../hooks/use-reporting';
 import { ReportingChartCard } from '../components/ReportingChartCard';
+import { ReportingExportControl } from '../components/ReportingExportControl';
 import { ReportingKpiCard } from '../components/ReportingKpiCard';
 import { DonutChart } from '../components/DonutChart';
 import { DistributionBars } from '../components/DistributionBars';
@@ -27,7 +28,7 @@ export interface OverviewSectionProps {
   granularity: ReportGranularity;
 }
 
-export function OverviewSection({ range }: OverviewSectionProps) {
+export function OverviewSection({ range, granularity }: OverviewSectionProps) {
   const { data, isLoading, isFetching, isError, error, refetch } = useReportingOverview(range);
 
   if (isLoading) {
@@ -89,6 +90,8 @@ export function OverviewSection({ range }: OverviewSectionProps) {
 
   return (
     <div className="space-y-5" aria-busy={isFetching}>
+      <ReportingExportControl section="overview" range={range} granularity={granularity} />
+
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
         <div>
           <h2 className="text-base font-semibold text-slate-900">Tổng quan theo kỳ báo cáo</h2>

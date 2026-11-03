@@ -9,6 +9,7 @@ import {
 } from '../hooks/use-reporting';
 import { DomainFilterBar, DomainFilterField, domainSelectClassName } from '../components/ReportingFilterBar';
 import { ReportingChartCard } from '../components/ReportingChartCard';
+import { ReportingExportControl } from '../components/ReportingExportControl';
 import { ReportingKpiCard } from '../components/ReportingKpiCard';
 import { DonutChart } from '../components/DonutChart';
 import { DistributionBars } from '../components/DistributionBars';
@@ -83,6 +84,18 @@ export function ListingsSection({ range, granularity }: ListingsSectionProps) {
 
   return (
     <div className="space-y-5">
+      <ReportingExportControl
+        section="listings"
+        range={range}
+        granularity={granularity}
+        filters={{
+          status: status === 'ALL' ? undefined : status,
+          listingType: listingType === 'ALL' ? undefined : listingType,
+          categoryId: categoryId === 'ALL' ? undefined : categoryId,
+          limit: TOP_REQUESTED_LIMIT,
+        }}
+      />
+
       <DomainFilterBar
         onReset={() => {
           setStatus('ALL');
@@ -167,7 +180,7 @@ export function ListingsSection({ range, granularity }: ListingsSectionProps) {
               value={formatReportingNumber(
                 getDistributionValue(summaryQuery.data.metrics.byStatus, 'ACTIVE')
               )}
-              tone="success"
+              color="emerald"
             />
             <ReportingKpiCard
               label="Đã đặt trước"
@@ -180,7 +193,7 @@ export function ListingsSection({ range, granularity }: ListingsSectionProps) {
               value={formatReportingNumber(
                 getDistributionValue(summaryQuery.data.metrics.byStatus, 'REMOVED')
               )}
-              tone="warning"
+              color="amber"
             />
           </div>
 

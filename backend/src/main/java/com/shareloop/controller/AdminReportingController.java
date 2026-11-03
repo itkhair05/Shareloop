@@ -23,14 +23,22 @@ import com.shareloop.service.reporting.AdminReportAggregationService;
 import com.shareloop.service.reporting.AdminReportFilter;
 import com.shareloop.service.reporting.ReportDateRange;
 import com.shareloop.service.reporting.ReportGranularity;
+import com.shareloop.service.reporting.export.AdminReportCsvExportRequest;
+import com.shareloop.service.reporting.export.AdminReportCsvExportResult;
+import com.shareloop.service.reporting.export.AdminReportCsvExportService;
+import com.shareloop.service.reporting.export.AdminReportExportDataset;
+import com.shareloop.service.reporting.export.AdminReportExportSection;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import org.springframework.format.annotation.DateTimeFormat;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
@@ -60,10 +68,18 @@ public class AdminReportingController {
             "Bucket granularity: DAY, WEEK (ISO weeks starting Monday) or MONTH. Missing buckets are zero-filled and "
                     + "returned in chronological order. A series is limited to 1000 buckets; unsupported values return 400 Bad Request.";
 
-    private final AdminReportAggregationService adminReportAggregationService;
+    private static final MediaType CSV_MEDIA_TYPE =
+            MediaType.parseMediaType("text/csv; charset=UTF-8");
 
-    public AdminReportingController(AdminReportAggregationService adminReportAggregationService) {
+    private final AdminReportAggregationService adminReportAggregationService;
+    private final AdminReportCsvExportService adminReportCsvExportService;
+
+    public AdminReportingController(
+            AdminReportAggregationService adminReportAggregationService,
+            AdminReportCsvExportService adminReportCsvExportService
+    ) {
         this.adminReportAggregationService = adminReportAggregationService;
+        this.adminReportCsvExportService = adminReportCsvExportService;
     }
 
     @Operation(
@@ -463,5 +479,82 @@ public class AdminReportingController {
     ) {
         ReportDateRange range = ReportDateRange.of(from, to, timezone);
         return ResponseEntity.ok(adminReportAggregationService.getOverview(range));
+    }
+
+    @Operation(
+            summary = "Export an aggregate reporting dataset as CSV (Admin only)",
+            description = "Generates a UTF-8 CSV download from the same aggregate metrics exposed by the reporting "
+                    + "endpoints. Supported sections are overview, users, listings, transactions, moderation, reviews "
+                    + "and support. The summary dataset is the default; timeseries is available for every domain section; "
+                    + "top-requested is available for listings only. Unsupported parameter combinations return the standard "
+                    + "JSON 400 error response, never a CSV attachment. Exports contain aggregate metrics only and never "
+                    + "include email addresses, phone numbers, support subjects or descriptions, admin notes, or raw "
+                    + "moderation report content."
+    )
+    @PreAuthorize("hasRole('ADMIN')")
+    @GetMapping("/export/{section}")
+    public ResponseEntity<byte[]> exportReport(
+            @Parameter(description = "Reporting section: overview, users, listings, transactions, moderation, reviews or support.")
+            @PathVariable String section,
+
+            @Parameter(description = "Export dataset: summary (default), timeseries or top-requested.")
+            @RequestParam(required = false) String dataset,
+
+            @Parameter(description = FROM_DESCRIPTION) @RequestParam(required = false)
+            @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate from,
+
+            @Parameter(description = TO_DESCRIPTION) @RequestParam(required = false)
+            @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate to,
+
+            @Parameter(description = TIMEZONE_DESCRIPTION) @RequestParam(defaultValue = ReportDateRange.DEFAULT_TIMEZONE)
+            String timezone,
+
+            @Parameter(description = "Optional user role filter; supported only for users/summary.")
+            @RequestParam(required = false) UserRole role,
+
+            @Parameter(description = "Optional status filter; supported values depend on the section and dataset.")
+            @RequestParam(required = false) String status,
+
+            @Parameter(description = "Optional category filter for moderation or support sections.")
+            @RequestParam(required = false) String category,
+
+            @Parameter(description = "Optional listing type filter; supported only for the listings section.")
+            @RequestParam(required = false) ListingType listingType,
+
+            @Parameter(description = "Optional moderation target type filter; supported only for the moderation section.")
+            @RequestParam(required = false) ReportTargetType targetType,
+
+            @Parameter(description = "Optional category identifier filter for the listings section.")
+            @RequestParam(required = false) UUID categoryId,
+
+            @Parameter(description = "Optional bucket granularity; supported only for the timeseries dataset.")
+            @RequestParam(required = false) ReportGranularity granularity,
+
+            @Parameter(description = "Optional ranking limit for listings/top-requested; must be between 1 and 50.")
+            @RequestParam(required = false) Integer limit
+    ) {
+        AdminReportCsvExportRequest exportRequest = new AdminReportCsvExportRequest(
+                AdminReportExportSection.from(section),
+                AdminReportExportDataset.from(dataset),
+                ReportDateRange.of(from, to, timezone),
+                role,
+                listingType,
+                targetType,
+                status,
+                category,
+                categoryId,
+                granularity,
+                limit
+        );
+
+        AdminReportCsvExportResult result = adminReportCsvExportService.export(exportRequest);
+
+        HttpHeaders headers = new HttpHeaders();
+        headers.setContentType(CSV_MEDIA_TYPE);
+        headers.set(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"" + result.filename() + "\"");
+        headers.set(HttpHeaders.CACHE_CONTROL, "private, no-store");
+        headers.set("X-Content-Type-Options", "nosniff");
+
+        return ResponseEntity.ok().headers(headers).body(result.content());
     }
 }

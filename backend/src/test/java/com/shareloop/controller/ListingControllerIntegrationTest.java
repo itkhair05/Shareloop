@@ -61,6 +61,12 @@ class ListingControllerIntegrationTest {
     private TransactionRepository transactionRepository;
 
     @Autowired
+    private ConversationRepository conversationRepository;
+
+    @Autowired
+    private ChatMessageRepository chatMessageRepository;
+
+    @Autowired
     private PasswordEncoder passwordEncoder;
 
     @Autowired
@@ -978,6 +984,43 @@ class ListingControllerIntegrationTest {
 
             Listing preserved = listingRepository.findById(listing.getId()).orElseThrow();
             assertThat(preserved.getStatus()).isEqualTo(ListingStatus.REMOVED);
+        }
+
+        @Test
+        @DisplayName("Owner deletion transitions status to REMOVED when only a conversation exists")
+        void safeRemovalWhenConversationExistsWithoutRequestsOrTransactions() throws Exception {
+            Listing listing = createListing(userAlice, electronicsCategory, ListingType.GIVEAWAY, "Chatted Item", "Ha Noi", ListingStatus.ACTIVE);
+
+            Conversation conversation = conversationRepository.saveAndFlush(
+                    new Conversation(listing, userAlice, userBob, null));
+            ChatMessage message = chatMessageRepository.saveAndFlush(
+                    new ChatMessage(conversation, userBob, "Is this item still available?"));
+
+            mockMvc.perform(delete("/api/v1/listings/{id}", listing.getId())
+                            .header(HttpHeaders.AUTHORIZATION, aliceToken))
+                    .andExpect(status().isNoContent());
+
+            Listing preserved = listingRepository.findById(listing.getId()).orElseThrow();
+            assertThat(preserved.getStatus()).isEqualTo(ListingStatus.REMOVED);
+            assertThat(conversationRepository.findById(conversation.getId())).isPresent();
+            assertThat(chatMessageRepository.findById(message.getId())).isPresent();
+        }
+
+        @Test
+        @DisplayName("Admin deletion transitions conversation-only listing to REMOVED")
+        void adminSafeRemovalWhenConversationExists() throws Exception {
+            Listing listing = createListing(userAlice, electronicsCategory, ListingType.GIVEAWAY, "Moderated Chat Item", "Ha Noi", ListingStatus.ACTIVE);
+
+            Conversation conversation = conversationRepository.saveAndFlush(
+                    new Conversation(listing, userAlice, userBob, null));
+
+            mockMvc.perform(delete("/api/v1/listings/{id}", listing.getId())
+                            .header(HttpHeaders.AUTHORIZATION, adminToken))
+                    .andExpect(status().isNoContent());
+
+            Listing preserved = listingRepository.findById(listing.getId()).orElseThrow();
+            assertThat(preserved.getStatus()).isEqualTo(ListingStatus.REMOVED);
+            assertThat(conversationRepository.findById(conversation.getId())).isPresent();
         }
 
         @Test

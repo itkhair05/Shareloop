@@ -4,6 +4,7 @@ import type { ReportGranularity, ReportingRangeQuery } from '@/types/reporting';
 import { useUsersReportSummary, useUsersReportTimeseries } from '../hooks/use-reporting';
 import { DomainFilterBar, DomainFilterField, domainSelectClassName } from '../components/ReportingFilterBar';
 import { ReportingChartCard } from '../components/ReportingChartCard';
+import { ReportingExportControl } from '../components/ReportingExportControl';
 import { ReportingKpiCard } from '../components/ReportingKpiCard';
 import { DonutChart } from '../components/DonutChart';
 import { TimeseriesChart } from '../components/TimeseriesChart';
@@ -45,6 +46,16 @@ export function UsersSection({ range, granularity }: UsersSectionProps) {
 
   return (
     <div className="space-y-5">
+      <ReportingExportControl
+        section="users"
+        range={range}
+        granularity={granularity}
+        filters={{
+          role: role === 'ALL' ? undefined : role,
+          status: status === 'ALL' ? undefined : status,
+        }}
+      />
+
       <DomainFilterBar
         onReset={() => {
           setRole('ALL');
@@ -132,7 +143,7 @@ export function UsersSection({ range, granularity }: UsersSectionProps) {
               value={formatReportingNumber(
                 getDistributionValue(summaryQuery.data.metrics.byStatus, 'ACTIVE')
               )}
-              tone="success"
+              color="emerald"
             />
           </div>
 

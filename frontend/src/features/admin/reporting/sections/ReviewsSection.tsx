@@ -1,6 +1,7 @@
 import type { ReportGranularity, ReportingRangeQuery } from '@/types/reporting';
 import { useReviewsReportSummary, useReviewsReportTimeseries } from '../hooks/use-reporting';
 import { ReportingChartCard } from '../components/ReportingChartCard';
+import { ReportingExportControl } from '../components/ReportingExportControl';
 import { ReportingKpiCard } from '../components/ReportingKpiCard';
 import { DistributionBars } from '../components/DistributionBars';
 import { TimeseriesChart } from '../components/TimeseriesChart';
@@ -28,6 +29,8 @@ export function ReviewsSection({ range, granularity }: ReviewsSectionProps) {
 
   return (
     <div className="space-y-5">
+      <ReportingExportControl section="reviews" range={range} granularity={granularity} />
+
       {summaryQuery.isLoading ? (
         <ReportingSectionSkeleton label="Đang tải số liệu đánh giá..." />
       ) : summaryQuery.isError || !summaryQuery.data ? (
@@ -50,12 +53,12 @@ export function ReviewsSection({ range, granularity }: ReviewsSectionProps) {
             <ReportingKpiCard
               label="Đang hiển thị"
               value={formatReportingNumber(summaryQuery.data.metrics.visibleReviews)}
-              tone="success"
+              color="emerald"
             />
             <ReportingKpiCard
               label="Đang bị ẩn"
               value={formatReportingNumber(summaryQuery.data.metrics.hiddenReviews)}
-              tone="warning"
+              color="amber"
             />
             <ReportingKpiCard
               label="Điểm TB đang hiển thị"

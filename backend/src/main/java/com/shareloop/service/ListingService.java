@@ -14,6 +14,7 @@ import com.shareloop.entity.ListingCreationEvent;
 import com.shareloop.exception.RateLimitExceededException;
 import com.shareloop.exception.ResourceNotFoundException;
 import com.shareloop.repository.CategoryRepository;
+import com.shareloop.repository.ConversationRepository;
 import com.shareloop.repository.ListingCreationEventRepository;
 import com.shareloop.repository.ListingRepository;
 import com.shareloop.repository.ListingRequestRepository;
@@ -58,6 +59,7 @@ public class ListingService {
     private final UserRepository userRepository;
     private final TransactionRepository transactionRepository;
     private final ListingRequestRepository listingRequestRepository;
+    private final ConversationRepository conversationRepository;
     private final ListingCreationEventRepository listingCreationEventRepository;
 
     public ListingService(
@@ -66,6 +68,7 @@ public class ListingService {
             UserRepository userRepository,
             TransactionRepository transactionRepository,
             ListingRequestRepository listingRequestRepository,
+            ConversationRepository conversationRepository,
             ListingCreationEventRepository listingCreationEventRepository
     ) {
         this.listingRepository = listingRepository;
@@ -73,6 +76,7 @@ public class ListingService {
         this.userRepository = userRepository;
         this.transactionRepository = transactionRepository;
         this.listingRequestRepository = listingRequestRepository;
+        this.conversationRepository = conversationRepository;
         this.listingCreationEventRepository = listingCreationEventRepository;
     }
 
@@ -391,11 +395,13 @@ public class ListingService {
      *   fraudulent or violating listings).
      *
      * Referential Integrity:
-     * - In the database schema, both `listing_requests` and `transactions` reference `listings.id`
-     *   with `ON DELETE RESTRICT`.
-     * - If any requests or transactions exist, hard deletion would cause a foreign-key violation.
+     * - In the database schema, `listing_requests`, `transactions`, and `conversations` reference
+     *   `listings.id` with `ON DELETE RESTRICT`.
+     * - If any of those dependents exist, hard deletion would cause a foreign-key violation.
      * - The service safely transitions the listing to `ListingStatus.REMOVED` instead of failing,
-     *   preserving user history and ledger integrity.
+     *   preserving user history, chat history, and ledger integrity.
+     * - The listing row is locked (SELECT ... FOR UPDATE) so a dependent cannot be inserted
+     *   between the existence checks and the delete decision.
      */
     @Transactional
     public void deleteListing(UUID id, UserPrincipal principal) {
@@ -403,7 +409,7 @@ public class ListingService {
             throw new AccessDeniedException("Authentication is required to delete a listing");
         }
 
-        Listing listing = listingRepository.findById(id)
+        Listing listing = listingRepository.findByIdForUpdate(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Listing not found with id: " + id));
 
         boolean isOwner = listing.getOwner().getId().equals(principal.getId());
@@ -412,11 +418,12 @@ public class ListingService {
             throw new AccessDeniedException("You do not have permission to delete this listing");
         }
 
-        // Safe status-based removal if referenced by existing requests or transactions (ON DELETE RESTRICT)
+        // Safe status-based removal if referenced by requests, transactions, or conversations (ON DELETE RESTRICT)
         boolean hasRequests = listingRequestRepository.existsByListingId(listing.getId());
         boolean hasTransactions = transactionRepository.existsByListingId(listing.getId());
+        boolean hasConversations = conversationRepository.existsByListingId(listing.getId());
 
-        if (hasRequests || hasTransactions) {
+        if (hasRequests || hasTransactions || hasConversations) {
             listing.setStatus(ListingStatus.REMOVED);
             listingRepository.save(listing);
         } else {

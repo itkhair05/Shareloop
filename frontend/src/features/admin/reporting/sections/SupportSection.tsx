@@ -5,6 +5,7 @@ import type { ReportGranularity, ReportingRangeQuery } from '@/types/reporting';
 import { useSupportReportSummary, useSupportReportTimeseries } from '../hooks/use-reporting';
 import { DomainFilterBar, DomainFilterField, domainSelectClassName } from '../components/ReportingFilterBar';
 import { ReportingChartCard } from '../components/ReportingChartCard';
+import { ReportingExportControl } from '../components/ReportingExportControl';
 import { ReportingKpiCard } from '../components/ReportingKpiCard';
 import { DonutChart } from '../components/DonutChart';
 import { DistributionBars } from '../components/DistributionBars';
@@ -58,6 +59,16 @@ export function SupportSection({ range, granularity }: SupportSectionProps) {
 
   return (
     <div className="space-y-5">
+      <ReportingExportControl
+        section="support"
+        range={range}
+        granularity={granularity}
+        filters={{
+          status: status === 'ALL' ? undefined : status,
+          category: category === 'ALL' ? undefined : category,
+        }}
+      />
+
       <DomainFilterBar
         onReset={() => {
           setStatus('ALL');
@@ -125,7 +136,7 @@ export function SupportSection({ range, granularity }: SupportSectionProps) {
               value={formatReportingNumber(
                 getDistributionValue(summaryQuery.data.metrics.byCurrentStatus, 'PENDING')
               )}
-              tone="warning"
+              color="amber"
             />
             <ReportingKpiCard
               label={SUPPORT_STATUS_LABELS.IN_PROGRESS}
@@ -138,7 +149,7 @@ export function SupportSection({ range, granularity }: SupportSectionProps) {
               value={formatReportingNumber(
                 getDistributionValue(summaryQuery.data.metrics.byCurrentStatus, 'RESOLVED')
               )}
-              tone="success"
+              color="emerald"
             />
             <ReportingKpiCard
               label={SUPPORT_STATUS_LABELS.CLOSED}

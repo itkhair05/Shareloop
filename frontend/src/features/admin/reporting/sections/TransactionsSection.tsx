@@ -7,6 +7,7 @@ import {
 } from '../hooks/use-reporting';
 import { DomainFilterBar, DomainFilterField, domainSelectClassName } from '../components/ReportingFilterBar';
 import { ReportingChartCard } from '../components/ReportingChartCard';
+import { ReportingExportControl } from '../components/ReportingExportControl';
 import { ReportingKpiCard } from '../components/ReportingKpiCard';
 import { DonutChart } from '../components/DonutChart';
 import { TimeseriesChart } from '../components/TimeseriesChart';
@@ -39,6 +40,13 @@ export function TransactionsSection({ range, granularity }: TransactionsSectionP
 
   return (
     <div className="space-y-5">
+      <ReportingExportControl
+        section="transactions"
+        range={range}
+        granularity={granularity}
+        filters={{ status: status === 'ALL' ? undefined : status }}
+      />
+
       <DomainFilterBar
         onReset={() => setStatus('ALL')}
         hasActiveFilters={status !== 'ALL'}
@@ -87,7 +95,7 @@ export function TransactionsSection({ range, granularity }: TransactionsSectionP
               value={formatReportingNumber(
                 getDistributionValue(summaryQuery.data.metrics.byStatus, 'PENDING')
               )}
-              tone="warning"
+              color="amber"
             />
             <ReportingKpiCard
               label={TRANSACTION_STATUS_LABELS.IN_PROGRESS}
@@ -100,7 +108,7 @@ export function TransactionsSection({ range, granularity }: TransactionsSectionP
               value={formatReportingNumber(
                 getDistributionValue(summaryQuery.data.metrics.byStatus, 'COMPLETED')
               )}
-              tone="success"
+              color="emerald"
             />
             <ReportingKpiCard
               label={TRANSACTION_STATUS_LABELS.CANCELLED}

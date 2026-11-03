@@ -23,6 +23,8 @@ public interface ConversationRepository extends JpaRepository<Conversation, UUID
     @EntityGraph(attributePaths = {"listing", "owner", "requester"})
     Optional<Conversation> findByListingIdAndRequesterId(UUID listingId, UUID requesterId);
 
+    boolean existsByListingId(UUID listingId);
+
     @Lock(LockModeType.PESSIMISTIC_WRITE)
     @Query("SELECT c FROM Conversation c WHERE c.id = :id")
     Optional<Conversation> findByIdForUpdate(@Param("id") UUID id);
