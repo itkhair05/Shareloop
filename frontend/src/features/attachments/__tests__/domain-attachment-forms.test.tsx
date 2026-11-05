@@ -386,8 +386,7 @@ describe('Thư viện ảnh trong màn hình chi tiết', () => {
     const image = await screen.findByAltText('Hình ảnh đính kèm 1');
     expect(image.getAttribute('src')).toMatch(/^blob:/);
     expect(attachmentApi.getPrivateAttachmentImage).toHaveBeenCalledWith(
-      REPORT_IMAGE_URL,
-      expect.any(AbortSignal)
+      REPORT_IMAGE_URL
     );
   });
 
@@ -446,8 +445,7 @@ describe('Thư viện ảnh trong màn hình chi tiết', () => {
       mockSupportResponse.id
     );
     expect(attachmentApi.getPrivateAttachmentImage).toHaveBeenCalledWith(
-      SUPPORT_IMAGE_URL,
-      expect.any(AbortSignal)
+      SUPPORT_IMAGE_URL
     );
   });
 

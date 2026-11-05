@@ -98,6 +98,16 @@ describe('ApiError and normalizeApiError', () => {
     expect(normalized.error).toBe('Request Timeout');
   });
 
+  it('normalizes request cancellation without reporting a network failure', () => {
+    const axiosError = new AxiosError('canceled', 'ERR_CANCELED');
+    const normalized = normalizeApiError(axiosError);
+
+    expect(normalized.isCanceled).toBe(true);
+    expect(normalized.isNetworkError).toBe(false);
+    expect(normalized.isTimeout).toBe(false);
+    expect(normalized.status).toBe(0);
+  });
+
   it('returns existing ApiError instance directly', () => {
     const original = new ApiError({ message: 'Original', status: 400, error: 'Bad Request' });
     expect(normalizeApiError(original)).toBe(original);

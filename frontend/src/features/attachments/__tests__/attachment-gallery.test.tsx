@@ -1,3 +1,4 @@
+import { StrictMode } from 'react';
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
@@ -33,6 +34,50 @@ function imageBlob(): Blob {
   return new Blob(['private-image'], { type: 'image/jpeg' });
 }
 
+/**
+ * Mirrors the real API contract: the first argument is the URL and the second
+ * is an optional AbortSignal. Rejects as canceled when that signal aborts so a
+ * consumer-bound download behaves like the old (buggy) implementation.
+ */
+function signalAwareFetcher() {
+  return vi.fn((_url: string, signal?: AbortSignal) => {
+    if (!signal) {
+      return Promise.resolve(imageBlob());
+    }
+
+    return new Promise<Blob>((resolve, reject) => {
+      if (signal.aborted) {
+        reject(
+          new ApiError({
+            message: 'Request was canceled',
+            status: 0,
+            error: 'Canceled',
+            isCanceled: true,
+          })
+        );
+        return;
+      }
+
+      signal.addEventListener(
+        'abort',
+        () => {
+          reject(
+            new ApiError({
+              message: 'Request was canceled',
+              status: 0,
+              error: 'Canceled',
+              isCanceled: true,
+            })
+          );
+        },
+        { once: true }
+      );
+
+      setTimeout(() => resolve(imageBlob()), 0);
+    });
+  });
+}
+
 beforeEach(() => {
   vi.clearAllMocks();
   clearPrivateImageCache();
@@ -64,12 +109,61 @@ describe('AttachmentGallery — hiển thị ảnh riêng tư', () => {
     const image = await screen.findByAltText('Hình ảnh đính kèm 1');
 
     expect(attachmentApi.getPrivateAttachmentImage).toHaveBeenCalledWith(
-      IMAGE_A.url,
-      expect.any(AbortSignal)
+      IMAGE_A.url
     );
     expect(image.getAttribute('src')).toMatch(/^blob:/);
     expect(image.getAttribute('src')).not.toBe(IMAGE_A.url);
     expect(container.innerHTML).not.toContain(IMAGE_A.url);
+  });
+
+  it('vẫn hiển thị ảnh khi StrictMode gắn lại component', async () => {
+    const fetcher = signalAwareFetcher();
+    vi.mocked(attachmentApi.getPrivateAttachmentImage).mockImplementation(
+      fetcher
+    );
+
+    renderWithProviders(
+      <StrictMode>
+        <AttachmentGallery images={[IMAGE_A]} />
+      </StrictMode>
+    );
+
+    const image = await screen.findByAltText('Hình ảnh đính kèm 1');
+
+    expect(image.getAttribute('src')).toMatch(/^blob:/);
+    expect(
+      screen.queryByText('Không thể tải ảnh. Kiểm tra kết nối và thử lại.')
+    ).not.toBeInTheDocument();
+    // StrictMode remounts join the shared download instead of issuing another.
+    expect(fetcher).toHaveBeenCalledTimes(1);
+  });
+
+  it('báo lỗi mạng chính xác và tải lại thành công khi thử lại', async () => {
+    const user = userEvent.setup();
+    vi.mocked(attachmentApi.getPrivateAttachmentImage)
+      .mockRejectedValueOnce(
+        new ApiError({
+          message: 'Unable to connect',
+          status: 0,
+          error: 'Network Error',
+          isNetworkError: true,
+        })
+      )
+      .mockResolvedValueOnce(imageBlob());
+
+    renderWithProviders(<AttachmentGallery images={[IMAGE_A]} />);
+
+    expect(
+      await screen.findByText('Không thể tải ảnh. Kiểm tra kết nối và thử lại.')
+    ).toBeInTheDocument();
+
+    await user.click(screen.getByRole('button', { name: 'Thử lại' }));
+
+    await screen.findByAltText('Hình ảnh đính kèm 1');
+    expect(
+      screen.queryByText('Không thể tải ảnh. Kiểm tra kết nối và thử lại.')
+    ).not.toBeInTheDocument();
+    expect(attachmentApi.getPrivateAttachmentImage).toHaveBeenCalledTimes(2);
   });
 
   it('hiển thị lỗi quyền truy cập bằng tiếng Việt', async () => {

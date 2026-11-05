@@ -12,6 +12,7 @@ export class ApiError extends Error {
   readonly fieldErrors?: Record<string, string>;
   readonly isNetworkError: boolean;
   readonly isTimeout: boolean;
+  readonly isCanceled: boolean;
 
   constructor(params: {
     message: string;
@@ -22,6 +23,7 @@ export class ApiError extends Error {
     fieldErrors?: Record<string, string>;
     isNetworkError?: boolean;
     isTimeout?: boolean;
+    isCanceled?: boolean;
   }) {
     super(params.message);
     this.name = 'ApiError';
@@ -32,6 +34,7 @@ export class ApiError extends Error {
     this.fieldErrors = params.fieldErrors;
     this.isNetworkError = params.isNetworkError ?? false;
     this.isTimeout = params.isTimeout ?? false;
+    this.isCanceled = params.isCanceled ?? false;
 
     // Maintain proper prototype chain
     Object.setPrototypeOf(this, ApiError.prototype);
@@ -67,6 +70,17 @@ export function normalizeApiError(error: unknown): ApiError {
   }
 
   if (error instanceof AxiosError) {
+    // Deliberate cancellation is not a network failure and must not be shown
+    // to the user as one.
+    if (error.code === 'ERR_CANCELED') {
+      return new ApiError({
+        message: 'Request was canceled',
+        status: 0,
+        error: 'Canceled',
+        isCanceled: true,
+      });
+    }
+
     // Network failure (server down, CORS failure, DNS resolution failure)
     if (error.code === 'ERR_NETWORK') {
       return new ApiError({

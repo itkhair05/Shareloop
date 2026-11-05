@@ -123,10 +123,13 @@ export function usePrivateImage(imageUrl?: string | null): PrivateImageState {
     let lease: PrivateImageLease | null = null;
     const controller = new AbortController();
 
+    // The cache owns the shared download. Binding it to this effect's signal
+    // would let one consumer's cleanup (e.g. StrictMode remount) cancel the
+    // request for every other consumer watching the same image.
     acquirePrivateImage(
       sessionId,
       imageUrl,
-      () => attachmentApi.getPrivateAttachmentImage(imageUrl, controller.signal),
+      () => attachmentApi.getPrivateAttachmentImage(imageUrl),
       { signal: controller.signal }
     )
       .then((nextLease) => {
@@ -147,7 +150,11 @@ export function usePrivateImage(imageUrl?: string | null): PrivateImageState {
         });
       })
       .catch((error: unknown) => {
-        if (!active || isPrivateImageAbortError(error)) {
+        if (
+          !active ||
+          isPrivateImageAbortError(error) ||
+          (error instanceof ApiError && error.isCanceled)
+        ) {
           return;
         }
 
