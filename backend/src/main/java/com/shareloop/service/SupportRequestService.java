@@ -1,19 +1,26 @@
 package com.shareloop.service;
 
+import com.shareloop.dto.attachment.AttachmentResponse;
 import com.shareloop.dto.support.AdminSupportRequestResponse;
 import com.shareloop.dto.support.CreateSupportRequest;
 import com.shareloop.dto.support.SupportRequestResponse;
 import com.shareloop.dto.support.UpdateSupportRequestAdminRequest;
 import com.shareloop.entity.SupportRequest;
+import com.shareloop.entity.SupportRequestAttachment;
 import com.shareloop.entity.Transaction;
+import com.shareloop.entity.UploadedFile;
 import com.shareloop.entity.User;
 import com.shareloop.entity.enums.NotificationType;
 import com.shareloop.entity.enums.SupportCategory;
 import com.shareloop.entity.enums.SupportRequestStatus;
+import com.shareloop.entity.enums.UploadPurpose;
 import com.shareloop.entity.enums.UserRole;
+import com.shareloop.exception.AttachmentConflictException;
 import com.shareloop.exception.ResourceNotFoundException;
+import com.shareloop.repository.SupportRequestAttachmentRepository;
 import com.shareloop.repository.SupportRequestRepository;
 import com.shareloop.repository.TransactionRepository;
+import com.shareloop.repository.UploadedFileRepository;
 import com.shareloop.repository.UserRepository;
 import com.shareloop.security.UserPrincipal;
 import org.springframework.data.domain.Page;
@@ -25,26 +32,42 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Instant;
+import java.util.ArrayList;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 
 @Service
 public class SupportRequestService {
 
+    private static final int MAX_SUPPORT_ATTACHMENTS = 5;
+    private static final String SUPPORT_DOMAIN = "SUPPORT";
+
     private final SupportRequestRepository supportRequestRepository;
     private final UserRepository userRepository;
     private final TransactionRepository transactionRepository;
     private final NotificationService notificationService;
+    private final SupportRequestAttachmentRepository supportRequestAttachmentRepository;
+    private final UploadedFileRepository uploadedFileRepository;
+    private final FileBindingService fileBindingService;
 
     public SupportRequestService(
             SupportRequestRepository supportRequestRepository,
             UserRepository userRepository,
             TransactionRepository transactionRepository,
-            NotificationService notificationService
+            NotificationService notificationService,
+            SupportRequestAttachmentRepository supportRequestAttachmentRepository,
+            UploadedFileRepository uploadedFileRepository,
+            FileBindingService fileBindingService
     ) {
         this.supportRequestRepository = supportRequestRepository;
         this.userRepository = userRepository;
         this.transactionRepository = transactionRepository;
         this.notificationService = notificationService;
+        this.supportRequestAttachmentRepository = supportRequestAttachmentRepository;
+        this.uploadedFileRepository = uploadedFileRepository;
+        this.fileBindingService = fileBindingService;
     }
 
     @Transactional
@@ -74,8 +97,67 @@ public class SupportRequestService {
                 request.getDescription().trim()
         );
 
-        supportRequest = supportRequestRepository.save(supportRequest);
-        return SupportRequestResponse.fromEntity(supportRequest);
+        supportRequest = supportRequestRepository.saveAndFlush(supportRequest);
+        List<SupportRequestAttachment> attachments =
+                attachImages(supportRequest, request.getImageIds(), requester);
+        return SupportRequestResponse.fromEntity(supportRequest, toAttachmentResponses(attachments));
+    }
+
+    /**
+     * Binds support-purpose uploads and persists ordered attachment rows in the same
+     * transaction as the support request. Evidence survives every status transition.
+     */
+    private List<SupportRequestAttachment> attachImages(SupportRequest supportRequest, List<UUID> imageIds, User owner) {
+        if (imageIds == null || imageIds.isEmpty()) {
+            return List.of();
+        }
+        if (imageIds.size() > MAX_SUPPORT_ATTACHMENTS) {
+            throw new IllegalArgumentException(
+                    "A support request can have at most " + MAX_SUPPORT_ATTACHMENTS + " attachments");
+        }
+
+        try {
+            fileBindingService.bindFiles(
+                    imageIds, UploadPurpose.SUPPORT, SUPPORT_DOMAIN, supportRequest.getId(), owner);
+        } catch (IllegalStateException ex) {
+            throw new AttachmentConflictException(
+                    "Tệp đính kèm đã được sử dụng hoặc không còn khả dụng.", ex);
+        }
+
+        List<SupportRequestAttachment> attachments = new ArrayList<>(imageIds.size());
+        for (int i = 0; i < imageIds.size(); i++) {
+            UploadedFile file = uploadedFileRepository.getReferenceById(imageIds.get(i));
+            attachments.add(new SupportRequestAttachment(supportRequest, file, i));
+        }
+        return supportRequestAttachmentRepository.saveAllAndFlush(attachments);
+    }
+
+    private List<AttachmentResponse> toAttachmentResponses(List<SupportRequestAttachment> attachments) {
+        if (attachments == null || attachments.isEmpty()) {
+            return List.of();
+        }
+        return attachments.stream()
+                .map(attachment -> AttachmentResponse.supportRequestAttachment(attachment.getFileId()))
+                .toList();
+    }
+
+    private List<AttachmentResponse> loadAttachmentsForSupportRequest(UUID supportRequestId) {
+        return toAttachmentResponses(
+                supportRequestAttachmentRepository.findBySupportRequestIdOrderByDisplayOrderAsc(supportRequestId));
+    }
+
+    private Map<UUID, List<AttachmentResponse>> loadAttachmentsBySupportRequestId(List<UUID> supportRequestIds) {
+        if (supportRequestIds == null || supportRequestIds.isEmpty()) {
+            return Map.of();
+        }
+        Map<UUID, List<AttachmentResponse>> attachmentsByRequest = new LinkedHashMap<>();
+        for (SupportRequestAttachment attachment : supportRequestAttachmentRepository
+                .findBySupportRequestIdsOrderByDisplayOrderAsc(supportRequestIds)) {
+            attachmentsByRequest
+                    .computeIfAbsent(attachment.getSupportRequest().getId(), key -> new ArrayList<>())
+                    .add(AttachmentResponse.supportRequestAttachment(attachment.getFileId()));
+        }
+        return attachmentsByRequest;
     }
 
     @Transactional(readOnly = true)
@@ -99,7 +181,10 @@ public class SupportRequestService {
             result = supportRequestRepository.findByRequesterId(principal.getId(), pageable);
         }
 
-        return result.map(SupportRequestResponse::fromEntity);
+        Map<UUID, List<AttachmentResponse>> attachmentsByRequest = loadAttachmentsBySupportRequestId(
+                result.getContent().stream().map(SupportRequest::getId).toList());
+        return result.map(request -> SupportRequestResponse.fromEntity(
+                request, attachmentsByRequest.getOrDefault(request.getId(), List.of())));
     }
 
     @Transactional(readOnly = true)
@@ -117,7 +202,7 @@ public class SupportRequestService {
             throw new AccessDeniedException("You are not authorized to view this support request");
         }
 
-        return SupportRequestResponse.fromEntity(sr);
+        return SupportRequestResponse.fromEntity(sr, loadAttachmentsForSupportRequest(id));
     }
 
     @Transactional(readOnly = true)
@@ -135,7 +220,10 @@ public class SupportRequestService {
 
         Pageable pageable = PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, "createdAt").and(Sort.by(Sort.Direction.DESC, "id")));
         Page<SupportRequest> result = supportRequestRepository.findForAdmin(status, category, pageable);
-        return result.map(AdminSupportRequestResponse::fromEntity);
+        Map<UUID, List<AttachmentResponse>> attachmentsByRequest = loadAttachmentsBySupportRequestId(
+                result.getContent().stream().map(SupportRequest::getId).toList());
+        return result.map(request -> AdminSupportRequestResponse.fromEntity(
+                request, attachmentsByRequest.getOrDefault(request.getId(), List.of())));
     }
 
     @Transactional(readOnly = true)
@@ -147,7 +235,7 @@ public class SupportRequestService {
         SupportRequest sr = supportRequestRepository.findWithDetailsById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Support request not found with id: " + id));
 
-        return AdminSupportRequestResponse.fromEntity(sr);
+        return AdminSupportRequestResponse.fromEntity(sr, loadAttachmentsForSupportRequest(id));
     }
 
     @Transactional
@@ -221,7 +309,7 @@ public class SupportRequestService {
             );
         }
 
-        return AdminSupportRequestResponse.fromEntity(sr);
+        return AdminSupportRequestResponse.fromEntity(sr, loadAttachmentsForSupportRequest(id));
     }
 
     private void validatePagination(int page, int size) {

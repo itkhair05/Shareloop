@@ -1,15 +1,22 @@
 package com.shareloop.service;
 
+import com.shareloop.dto.attachment.AttachmentResponse;
 import com.shareloop.dto.review.*;
 import com.shareloop.entity.Review;
+import com.shareloop.entity.ReviewImage;
 import com.shareloop.entity.Transaction;
+import com.shareloop.entity.UploadedFile;
 import com.shareloop.entity.User;
 import com.shareloop.entity.enums.TransactionStatus;
+import com.shareloop.entity.enums.UploadPurpose;
 import com.shareloop.entity.enums.UserRole;
+import com.shareloop.exception.AttachmentConflictException;
 import com.shareloop.exception.DuplicateReviewException;
 import com.shareloop.exception.ResourceNotFoundException;
+import com.shareloop.repository.ReviewImageRepository;
 import com.shareloop.repository.ReviewRepository;
 import com.shareloop.repository.TransactionRepository;
+import com.shareloop.repository.UploadedFileRepository;
 import com.shareloop.repository.UserRepository;
 import com.shareloop.security.UserPrincipal;
 import org.springframework.dao.DataIntegrityViolationException;
@@ -24,6 +31,8 @@ import org.springframework.transaction.annotation.Transactional;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.time.Instant;
+import java.util.ArrayList;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
@@ -31,18 +40,30 @@ import java.util.UUID;
 @Service
 public class ReviewService {
 
+    private static final int MAX_REVIEW_IMAGES = 3;
+    private static final String REVIEW_DOMAIN = "REVIEW";
+
     private final ReviewRepository reviewRepository;
     private final TransactionRepository transactionRepository;
     private final UserRepository userRepository;
+    private final ReviewImageRepository reviewImageRepository;
+    private final UploadedFileRepository uploadedFileRepository;
+    private final FileBindingService fileBindingService;
 
     public ReviewService(
             ReviewRepository reviewRepository,
             TransactionRepository transactionRepository,
-            UserRepository userRepository
+            UserRepository userRepository,
+            ReviewImageRepository reviewImageRepository,
+            UploadedFileRepository uploadedFileRepository,
+            FileBindingService fileBindingService
     ) {
         this.reviewRepository = reviewRepository;
         this.transactionRepository = transactionRepository;
         this.userRepository = userRepository;
+        this.reviewImageRepository = reviewImageRepository;
+        this.uploadedFileRepository = uploadedFileRepository;
+        this.fileBindingService = fileBindingService;
     }
 
     /**
@@ -95,13 +116,71 @@ public class ReviewService {
 
         try {
             Review saved = reviewRepository.saveAndFlush(review);
-            return ReviewResponse.fromEntity(saved);
+            List<ReviewImage> images = attachImages(saved, request.getImageIds(), reviewer);
+            return ReviewResponse.fromEntity(saved, toAttachmentResponses(images));
         } catch (DataIntegrityViolationException ex) {
             if (ex.getMessage() != null && ex.getMessage().contains("uq_reviews_transaction_reviewer")) {
                 throw new DuplicateReviewException("You have already submitted a review for this transaction");
             }
             throw ex;
         }
+    }
+
+    /**
+     * Binds review-purpose uploads to the review and persists ordered attachment rows.
+     * Runs inside the review-creation transaction: any failure rolls back the review,
+     * the global bindings, and the attachment rows together.
+     */
+    private List<ReviewImage> attachImages(Review review, List<UUID> imageIds, User owner) {
+        if (imageIds == null || imageIds.isEmpty()) {
+            return List.of();
+        }
+        if (imageIds.size() > MAX_REVIEW_IMAGES) {
+            throw new IllegalArgumentException("A review can have at most " + MAX_REVIEW_IMAGES + " images");
+        }
+
+        try {
+            fileBindingService.bindFiles(imageIds, UploadPurpose.REVIEW, REVIEW_DOMAIN, review.getId(), owner);
+        } catch (IllegalStateException ex) {
+            throw new AttachmentConflictException(
+                    "Tệp đính kèm đã được sử dụng hoặc không còn khả dụng.", ex);
+        }
+
+        List<ReviewImage> images = new ArrayList<>(imageIds.size());
+        for (int i = 0; i < imageIds.size(); i++) {
+            UploadedFile file = uploadedFileRepository.getReferenceById(imageIds.get(i));
+            images.add(new ReviewImage(review, file, i));
+        }
+        return reviewImageRepository.saveAllAndFlush(images);
+    }
+
+    private List<AttachmentResponse> toAttachmentResponses(List<ReviewImage> images) {
+        if (images == null || images.isEmpty()) {
+            return List.of();
+        }
+        return images.stream()
+                .map(image -> AttachmentResponse.reviewImage(image.getFileId()))
+                .toList();
+    }
+
+    private List<AttachmentResponse> loadImagesForReview(UUID reviewId) {
+        return toAttachmentResponses(reviewImageRepository.findByReviewIdOrderByDisplayOrderAsc(reviewId));
+    }
+
+    /**
+     * Batch-loads ordered images for a page or list of reviews to avoid N+1 queries.
+     */
+    private Map<UUID, List<AttachmentResponse>> loadImagesByReviewId(List<UUID> reviewIds) {
+        if (reviewIds == null || reviewIds.isEmpty()) {
+            return Map.of();
+        }
+        Map<UUID, List<AttachmentResponse>> imagesByReview = new LinkedHashMap<>();
+        for (ReviewImage image : reviewImageRepository.findByReviewIdsOrderByDisplayOrderAsc(reviewIds)) {
+            imagesByReview
+                    .computeIfAbsent(image.getReview().getId(), key -> new ArrayList<>())
+                    .add(AttachmentResponse.reviewImage(image.getFileId()));
+        }
+        return imagesByReview;
     }
 
     /**
@@ -132,8 +211,12 @@ public class ReviewService {
                     .toList();
         }
 
+        Map<UUID, List<AttachmentResponse>> imagesByReview = loadImagesByReviewId(
+                reviews.stream().map(Review::getId).toList());
+
         return reviews.stream()
-                .map(ReviewResponse::fromEntity)
+                .map(review -> ReviewResponse.fromEntity(
+                        review, imagesByReview.getOrDefault(review.getId(), List.of())))
                 .toList();
     }
 
@@ -158,7 +241,10 @@ public class ReviewService {
         Pageable pageable = PageRequest.of(page, size, sort);
 
         Page<Review> reviews = reviewRepository.findActiveByRevieweeId(userId, pageable);
-        return reviews.map(ReviewResponse::fromEntity);
+        Map<UUID, List<AttachmentResponse>> imagesByReview = loadImagesByReviewId(
+                reviews.getContent().stream().map(Review::getId).toList());
+        return reviews.map(review -> ReviewResponse.fromEntity(
+                review, imagesByReview.getOrDefault(review.getId(), List.of())));
     }
 
     /**
@@ -269,7 +355,10 @@ public class ReviewService {
                 com.shareloop.repository.specification.ReviewSpecification.filterAdminReviews(isHidden, rating, search);
 
         Page<Review> reviews = reviewRepository.findAll(spec, pageable);
-        return reviews.map(AdminReviewResponse::fromEntity);
+        Map<UUID, List<AttachmentResponse>> imagesByReview = loadImagesByReviewId(
+                reviews.getContent().stream().map(Review::getId).toList());
+        return reviews.map(review -> AdminReviewResponse.fromEntity(
+                review, imagesByReview.getOrDefault(review.getId(), List.of())));
     }
 
     /**
@@ -284,7 +373,7 @@ public class ReviewService {
         Review review = reviewRepository.findWithDetailsById(reviewId)
                 .orElseThrow(() -> new ResourceNotFoundException("Review not found with id: " + reviewId));
 
-        return AdminReviewResponse.fromEntity(review);
+        return AdminReviewResponse.fromEntity(review, loadImagesForReview(reviewId));
     }
 
     /**
@@ -303,7 +392,7 @@ public class ReviewService {
 
         if (!Boolean.TRUE.equals(review.getIsHidden())) {
             // Already active / visible: return idempotent response
-            return AdminReviewResponse.fromEntity(review);
+            return AdminReviewResponse.fromEntity(review, loadImagesForReview(reviewId));
         }
 
         review.setIsHidden(false);
@@ -312,7 +401,7 @@ public class ReviewService {
         review.setModerationReason(null);
 
         Review savedReview = reviewRepository.saveAndFlush(review);
-        return AdminReviewResponse.fromEntity(savedReview);
+        return AdminReviewResponse.fromEntity(savedReview, loadImagesForReview(reviewId));
     }
 
     private void validatePagination(int page, int size) {

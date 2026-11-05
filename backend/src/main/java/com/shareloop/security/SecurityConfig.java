@@ -116,6 +116,8 @@ public class SecurityConfig {
                         .requestMatchers(HttpMethod.POST, "/api/v1/files/upload").authenticated()
                         // Public file serving for images
                         .requestMatchers(HttpMethod.GET, "/api/v1/files/*").permitAll()
+                        // Public review images; hidden review images are rejected in the service
+                        .requestMatchers(HttpMethod.GET, "/api/v1/review-images/**").permitAll()
                         // Listing endpoints: GET /mine must require authentication before public listing matchers
                         .requestMatchers(HttpMethod.GET, "/api/v1/listings/mine").authenticated()
                         // Category endpoints: public retrieval

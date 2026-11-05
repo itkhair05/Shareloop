@@ -1,11 +1,14 @@
 package com.shareloop.dto.report;
 
+import com.shareloop.dto.attachment.AttachmentResponse;
 import com.shareloop.entity.Report;
 import com.shareloop.entity.enums.ReportCategory;
 import com.shareloop.entity.enums.ReportStatus;
 import com.shareloop.entity.enums.ReportTargetType;
 
 import java.time.Instant;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.UUID;
 
 public class ReportResponse {
@@ -22,11 +25,16 @@ public class ReportResponse {
     private Instant resolvedAt;
     private Instant createdAt;
     private Instant updatedAt;
+    private List<AttachmentResponse> images = new ArrayList<>();
 
     public ReportResponse() {
     }
 
     public static ReportResponse fromEntity(Report entity) {
+        return fromEntity(entity, List.of());
+    }
+
+    public static ReportResponse fromEntity(Report entity, List<AttachmentResponse> images) {
         ReportResponse response = new ReportResponse();
         response.setId(entity.getId());
         if (entity.getReporter() != null) {
@@ -42,6 +50,7 @@ public class ReportResponse {
         response.setResolvedAt(entity.getResolvedAt());
         response.setCreatedAt(entity.getCreatedAt());
         response.setUpdatedAt(entity.getUpdatedAt());
+        response.setImages(images);
         return response;
     }
 
@@ -139,5 +148,13 @@ public class ReportResponse {
 
     public void setUpdatedAt(Instant updatedAt) {
         this.updatedAt = updatedAt;
+    }
+
+    public List<AttachmentResponse> getImages() {
+        return images;
+    }
+
+    public void setImages(List<AttachmentResponse> images) {
+        this.images = images != null ? new ArrayList<>(images) : new ArrayList<>();
     }
 }

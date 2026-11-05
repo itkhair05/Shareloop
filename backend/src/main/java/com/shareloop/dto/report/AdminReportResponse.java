@@ -1,8 +1,10 @@
 package com.shareloop.dto.report;
 
+import com.shareloop.dto.attachment.AttachmentResponse;
 import com.shareloop.entity.Report;
 import com.shareloop.entity.User;
 
+import java.util.List;
 import java.util.UUID;
 
 public class AdminReportResponse extends ReportResponse {
@@ -18,10 +20,14 @@ public class AdminReportResponse extends ReportResponse {
     }
 
     public static AdminReportResponse fromEntity(Report entity) {
-        return fromEntity(entity, null);
+        return fromEntity(entity, null, List.of());
     }
 
     public static AdminReportResponse fromEntity(Report entity, User targetUser) {
+        return fromEntity(entity, targetUser, List.of());
+    }
+
+    public static AdminReportResponse fromEntity(Report entity, User targetUser, List<AttachmentResponse> images) {
         AdminReportResponse response = new AdminReportResponse();
         response.setId(entity.getId());
         if (entity.getReporter() != null) {
@@ -47,6 +53,7 @@ public class AdminReportResponse extends ReportResponse {
         response.setResolvedAt(entity.getResolvedAt());
         response.setCreatedAt(entity.getCreatedAt());
         response.setUpdatedAt(entity.getUpdatedAt());
+        response.setImages(images);
         return response;
     }
 

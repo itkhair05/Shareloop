@@ -6,6 +6,7 @@ import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
 
+import java.util.List;
 import java.util.UUID;
 
 public class CreateReportRequest {
@@ -22,6 +23,9 @@ public class CreateReportRequest {
     @NotBlank(message = "Description is required")
     @Size(max = 2000, message = "Description must not exceed 2000 characters")
     private String description;
+
+    @Size(max = 5, message = "A report can have at most 5 attachments")
+    private List<UUID> imageIds;
 
     public CreateReportRequest() {
     }
@@ -63,5 +67,13 @@ public class CreateReportRequest {
 
     public void setDescription(String description) {
         this.description = description;
+    }
+
+    public List<UUID> getImageIds() {
+        return imageIds;
+    }
+
+    public void setImageIds(List<UUID> imageIds) {
+        this.imageIds = imageIds;
     }
 }

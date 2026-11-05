@@ -1,10 +1,13 @@
 package com.shareloop.dto.review;
 
+import com.shareloop.dto.attachment.AttachmentResponse;
 import com.shareloop.dto.chat.UserSummaryDto;
 import com.shareloop.dto.request.ListingReferenceDto;
 import com.shareloop.entity.Review;
 
 import java.time.Instant;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.UUID;
 
 public class ReviewResponse {
@@ -17,6 +20,7 @@ public class ReviewResponse {
     private Integer rating;
     private String comment;
     private Instant createdAt;
+    private List<AttachmentResponse> images = new ArrayList<>();
 
     public ReviewResponse() {
     }
@@ -31,6 +35,20 @@ public class ReviewResponse {
             String comment,
             Instant createdAt
     ) {
+        this(id, transactionId, listing, reviewer, reviewee, rating, comment, createdAt, List.of());
+    }
+
+    public ReviewResponse(
+            UUID id,
+            UUID transactionId,
+            ListingReferenceDto listing,
+            UserSummaryDto reviewer,
+            UserSummaryDto reviewee,
+            Integer rating,
+            String comment,
+            Instant createdAt,
+            List<AttachmentResponse> images
+    ) {
         this.id = id;
         this.transactionId = transactionId;
         this.listing = listing;
@@ -39,9 +57,14 @@ public class ReviewResponse {
         this.rating = rating;
         this.comment = comment;
         this.createdAt = createdAt;
+        this.images = images != null ? new ArrayList<>(images) : new ArrayList<>();
     }
 
     public static ReviewResponse fromEntity(Review review) {
+        return fromEntity(review, List.of());
+    }
+
+    public static ReviewResponse fromEntity(Review review, List<AttachmentResponse> images) {
         if (review == null) {
             return null;
         }
@@ -63,7 +86,8 @@ public class ReviewResponse {
                 UserSummaryDto.fromEntity(review.getReviewee()),
                 review.getRating(),
                 review.getComment(),
-                review.getCreatedAt()
+                review.getCreatedAt(),
+                images
         );
     }
 
@@ -129,5 +153,13 @@ public class ReviewResponse {
 
     public void setCreatedAt(Instant createdAt) {
         this.createdAt = createdAt;
+    }
+
+    public List<AttachmentResponse> getImages() {
+        return images;
+    }
+
+    public void setImages(List<AttachmentResponse> images) {
+        this.images = images != null ? new ArrayList<>(images) : new ArrayList<>();
     }
 }

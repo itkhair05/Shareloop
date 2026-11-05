@@ -1,25 +1,32 @@
 package com.shareloop.service;
 
+import com.shareloop.dto.attachment.AttachmentResponse;
 import com.shareloop.dto.report.AdminReportResponse;
 import com.shareloop.dto.report.CreateReportRequest;
 import com.shareloop.dto.report.ReportResponse;
 import com.shareloop.dto.report.UpdateReportAdminRequest;
 import com.shareloop.entity.Listing;
 import com.shareloop.entity.Report;
+import com.shareloop.entity.ReportAttachment;
 import com.shareloop.entity.Review;
 import com.shareloop.entity.Transaction;
+import com.shareloop.entity.UploadedFile;
 import com.shareloop.entity.User;
 import com.shareloop.entity.enums.NotificationType;
 import com.shareloop.entity.enums.ReportCategory;
 import com.shareloop.entity.enums.ReportStatus;
 import com.shareloop.entity.enums.ReportTargetType;
+import com.shareloop.entity.enums.UploadPurpose;
 import com.shareloop.entity.enums.UserRole;
+import com.shareloop.exception.AttachmentConflictException;
 import com.shareloop.exception.DuplicateReportException;
 import com.shareloop.exception.ResourceNotFoundException;
 import com.shareloop.repository.ListingRepository;
+import com.shareloop.repository.ReportAttachmentRepository;
 import com.shareloop.repository.ReportRepository;
 import com.shareloop.repository.ReviewRepository;
 import com.shareloop.repository.TransactionRepository;
+import com.shareloop.repository.UploadedFileRepository;
 import com.shareloop.repository.UserRepository;
 import com.shareloop.security.UserPrincipal;
 import org.springframework.data.domain.Page;
@@ -31,7 +38,9 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Instant;
+import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
@@ -39,12 +48,18 @@ import java.util.UUID;
 @Service
 public class ReportService {
 
+    private static final int MAX_REPORT_ATTACHMENTS = 5;
+    private static final String REPORT_DOMAIN = "REPORT";
+
     private final ReportRepository reportRepository;
     private final UserRepository userRepository;
     private final ListingRepository listingRepository;
     private final TransactionRepository transactionRepository;
     private final ReviewRepository reviewRepository;
     private final NotificationService notificationService;
+    private final ReportAttachmentRepository reportAttachmentRepository;
+    private final UploadedFileRepository uploadedFileRepository;
+    private final FileBindingService fileBindingService;
 
     public ReportService(
             ReportRepository reportRepository,
@@ -52,7 +67,10 @@ public class ReportService {
             ListingRepository listingRepository,
             TransactionRepository transactionRepository,
             ReviewRepository reviewRepository,
-            NotificationService notificationService
+            NotificationService notificationService,
+            ReportAttachmentRepository reportAttachmentRepository,
+            UploadedFileRepository uploadedFileRepository,
+            FileBindingService fileBindingService
     ) {
         this.reportRepository = reportRepository;
         this.userRepository = userRepository;
@@ -60,6 +78,9 @@ public class ReportService {
         this.transactionRepository = transactionRepository;
         this.reviewRepository = reviewRepository;
         this.notificationService = notificationService;
+        this.reportAttachmentRepository = reportAttachmentRepository;
+        this.uploadedFileRepository = uploadedFileRepository;
+        this.fileBindingService = fileBindingService;
     }
 
     @Transactional
@@ -92,8 +113,62 @@ public class ReportService {
                 request.getDescription().trim()
         );
 
-        report = reportRepository.save(report);
-        return ReportResponse.fromEntity(report);
+        report = reportRepository.saveAndFlush(report);
+        List<ReportAttachment> attachments = attachImages(report, request.getImageIds(), reporter);
+        return ReportResponse.fromEntity(report, toAttachmentResponses(attachments));
+    }
+
+    /**
+     * Binds report-purpose uploads and persists ordered evidence rows in the same
+     * transaction as the report. Evidence is never removed on status transitions.
+     */
+    private List<ReportAttachment> attachImages(Report report, List<UUID> imageIds, User owner) {
+        if (imageIds == null || imageIds.isEmpty()) {
+            return List.of();
+        }
+        if (imageIds.size() > MAX_REPORT_ATTACHMENTS) {
+            throw new IllegalArgumentException("A report can have at most " + MAX_REPORT_ATTACHMENTS + " attachments");
+        }
+
+        try {
+            fileBindingService.bindFiles(imageIds, UploadPurpose.REPORT, REPORT_DOMAIN, report.getId(), owner);
+        } catch (IllegalStateException ex) {
+            throw new AttachmentConflictException(
+                    "Tệp đính kèm đã được sử dụng hoặc không còn khả dụng.", ex);
+        }
+
+        List<ReportAttachment> attachments = new ArrayList<>(imageIds.size());
+        for (int i = 0; i < imageIds.size(); i++) {
+            UploadedFile file = uploadedFileRepository.getReferenceById(imageIds.get(i));
+            attachments.add(new ReportAttachment(report, file, i));
+        }
+        return reportAttachmentRepository.saveAllAndFlush(attachments);
+    }
+
+    private List<AttachmentResponse> toAttachmentResponses(List<ReportAttachment> attachments) {
+        if (attachments == null || attachments.isEmpty()) {
+            return List.of();
+        }
+        return attachments.stream()
+                .map(attachment -> AttachmentResponse.reportAttachment(attachment.getFileId()))
+                .toList();
+    }
+
+    private List<AttachmentResponse> loadAttachmentsForReport(UUID reportId) {
+        return toAttachmentResponses(reportAttachmentRepository.findByReportIdOrderByDisplayOrderAsc(reportId));
+    }
+
+    private Map<UUID, List<AttachmentResponse>> loadAttachmentsByReportId(List<UUID> reportIds) {
+        if (reportIds == null || reportIds.isEmpty()) {
+            return Map.of();
+        }
+        Map<UUID, List<AttachmentResponse>> attachmentsByReport = new LinkedHashMap<>();
+        for (ReportAttachment attachment : reportAttachmentRepository.findByReportIdsOrderByDisplayOrderAsc(reportIds)) {
+            attachmentsByReport
+                    .computeIfAbsent(attachment.getReport().getId(), key -> new ArrayList<>())
+                    .add(AttachmentResponse.reportAttachment(attachment.getFileId()));
+        }
+        return attachmentsByReport;
     }
 
     @Transactional(readOnly = true)
@@ -117,7 +192,10 @@ public class ReportService {
             result = reportRepository.findByReporterId(principal.getId(), pageable);
         }
 
-        return result.map(ReportResponse::fromEntity);
+        Map<UUID, List<AttachmentResponse>> attachmentsByReport = loadAttachmentsByReportId(
+                result.getContent().stream().map(Report::getId).toList());
+        return result.map(report -> ReportResponse.fromEntity(
+                report, attachmentsByReport.getOrDefault(report.getId(), List.of())));
     }
 
     @Transactional(readOnly = true)
@@ -135,7 +213,7 @@ public class ReportService {
             throw new AccessDeniedException("You are not authorized to view this report");
         }
 
-        return ReportResponse.fromEntity(report);
+        return ReportResponse.fromEntity(report, loadAttachmentsForReport(id));
     }
 
     @Transactional(readOnly = true)
@@ -155,11 +233,14 @@ public class ReportService {
         Pageable pageable = PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, "createdAt").and(Sort.by(Sort.Direction.DESC, "id")));
         Page<Report> result = reportRepository.findForAdmin(status, targetType, category, pageable);
         Map<UUID, User> reportedUsers = loadReportedUsers(result.getContent());
+        Map<UUID, List<AttachmentResponse>> attachmentsByReport = loadAttachmentsByReportId(
+                result.getContent().stream().map(Report::getId).toList());
         return result.map(report -> AdminReportResponse.fromEntity(
                 report,
                 report.getTargetType() == ReportTargetType.USER
                         ? reportedUsers.get(report.getTargetId())
-                        : null
+                        : null,
+                attachmentsByReport.getOrDefault(report.getId(), List.of())
         ));
     }
 
@@ -172,7 +253,7 @@ public class ReportService {
         Report report = reportRepository.findWithDetailsById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Report not found with id: " + id));
 
-        return AdminReportResponse.fromEntity(report, resolveReportedUser(report));
+        return AdminReportResponse.fromEntity(report, resolveReportedUser(report), loadAttachmentsForReport(id));
     }
 
     @Transactional
@@ -242,7 +323,7 @@ public class ReportService {
             );
         }
 
-        return AdminReportResponse.fromEntity(report, resolveReportedUser(report));
+        return AdminReportResponse.fromEntity(report, resolveReportedUser(report), loadAttachmentsForReport(id));
     }
 
     /**

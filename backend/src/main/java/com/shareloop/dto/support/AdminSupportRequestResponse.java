@@ -1,7 +1,9 @@
 package com.shareloop.dto.support;
 
+import com.shareloop.dto.attachment.AttachmentResponse;
 import com.shareloop.entity.SupportRequest;
 
+import java.util.List;
 import java.util.UUID;
 
 public class AdminSupportRequestResponse extends SupportRequestResponse {
@@ -15,6 +17,10 @@ public class AdminSupportRequestResponse extends SupportRequestResponse {
     }
 
     public static AdminSupportRequestResponse fromEntity(SupportRequest entity) {
+        return fromEntity(entity, List.of());
+    }
+
+    public static AdminSupportRequestResponse fromEntity(SupportRequest entity, List<AttachmentResponse> images) {
         AdminSupportRequestResponse response = new AdminSupportRequestResponse();
         response.setId(entity.getId());
         if (entity.getRequester() != null) {
@@ -38,6 +44,7 @@ public class AdminSupportRequestResponse extends SupportRequestResponse {
         response.setResolvedAt(entity.getResolvedAt());
         response.setCreatedAt(entity.getCreatedAt());
         response.setUpdatedAt(entity.getUpdatedAt());
+        response.setImages(images);
         return response;
     }
 

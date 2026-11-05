@@ -1,10 +1,13 @@
 package com.shareloop.dto.support;
 
+import com.shareloop.dto.attachment.AttachmentResponse;
 import com.shareloop.entity.SupportRequest;
 import com.shareloop.entity.enums.SupportCategory;
 import com.shareloop.entity.enums.SupportRequestStatus;
 
 import java.time.Instant;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.UUID;
 
 public class SupportRequestResponse {
@@ -21,11 +24,16 @@ public class SupportRequestResponse {
     private Instant resolvedAt;
     private Instant createdAt;
     private Instant updatedAt;
+    private List<AttachmentResponse> images = new ArrayList<>();
 
     public SupportRequestResponse() {
     }
 
     public static SupportRequestResponse fromEntity(SupportRequest entity) {
+        return fromEntity(entity, List.of());
+    }
+
+    public static SupportRequestResponse fromEntity(SupportRequest entity, List<AttachmentResponse> images) {
         SupportRequestResponse response = new SupportRequestResponse();
         response.setId(entity.getId());
         if (entity.getRequester() != null) {
@@ -43,6 +51,7 @@ public class SupportRequestResponse {
         response.setResolvedAt(entity.getResolvedAt());
         response.setCreatedAt(entity.getCreatedAt());
         response.setUpdatedAt(entity.getUpdatedAt());
+        response.setImages(images);
         return response;
     }
 
@@ -140,5 +149,13 @@ public class SupportRequestResponse {
 
     public void setUpdatedAt(Instant updatedAt) {
         this.updatedAt = updatedAt;
+    }
+
+    public List<AttachmentResponse> getImages() {
+        return images;
+    }
+
+    public void setImages(List<AttachmentResponse> images) {
+        this.images = images != null ? new ArrayList<>(images) : new ArrayList<>();
     }
 }

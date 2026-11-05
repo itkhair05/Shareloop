@@ -1,9 +1,12 @@
 package com.shareloop.dto.review;
 
+import com.shareloop.dto.attachment.AttachmentResponse;
 import com.shareloop.entity.Review;
 import com.shareloop.entity.enums.TransactionStatus;
 
 import java.time.Instant;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.UUID;
 
 public class AdminReviewResponse {
@@ -14,6 +17,7 @@ public class AdminReviewResponse {
     private Instant createdAt;
     private Instant updatedAt;
     private Boolean isHidden;
+    private List<AttachmentResponse> images = new ArrayList<>();
 
     // Reviewer details
     private UUID reviewerId;
@@ -41,6 +45,10 @@ public class AdminReviewResponse {
     }
 
     public static AdminReviewResponse fromEntity(Review review) {
+        return fromEntity(review, List.of());
+    }
+
+    public static AdminReviewResponse fromEntity(Review review, List<AttachmentResponse> images) {
         if (review == null) {
             return null;
         }
@@ -52,6 +60,7 @@ public class AdminReviewResponse {
         response.setCreatedAt(review.getCreatedAt());
         response.setUpdatedAt(review.getUpdatedAt());
         response.setIsHidden(review.getIsHidden());
+        response.setImages(images);
 
         if (review.getReviewer() != null) {
             response.setReviewerId(review.getReviewer().getId());
@@ -240,5 +249,13 @@ public class AdminReviewResponse {
 
     public void setModerationReason(String moderationReason) {
         this.moderationReason = moderationReason;
+    }
+
+    public List<AttachmentResponse> getImages() {
+        return images;
+    }
+
+    public void setImages(List<AttachmentResponse> images) {
+        this.images = images != null ? new ArrayList<>(images) : new ArrayList<>();
     }
 }

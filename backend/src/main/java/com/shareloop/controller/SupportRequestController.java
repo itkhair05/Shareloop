@@ -4,13 +4,17 @@ import com.shareloop.dto.support.CreateSupportRequest;
 import com.shareloop.dto.support.SupportRequestResponse;
 import com.shareloop.entity.enums.SupportRequestStatus;
 import com.shareloop.security.UserPrincipal;
+import com.shareloop.service.DomainAttachmentService;
 import com.shareloop.service.SupportRequestService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
+import org.springframework.core.io.Resource;
 import org.springframework.data.domain.Page;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
@@ -24,9 +28,14 @@ import java.util.UUID;
 public class SupportRequestController {
 
     private final SupportRequestService supportRequestService;
+    private final DomainAttachmentService domainAttachmentService;
 
-    public SupportRequestController(SupportRequestService supportRequestService) {
+    public SupportRequestController(
+            SupportRequestService supportRequestService,
+            DomainAttachmentService domainAttachmentService
+    ) {
         this.supportRequestService = supportRequestService;
+        this.domainAttachmentService = domainAttachmentService;
     }
 
     @Operation(summary = "Submit a new support request")
@@ -59,5 +68,24 @@ public class SupportRequestController {
     ) {
         SupportRequestResponse response = supportRequestService.getSupportRequestDetails(id, principal);
         return ResponseEntity.ok(response);
+    }
+
+    @Operation(
+            summary = "Retrieve support request attachment",
+            description = "Private attachment retrieval restricted to the requester and administrators."
+    )
+    @GetMapping("/attachments/{fileId}")
+    public ResponseEntity<Resource> getSupportRequestAttachment(
+            @PathVariable UUID fileId,
+            @AuthenticationPrincipal UserPrincipal principal
+    ) {
+        DomainAttachmentService.AttachmentResource attachment =
+                domainAttachmentService.loadSupportRequestAttachment(fileId, principal);
+        return ResponseEntity.ok()
+                .contentType(MediaType.parseMediaType(attachment.contentType()))
+                .header(HttpHeaders.CONTENT_DISPOSITION, "inline; filename=\"" + attachment.filename() + "\"")
+                .header("X-Content-Type-Options", "nosniff")
+                .header(HttpHeaders.CACHE_CONTROL, "private, no-store")
+                .body(attachment.resource());
     }
 }

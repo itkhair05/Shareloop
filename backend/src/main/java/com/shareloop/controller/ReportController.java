@@ -4,13 +4,17 @@ import com.shareloop.dto.report.CreateReportRequest;
 import com.shareloop.dto.report.ReportResponse;
 import com.shareloop.entity.enums.ReportStatus;
 import com.shareloop.security.UserPrincipal;
+import com.shareloop.service.DomainAttachmentService;
 import com.shareloop.service.ReportService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
+import org.springframework.core.io.Resource;
 import org.springframework.data.domain.Page;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
@@ -24,9 +28,11 @@ import java.util.UUID;
 public class ReportController {
 
     private final ReportService reportService;
+    private final DomainAttachmentService domainAttachmentService;
 
-    public ReportController(ReportService reportService) {
+    public ReportController(ReportService reportService, DomainAttachmentService domainAttachmentService) {
         this.reportService = reportService;
+        this.domainAttachmentService = domainAttachmentService;
     }
 
     @Operation(summary = "Submit a violation report against a user, listing, transaction, or review")
@@ -59,5 +65,24 @@ public class ReportController {
     ) {
         ReportResponse response = reportService.getReportDetails(id, principal);
         return ResponseEntity.ok(response);
+    }
+
+    @Operation(
+            summary = "Retrieve report evidence attachment",
+            description = "Private evidence retrieval restricted to the reporter and administrators."
+    )
+    @GetMapping("/attachments/{fileId}")
+    public ResponseEntity<Resource> getReportAttachment(
+            @PathVariable UUID fileId,
+            @AuthenticationPrincipal UserPrincipal principal
+    ) {
+        DomainAttachmentService.AttachmentResource attachment =
+                domainAttachmentService.loadReportAttachment(fileId, principal);
+        return ResponseEntity.ok()
+                .contentType(MediaType.parseMediaType(attachment.contentType()))
+                .header(HttpHeaders.CONTENT_DISPOSITION, "inline; filename=\"" + attachment.filename() + "\"")
+                .header("X-Content-Type-Options", "nosniff")
+                .header(HttpHeaders.CACHE_CONTROL, "private, no-store")
+                .body(attachment.resource());
     }
 }
