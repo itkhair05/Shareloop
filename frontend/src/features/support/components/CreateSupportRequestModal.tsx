@@ -2,6 +2,10 @@ import React, { useCallback, useEffect, useId, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { AlertCircle, CheckCircle2, HelpCircle, LifeBuoy, X } from 'lucide-react';
 import { useCreateSupportRequest } from '../hooks/use-support';
+import {
+  ImageAttachmentPicker,
+  useImageAttachments,
+} from '@/features/attachments';
 import type { SupportCategory, SupportRequestResponse } from '@/types/support';
 import { ApiError } from '@/lib/api-error';
 
@@ -59,6 +63,8 @@ export function CreateSupportRequestModal({
   const [createdRequest, setCreatedRequest] = useState<SupportRequestResponse | null>(null);
 
   const createMutation = useCreateSupportRequest();
+  const attachments = useImageAttachments({ purpose: 'SUPPORT' });
+  const clearAttachments = attachments.clear;
 
   // Reset or initialize when modal opens
   useEffect(() => {
@@ -68,13 +74,15 @@ export function CreateSupportRequestModal({
       setDescription('');
       setErrorMessage(null);
       setCreatedRequest(null);
+      clearAttachments();
     }
-  }, [isOpen, defaultTransactionId, defaultCategory]);
+  }, [isOpen, defaultTransactionId, defaultCategory, clearAttachments]);
 
   const handleClose = useCallback(() => {
     if (createMutation.isPending) return;
+    clearAttachments();
     onClose();
-  }, [createMutation.isPending, onClose]);
+  }, [clearAttachments, createMutation.isPending, onClose]);
 
   // Handle escape key
   useEffect(() => {
@@ -129,13 +137,21 @@ export function CreateSupportRequestModal({
       setErrorMessage(`Nội dung mô tả không được vượt quá ${MAX_DESCRIPTION_LENGTH} ký tự.`);
       return;
     }
+    if (!attachments.canSubmit) {
+      setErrorMessage(
+        'Vui lòng chờ ảnh tải lên hoàn tất hoặc xử lý ảnh tải lên thất bại trước khi gửi.'
+      );
+      return;
+    }
 
     try {
+      const imageIds = attachments.getImageIds();
       const response = await createMutation.mutateAsync({
         transactionId: defaultTransactionId || null,
         category,
         subject: subject.trim(),
         description: description.trim(),
+        ...(imageIds.length > 0 ? { imageIds } : {}),
       });
 
       setCreatedRequest(response);
@@ -144,11 +160,12 @@ export function CreateSupportRequestModal({
       if (err instanceof ApiError) {
         if (err.isForbidden) {
           setErrorMessage('Bạn không có quyền gửi yêu cầu hỗ trợ cho giao dịch này.');
-        } else if (err.isValidationError && err.fieldErrors) {
-          const firstErr = Object.values(err.fieldErrors)[0];
-          setErrorMessage(firstErr || 'Thông tin gửi lên không hợp lệ.');
+        } else if (err.isValidationError) {
+          setErrorMessage(
+            'Thông tin yêu cầu chưa hợp lệ. Vui lòng kiểm tra lại nội dung và ảnh đính kèm.'
+          );
         } else {
-          setErrorMessage(err.message || 'Không thể gửi yêu cầu hỗ trợ. Vui lòng thử lại sau.');
+          setErrorMessage('Không thể gửi yêu cầu hỗ trợ. Vui lòng thử lại sau.');
         }
       } else {
         setErrorMessage('Đã xảy ra lỗi không xác định. Vui lòng thử lại.');
@@ -337,6 +354,12 @@ export function CreateSupportRequestModal({
                   required
                 />
               </div>
+
+              <ImageAttachmentPicker
+                purpose="SUPPORT"
+                attachments={attachments}
+                disabled={createMutation.isPending}
+              />
             </form>
           )}
         </div>
@@ -375,7 +398,7 @@ export function CreateSupportRequestModal({
               <button
                 type="submit"
                 form="create-support-form"
-                disabled={isSubjectBlank || isDescriptionBlank || isSubjectOver || isDescriptionOver || createMutation.isPending}
+                disabled={isSubjectBlank || isDescriptionBlank || isSubjectOver || isDescriptionOver || !attachments.canSubmit || createMutation.isPending}
                 className="w-full sm:w-auto inline-flex flex-row items-center justify-center gap-2 h-10 px-5 text-sm font-semibold bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg transition-colors cursor-pointer shrink-0 whitespace-nowrap shadow-sm disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 {createMutation.isPending && (

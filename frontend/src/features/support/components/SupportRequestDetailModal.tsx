@@ -4,6 +4,7 @@ import { Calendar, CheckCircle2, Clock, ExternalLink, MessageSquare, X } from 'l
 import { Badge } from '@/components/ui/Badge';
 import { Button } from '@/components/ui/Button';
 import { formatDateTime } from '@/lib/utils';
+import { AttachmentGallery } from '@/features/attachments';
 import type { SupportRequestResponse } from '@/types/support';
 import { SUPPORT_CATEGORY_LABELS, SUPPORT_STATUS_CONFIG } from './SupportRequestCard';
 
@@ -122,6 +123,13 @@ export function SupportRequestDetailModal({ request, onClose }: SupportRequestDe
               {request.description}
             </div>
           </div>
+
+          {request.images && request.images.length > 0 && (
+            <AttachmentGallery
+              images={request.images}
+              label="Hình ảnh bạn đã gửi kèm"
+            />
+          )}
 
           {/* Admin Public Response */}
           {request.adminResponse ? (

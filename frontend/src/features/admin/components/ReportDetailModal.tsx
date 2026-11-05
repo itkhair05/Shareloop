@@ -17,6 +17,7 @@ import { Avatar } from '@/components/common/Avatar';
 import { Badge } from '@/components/ui/Badge';
 import { Button } from '@/components/ui/Button';
 import { formatDateTime } from '@/lib/utils';
+import { AttachmentGallery } from '@/features/attachments';
 import { useAdminReportDetail } from '../hooks/use-admin-reports';
 import {
   formatReportCategory,
@@ -315,6 +316,13 @@ export function ReportDetailModal({
                   {report.description || <span className="italic text-slate-400">Không có nội dung mô tả.</span>}
                 </div>
               </div>
+
+              {report.images && report.images.length > 0 && (
+                <AttachmentGallery
+                  images={report.images}
+                  label="Hình ảnh bằng chứng"
+                />
+              )}
 
               {/* Internal Staff Resolution Notes (Admin Only) */}
               <div className="p-4 rounded-xl bg-slate-900 text-white space-y-3">

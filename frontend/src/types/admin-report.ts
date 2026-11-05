@@ -1,4 +1,5 @@
 import type { PageResponse } from './api';
+import type { AttachmentImage } from './attachment';
 import type { ReportCategory, ReportStatus, ReportTargetType } from './report';
 
 export interface AdminReportResponse {
@@ -14,6 +15,7 @@ export interface AdminReportResponse {
   category: ReportCategory;
   description: string;
   status: ReportStatus;
+  images?: AttachmentImage[];
   resolutionNotes?: string | null;
   resolvedById?: string | null;
   resolvedByDisplayName?: string | null;

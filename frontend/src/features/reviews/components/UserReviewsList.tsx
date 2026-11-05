@@ -13,6 +13,7 @@ import { Button } from '@/components/ui/Button';
 import { Avatar } from '@/components/common/Avatar';
 import { useAuth } from '@/features/auth';
 import { CreateReportModal } from '@/features/reports';
+import { AttachmentGallery } from '@/features/attachments';
 import { formatDateTime } from '@/lib/utils';
 import type { ReviewResponse } from '@/types/review';
 
@@ -200,6 +201,14 @@ export function UserReviewsList({
                   </span>
                 )}
               </p>
+
+              {review.images && review.images.length > 0 && (
+                <AttachmentGallery
+                  images={review.images}
+                  label="Hình ảnh đánh giá"
+                  className="pl-12"
+                />
+              )}
 
               {/* Referenced Listing Pill */}
               {review.listing && (

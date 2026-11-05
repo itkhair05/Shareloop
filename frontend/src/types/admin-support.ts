@@ -1,5 +1,6 @@
 import type { SupportCategory, SupportRequestStatus } from './support';
 import type { PageResponse } from './api';
+import type { AttachmentImage } from './attachment';
 
 export interface AdminSupportRequestResponse {
   id: string;
@@ -11,6 +12,7 @@ export interface AdminSupportRequestResponse {
   subject: string;
   description: string;
   status: SupportRequestStatus;
+  images?: AttachmentImage[];
   adminResponse?: string | null;
   adminNotes?: string | null;
   resolvedById?: string | null;

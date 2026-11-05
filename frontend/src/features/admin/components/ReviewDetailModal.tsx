@@ -17,6 +17,7 @@ import {
 import { Avatar } from '@/components/common/Avatar';
 import { Badge } from '@/components/ui/Badge';
 import { formatDateTime } from '@/lib/utils';
+import { AttachmentGallery } from '@/features/attachments';
 import { useAdminReviewDetail } from '../hooks/use-admin-reviews';
 
 export interface ReviewDetailModalProps {
@@ -188,6 +189,13 @@ export function ReviewDetailModal({
                   )}
                 </div>
               </div>
+
+              {review.images && review.images.length > 0 && (
+                <AttachmentGallery
+                  images={review.images}
+                  label="Hình ảnh đánh giá"
+                />
+              )}
 
               {/* Participants Section */}
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">

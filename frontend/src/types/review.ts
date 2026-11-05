@@ -1,4 +1,5 @@
 import type { ListingStatus, ListingType, OwnerSummaryDto } from './listing';
+import type { AttachmentImage } from './attachment';
 
 /**
  * Review and Rating Types matching the ShareLoop Spring Boot backend DTOs
@@ -41,6 +42,7 @@ export interface ReviewResponse {
   reviewee: UserSummaryDto;
   rating: number; // 1 to 5
   comment: string | null;
+  images?: AttachmentImage[];
   createdAt: string;
 }
 
@@ -52,4 +54,6 @@ export interface UserReviewsQueryParams {
 export interface CreateReviewRequest {
   rating: number; // 1 to 5
   comment?: string | null;
+  /** Uploaded file ids; omitted when no images are attached (max 3). */
+  imageIds?: string[];
 }

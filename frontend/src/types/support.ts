@@ -1,4 +1,5 @@
 import type { PageResponse } from './api';
+import type { AttachmentImage } from './attachment';
 
 export type SupportCategory =
   | 'TRANSACTION_ISSUE'
@@ -17,6 +18,8 @@ export interface CreateSupportRequestPayload {
   category: SupportCategory;
   subject: string;
   description: string;
+  /** Uploaded file ids; omitted when no images are attached (max 5). */
+  imageIds?: string[];
 }
 
 export interface SupportRequestResponse {
@@ -28,6 +31,7 @@ export interface SupportRequestResponse {
   subject: string;
   description: string;
   status: SupportRequestStatus;
+  images?: AttachmentImage[];
   adminResponse?: string | null;
   resolvedAt?: string | null;
   createdAt: string;

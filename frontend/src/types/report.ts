@@ -1,4 +1,5 @@
 import type { PageResponse } from './api';
+import type { AttachmentImage } from './attachment';
 
 export type ReportTargetType = 'USER' | 'LISTING' | 'TRANSACTION' | 'REVIEW';
 
@@ -21,6 +22,8 @@ export interface CreateReportPayload {
   targetId: string;
   category: ReportCategory;
   description: string;
+  /** Uploaded file ids; omitted when no images are attached (max 5). */
+  imageIds?: string[];
 }
 
 export interface ReportResponse {
@@ -33,6 +36,7 @@ export interface ReportResponse {
   category: ReportCategory;
   description: string;
   status: ReportStatus;
+  images?: AttachmentImage[];
   resolvedAt?: string | null;
   createdAt: string;
   updatedAt: string;

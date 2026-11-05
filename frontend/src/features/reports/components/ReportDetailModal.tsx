@@ -3,6 +3,7 @@ import { Calendar, CheckCircle2, Clock, X } from 'lucide-react';
 import { Badge } from '@/components/ui/Badge';
 import { Button } from '@/components/ui/Button';
 import { formatDateTime } from '@/lib/utils';
+import { AttachmentGallery } from '@/features/attachments';
 import type { ReportResponse } from '@/types/report';
 import {
   REPORT_CATEGORY_LABELS,
@@ -146,6 +147,13 @@ export function ReportDetailModal({ report, onClose }: ReportDetailModalProps) {
               {report.description}
             </div>
           </div>
+
+          {report.images && report.images.length > 0 && (
+            <AttachmentGallery
+              images={report.images}
+              label="Hình ảnh bằng chứng bạn đã gửi"
+            />
+          )}
         </div>
 
         {/* Footer */}

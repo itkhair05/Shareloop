@@ -16,6 +16,7 @@ import {
 } from 'lucide-react';
 import { Badge } from '@/components/ui/Badge';
 import { formatDateTime } from '@/lib/utils';
+import { AttachmentGallery } from '@/features/attachments';
 import { useAdminSupportRequestDetail } from '../hooks/use-admin-support';
 import { formatSupportCategory, formatSupportStatus } from '../utils/support-formatters';
 import type { AdminSupportRequestResponse } from '@/types/admin-support';
@@ -235,6 +236,13 @@ export function SupportDetailModal({
                   </p>
                 </div>
               </div>
+
+              {request.images && request.images.length > 0 && (
+                <AttachmentGallery
+                  images={request.images}
+                  label="Hình ảnh đính kèm"
+                />
+              )}
 
               {/* Public Admin Response */}
               <div className="space-y-2">

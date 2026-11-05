@@ -3,6 +3,10 @@ import { AlertCircle, Star, X } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
 import { Avatar } from '@/components/common/Avatar';
 import { useCreateReview } from '../hooks/use-reviews';
+import {
+  ImageAttachmentPicker,
+  useImageAttachments,
+} from '@/features/attachments';
 import { ApiError } from '@/lib/api-error';
 import type { ReviewResponse } from '@/types/review';
 import type { TransactionResponse } from '@/types/transaction';
@@ -41,6 +45,8 @@ export function CreateReviewModal({
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
   const createReviewMutation = useCreateReview();
+  const attachments = useImageAttachments({ purpose: 'REVIEW' });
+  const clearAttachments = attachments.clear;
 
   // Determine partner (reviewee) based on current user's role
   const isOwner = transaction.myRole === 'OWNER';
@@ -54,8 +60,9 @@ export function CreateReviewModal({
     setHoverRating(0);
     setComment('');
     setErrorMessage(null);
+    clearAttachments();
     onClose();
-  }, [createReviewMutation.isPending, onClose]);
+  }, [clearAttachments, createReviewMutation.isPending, onClose]);
 
   // Handle escape key
   useEffect(() => {
@@ -99,6 +106,13 @@ export function CreateReviewModal({
 
     if (isOverLimit || createReviewMutation.isPending) return;
 
+    if (!attachments.canSubmit) {
+      setErrorMessage(
+        'Vui lòng chờ ảnh tải lên hoàn tất hoặc xử lý ảnh tải lên thất bại trước khi gửi.'
+      );
+      return;
+    }
+
     // Backend rule: if comment is provided, it cannot be blank whitespace
     const trimmedComment = comment.trim();
     if (comment.length > 0 && trimmedComment.length === 0) {
@@ -109,11 +123,13 @@ export function CreateReviewModal({
     setErrorMessage(null);
 
     try {
+      const imageIds = attachments.getImageIds();
       const response = await createReviewMutation.mutateAsync({
         transactionId: transaction.id,
         payload: {
           rating,
           comment: trimmedComment ? trimmedComment : null,
+          ...(imageIds.length > 0 ? { imageIds } : {}),
         },
         revieweeId: partnerId,
       });
@@ -131,13 +147,11 @@ export function CreateReviewModal({
         ) {
           setErrorMessage('Bạn đã gửi đánh giá cho giao dịch này rồi.');
         } else if (err.status === 400) {
-          setErrorMessage(
-            err.message || 'Thông tin đánh giá không hợp lệ. Vui lòng kiểm tra lại.'
-          );
+          setErrorMessage('Thông tin đánh giá không hợp lệ. Vui lòng kiểm tra lại.');
         } else if (err.status === 403) {
           setErrorMessage('Chỉ người tham gia giao dịch mới có quyền gửi đánh giá.');
         } else {
-          setErrorMessage(err.message || 'Đã xảy ra lỗi khi gửi đánh giá. Vui lòng thử lại sau.');
+          setErrorMessage('Đã xảy ra lỗi khi gửi đánh giá. Vui lòng thử lại sau.');
         }
       } else {
         setErrorMessage('Không thể gửi đánh giá vào lúc này. Vui lòng thử lại sau.');
@@ -295,6 +309,12 @@ export function CreateReviewModal({
             )}
           </div>
 
+          <ImageAttachmentPicker
+            purpose="REVIEW"
+            attachments={attachments}
+            disabled={createReviewMutation.isPending}
+          />
+
           {/* Error Alert */}
           {errorMessage && (
             <div
@@ -323,7 +343,11 @@ export function CreateReviewModal({
               variant="primary"
               size="md"
               isLoading={createReviewMutation.isPending}
-              disabled={isOverLimit || createReviewMutation.isPending}
+              disabled={
+                isOverLimit ||
+                !attachments.canSubmit ||
+                createReviewMutation.isPending
+              }
               className="w-full sm:w-auto min-w-[140px] flex flex-row items-center justify-center gap-2 [&>span]:flex [&>span]:flex-row [&>span]:items-center [&>span]:gap-1.5"
             >
               <span>Gửi đánh giá</span>

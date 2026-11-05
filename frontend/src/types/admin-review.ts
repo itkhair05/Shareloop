@@ -1,9 +1,11 @@
 import type { PageResponse } from './api';
+import type { AttachmentImage } from './attachment';
 
 export interface AdminReviewResponse {
   id: string;
   rating: number;
   comment: string | null;
+  images?: AttachmentImage[];
   createdAt: string;
   updatedAt: string;
   isHidden: boolean;

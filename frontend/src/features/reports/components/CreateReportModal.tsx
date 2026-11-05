@@ -3,6 +3,10 @@ import { useNavigate } from 'react-router-dom';
 import { AlertCircle, AlertTriangle, CheckCircle2, ShieldAlert, X } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
 import { useCreateReport } from '../hooks/use-reports';
+import {
+  ImageAttachmentPicker,
+  useImageAttachments,
+} from '@/features/attachments';
 import type { ReportCategory, ReportResponse, ReportTargetType } from '@/types/report';
 import { ApiError } from '@/lib/api-error';
 
@@ -70,6 +74,8 @@ export function CreateReportModal({
   const [submittedReport, setSubmittedReport] = useState<ReportResponse | null>(null);
 
   const createMutation = useCreateReport();
+  const attachments = useImageAttachments({ purpose: 'REPORT' });
+  const clearAttachments = attachments.clear;
 
   useEffect(() => {
     if (isOpen) {
@@ -78,13 +84,15 @@ export function CreateReportModal({
       setErrorMessage(null);
       setIsDuplicateActiveReport(false);
       setSubmittedReport(null);
+      clearAttachments();
     }
-  }, [isOpen, targetType, targetId]);
+  }, [isOpen, targetType, targetId, clearAttachments]);
 
   const handleClose = useCallback(() => {
     if (createMutation.isPending) return;
+    clearAttachments();
     onClose();
-  }, [createMutation.isPending, onClose]);
+  }, [clearAttachments, createMutation.isPending, onClose]);
 
   // Handle escape key
   useEffect(() => {
@@ -131,13 +139,21 @@ export function CreateReportModal({
       setErrorMessage(`Mô tả không được vượt quá ${MAX_DESCRIPTION_LENGTH} ký tự.`);
       return;
     }
+    if (!attachments.canSubmit) {
+      setErrorMessage(
+        'Vui lòng chờ ảnh tải lên hoàn tất hoặc xử lý ảnh tải lên thất bại trước khi gửi.'
+      );
+      return;
+    }
 
     try {
+      const imageIds = attachments.getImageIds();
       const response = await createMutation.mutateAsync({
         targetType,
         targetId,
         category,
         description: description.trim(),
+        ...(imageIds.length > 0 ? { imageIds } : {}),
       });
 
       setSubmittedReport(response);
@@ -153,11 +169,12 @@ export function CreateReportModal({
           setErrorMessage(`Bạn không có quyền báo cáo ${targetLabel} này.`);
         } else if (err.isNotFound) {
           setErrorMessage(`Không tìm thấy ${targetLabel} cần báo cáo (có thể đã bị xóa hoặc gỡ bỏ).`);
-        } else if (err.isValidationError && err.fieldErrors) {
-          const firstErr = Object.values(err.fieldErrors)[0];
-          setErrorMessage(firstErr || 'Thông tin gửi lên không hợp lệ.');
+        } else if (err.isValidationError) {
+          setErrorMessage(
+            'Thông tin báo cáo chưa hợp lệ. Vui lòng kiểm tra lại nội dung và ảnh đính kèm.'
+          );
         } else {
-          setErrorMessage(err.message || 'Không thể gửi báo cáo vi phạm. Vui lòng thử lại.');
+          setErrorMessage('Không thể gửi báo cáo vi phạm. Vui lòng thử lại sau.');
         }
       } else {
         setErrorMessage('Đã xảy ra lỗi không xác định khi gửi báo cáo.');
@@ -334,6 +351,12 @@ export function CreateReportModal({
               />
             </div>
 
+            <ImageAttachmentPicker
+              purpose="REPORT"
+              attachments={attachments}
+              disabled={createMutation.isPending}
+            />
+
             <p className="text-xs text-slate-400 leading-relaxed">
               Lưu ý: Báo cáo sai sự thật hoặc quấy rối thành viên khác có thể dẫn đến việc tài khoản của bạn bị hạn chế.
             </p>
@@ -354,7 +377,12 @@ export function CreateReportModal({
                 variant="destructive"
                 size="md"
                 isLoading={createMutation.isPending}
-                disabled={isDescriptionBlank || isDescriptionOver || createMutation.isPending}
+                disabled={
+                  isDescriptionBlank ||
+                  isDescriptionOver ||
+                  !attachments.canSubmit ||
+                  createMutation.isPending
+                }
               >
                 Gửi báo cáo
               </Button>
