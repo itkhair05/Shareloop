@@ -1,5 +1,6 @@
 package com.shareloop.entity;
 
+import com.shareloop.entity.enums.DeletionState;
 import com.shareloop.entity.enums.UploadPurpose;
 import jakarta.persistence.*;
 import jakarta.validation.constraints.NotNull;
@@ -40,6 +41,19 @@ public class UploadedFile {
     @Column(name = "bound_message_id", unique = true)
     private UUID boundMessageId;
 
+    @Enumerated(EnumType.STRING)
+    @Column(name = "deletion_state", nullable = false, length = 16)
+    private DeletionState deletionState = DeletionState.ACTIVE;
+
+    @Column(name = "pending_deletion_at")
+    private Instant pendingDeletionAt;
+
+    @Column(name = "deletion_attempts", nullable = false)
+    private int deletionAttempts = 0;
+
+    @OneToOne(mappedBy = "uploadedFile", fetch = FetchType.LAZY)
+    private UploadedFileBinding binding;
+
     @PrePersist
     protected void onCreate() {
         if (createdAt == null) {
@@ -47,6 +61,9 @@ public class UploadedFile {
         }
         if (purpose == null) {
             purpose = UploadPurpose.GENERAL;
+        }
+        if (deletionState == null) {
+            deletionState = DeletionState.ACTIVE;
         }
     }
 
@@ -63,7 +80,32 @@ public class UploadedFile {
     }
 
     public boolean isBound() {
-        return boundMessageId != null;
+        return boundMessageId != null || binding != null;
+    }
+
+    public boolean isPendingDeletion() {
+        return deletionState == DeletionState.PENDING_DELETION;
+    }
+
+    /**
+     * Marks the file as unavailable for new bindings. The physical object must
+     * be removed only after the transaction persisting this transition commits.
+     */
+    public void markPendingDeletion(Instant at) {
+        this.deletionState = DeletionState.PENDING_DELETION;
+        this.pendingDeletionAt = at;
+    }
+
+    public void registerDeletionAttempt() {
+        this.deletionAttempts++;
+    }
+
+    public UploadedFileBinding getBinding() {
+        return binding;
+    }
+
+    public void setBinding(UploadedFileBinding binding) {
+        this.binding = binding;
     }
 
     /**
@@ -142,6 +184,30 @@ public class UploadedFile {
 
     public void setBoundMessageId(UUID boundMessageId) {
         this.boundMessageId = boundMessageId;
+    }
+
+    public DeletionState getDeletionState() {
+        return deletionState;
+    }
+
+    public void setDeletionState(DeletionState deletionState) {
+        this.deletionState = deletionState;
+    }
+
+    public Instant getPendingDeletionAt() {
+        return pendingDeletionAt;
+    }
+
+    public void setPendingDeletionAt(Instant pendingDeletionAt) {
+        this.pendingDeletionAt = pendingDeletionAt;
+    }
+
+    public int getDeletionAttempts() {
+        return deletionAttempts;
+    }
+
+    public void setDeletionAttempts(int deletionAttempts) {
+        this.deletionAttempts = deletionAttempts;
     }
 
     @Override

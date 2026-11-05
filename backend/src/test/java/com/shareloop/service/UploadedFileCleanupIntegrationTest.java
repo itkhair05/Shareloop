@@ -1,22 +1,12 @@
 package com.shareloop.service;
 
-import com.shareloop.entity.Category;
-import com.shareloop.entity.ChatMessage;
-import com.shareloop.entity.Conversation;
-import com.shareloop.entity.Listing;
-import com.shareloop.entity.UploadedFile;
-import com.shareloop.entity.User;
+import com.shareloop.entity.*;
 import com.shareloop.entity.enums.ListingStatus;
 import com.shareloop.entity.enums.ListingType;
 import com.shareloop.entity.enums.UploadPurpose;
 import com.shareloop.entity.enums.UserRole;
 import com.shareloop.entity.enums.UserStatus;
-import com.shareloop.repository.CategoryRepository;
-import com.shareloop.repository.ChatMessageRepository;
-import com.shareloop.repository.ConversationRepository;
-import com.shareloop.repository.ListingRepository;
-import com.shareloop.repository.UploadedFileRepository;
-import com.shareloop.repository.UserRepository;
+import com.shareloop.repository.*;
 import com.shareloop.service.filestorage.LocalStorageService;
 import com.shareloop.testsupport.TestStorageSupport;
 import org.junit.jupiter.api.AfterEach;
@@ -51,6 +41,9 @@ class UploadedFileCleanupIntegrationTest {
 
     @Autowired
     private UploadedFileRepository uploadedFileRepository;
+
+    @Autowired
+    private UploadedFileBindingRepository uploadedFileBindingRepository;
 
     @Autowired
     private UploadedFileCleanupService cleanupService;
@@ -129,6 +122,7 @@ class UploadedFileCleanupIntegrationTest {
     @AfterEach
     void tearDown() {
         chatMessageRepository.deleteAll();
+        uploadedFileBindingRepository.deleteAll();
         uploadedFileRepository.deleteAll();
         conversationRepository.deleteAll();
         listingRepository.delete(listing);
@@ -174,7 +168,7 @@ class UploadedFileCleanupIntegrationTest {
         return uploadedFileRepository.saveAndFlush(file);
     }
 
-    private UploadedFile createBoundUpload(Instant createdAt) {
+    private UploadedFile createBoundChatUpload(Instant createdAt) {
         UploadedFile file = createUpload(requester, UploadPurpose.CHAT, createdAt, true);
 
         UUID fileId = file.getId();
@@ -187,6 +181,19 @@ class UploadedFileCleanupIntegrationTest {
             uploadedFileRepository.saveAndFlush(managed);
         });
 
+        return uploadedFileRepository.findById(fileId).orElseThrow();
+    }
+
+    private UploadedFile createBoundDomainUpload(UploadPurpose purpose, String domain, Instant createdAt) {
+        UploadedFile file = createUpload(requester, purpose, createdAt, true);
+        UUID fileId = file.getId();
+        transactionTemplate.executeWithoutResult(status -> {
+            UploadedFile managed = uploadedFileRepository.findById(fileId).orElseThrow();
+            UploadedFileBinding binding = new UploadedFileBinding(managed, domain, UUID.randomUUID(), requester);
+            uploadedFileBindingRepository.saveAndFlush(binding);
+            managed.setBinding(binding);
+            uploadedFileRepository.saveAndFlush(managed);
+        });
         return uploadedFileRepository.findById(fileId).orElseThrow();
     }
 
@@ -211,20 +218,97 @@ class UploadedFileCleanupIntegrationTest {
     }
 
     @Test
-    @DisplayName("Recent unbound CHAT upload is retained")
-    void recentUnboundChatUploadRetained() {
-        UploadedFile file = createUpload(requester, UploadPurpose.CHAT, recent(), true);
+    @DisplayName("Expired unbound REVIEW upload is deleted with its physical file")
+    void expiredUnboundReviewUploadDeleted() {
+        UploadedFile file = createUpload(requester, UploadPurpose.REVIEW, expired(), true);
+
+        int deleted = cleanupService.cleanupExpiredUnboundUploads();
+
+        assertThat(deleted).isGreaterThanOrEqualTo(1);
+        assertThat(uploadedFileRepository.findById(file.getId())).isEmpty();
+        assertThat(Files.exists(localStorageService.getRootPath().resolve(file.getFilename()))).isFalse();
+    }
+
+    @Test
+    @DisplayName("Expired unbound REPORT upload is deleted with its physical file")
+    void expiredUnboundReportUploadDeleted() {
+        UploadedFile file = createUpload(requester, UploadPurpose.REPORT, expired(), true);
+
+        int deleted = cleanupService.cleanupExpiredUnboundUploads();
+
+        assertThat(deleted).isGreaterThanOrEqualTo(1);
+        assertThat(uploadedFileRepository.findById(file.getId())).isEmpty();
+        assertThat(Files.exists(localStorageService.getRootPath().resolve(file.getFilename()))).isFalse();
+    }
+
+    @Test
+    @DisplayName("Expired unbound SUPPORT upload is deleted with its physical file")
+    void expiredUnboundSupportUploadDeleted() {
+        UploadedFile file = createUpload(requester, UploadPurpose.SUPPORT, expired(), true);
+
+        int deleted = cleanupService.cleanupExpiredUnboundUploads();
+
+        assertThat(deleted).isGreaterThanOrEqualTo(1);
+        assertThat(uploadedFileRepository.findById(file.getId())).isEmpty();
+        assertThat(Files.exists(localStorageService.getRootPath().resolve(file.getFilename()))).isFalse();
+    }
+
+    @Test
+    @DisplayName("Recent unbound CHAT, REVIEW, REPORT, SUPPORT uploads are retained")
+    void recentUnboundUploadsRetained() {
+        UploadedFile chat = createUpload(requester, UploadPurpose.CHAT, recent(), true);
+        UploadedFile review = createUpload(requester, UploadPurpose.REVIEW, recent(), true);
+        UploadedFile report = createUpload(requester, UploadPurpose.REPORT, recent(), true);
+        UploadedFile support = createUpload(requester, UploadPurpose.SUPPORT, recent(), true);
 
         cleanupService.cleanupExpiredUnboundUploads();
 
-        assertThat(uploadedFileRepository.findById(file.getId())).isPresent();
-        assertThat(Files.exists(localStorageService.getRootPath().resolve(file.getFilename()))).isTrue();
+        assertThat(uploadedFileRepository.findById(chat.getId())).isPresent();
+        assertThat(uploadedFileRepository.findById(review.getId())).isPresent();
+        assertThat(uploadedFileRepository.findById(report.getId())).isPresent();
+        assertThat(uploadedFileRepository.findById(support.getId())).isPresent();
     }
 
     @Test
     @DisplayName("Bound CHAT upload is never deleted")
     void boundChatUploadRetained() {
-        UploadedFile file = createBoundUpload(expired());
+        UploadedFile file = createBoundChatUpload(expired());
+
+        cleanupService.cleanupExpiredUnboundUploads();
+
+        UploadedFile reloaded = uploadedFileRepository.findById(file.getId()).orElseThrow();
+        assertThat(reloaded.isBound()).isTrue();
+        assertThat(Files.exists(localStorageService.getRootPath().resolve(file.getFilename()))).isTrue();
+    }
+
+    @Test
+    @DisplayName("Bound REVIEW upload is never deleted")
+    void boundReviewUploadRetained() {
+        UploadedFile file = createBoundDomainUpload(UploadPurpose.REVIEW, "REVIEW", expired());
+
+        cleanupService.cleanupExpiredUnboundUploads();
+
+        UploadedFile reloaded = uploadedFileRepository.findById(file.getId()).orElseThrow();
+        assertThat(reloaded.isBound()).isTrue();
+        assertThat(Files.exists(localStorageService.getRootPath().resolve(file.getFilename()))).isTrue();
+    }
+
+    @Test
+    @DisplayName("Bound REPORT upload is never deleted")
+    void boundReportUploadRetained() {
+        UploadedFile file = createBoundDomainUpload(UploadPurpose.REPORT, "REPORT", expired());
+
+        cleanupService.cleanupExpiredUnboundUploads();
+
+        UploadedFile reloaded = uploadedFileRepository.findById(file.getId()).orElseThrow();
+        assertThat(reloaded.isBound()).isTrue();
+        assertThat(Files.exists(localStorageService.getRootPath().resolve(file.getFilename()))).isTrue();
+    }
+
+    @Test
+    @DisplayName("Bound SUPPORT upload is never deleted")
+    void boundSupportUploadRetained() {
+        UploadedFile file = createBoundDomainUpload(UploadPurpose.SUPPORT, "SUPPORT", expired());
 
         cleanupService.cleanupExpiredUnboundUploads();
 
@@ -300,7 +384,8 @@ class UploadedFileCleanupIntegrationTest {
     void mixedScenario() {
         UploadedFile expiredChat = createUpload(requester, UploadPurpose.CHAT, expired(), true);
         UploadedFile recentChat = createUpload(requester, UploadPurpose.CHAT, recent(), true);
-        UploadedFile boundChat = createBoundUpload(expired());
+        UploadedFile boundChat = createBoundChatUpload(expired());
+        UploadedFile boundReview = createBoundDomainUpload(UploadPurpose.REVIEW, "REVIEW", expired());
         UploadedFile general = createUpload(requester, UploadPurpose.GENERAL, expired(), true);
 
         cleanupService.cleanupExpiredUnboundUploads();
@@ -308,7 +393,8 @@ class UploadedFileCleanupIntegrationTest {
         assertThat(uploadedFileRepository.findById(expiredChat.getId())).isEmpty();
         assertThat(uploadedFileRepository.findById(recentChat.getId())).isPresent();
         assertThat(uploadedFileRepository.findById(boundChat.getId())).isPresent();
+        assertThat(uploadedFileRepository.findById(boundReview.getId())).isPresent();
         assertThat(uploadedFileRepository.findById(general.getId())).isPresent();
-        assertThat(uploadedFileRepository.countByOwnerId(requester.getId())).isEqualTo(3);
+        assertThat(uploadedFileRepository.countByOwnerId(requester.getId())).isEqualTo(4);
     }
 }

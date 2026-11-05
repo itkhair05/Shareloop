@@ -360,6 +360,9 @@ public class ChatService {
             if (upload.getPurpose() != UploadPurpose.CHAT) {
                 throw new IllegalArgumentException("Uploaded file is not a chat attachment");
             }
+            if (upload.isPendingDeletion()) {
+                throw new IllegalArgumentException("Hình ảnh không còn khả dụng. Vui lòng tải lên lại.");
+            }
             if (upload.isBound()) {
                 throw new IllegalArgumentException("Uploaded image has already been attached to a message");
             }

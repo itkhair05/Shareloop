@@ -1,6 +1,7 @@
 package com.shareloop.controller;
 
 import com.shareloop.dto.file.FileUploadResponse;
+import com.shareloop.entity.UploadedFile;
 import com.shareloop.entity.enums.UploadPurpose;
 import com.shareloop.exception.ResourceNotFoundException;
 import com.shareloop.repository.UploadedFileRepository;
@@ -19,6 +20,8 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
+
+import java.util.Optional;
 
 @Tag(name = "File Storage", description = "Secure image upload (JPEG/PNG max 5 MiB) and public resource delivery")
 @RestController
@@ -41,7 +44,7 @@ public class FileController {
 
     /**
      * Authenticated endpoint to upload an image (JPEG or PNG, max 5 MiB).
-     * purpose=CHAT marks the upload as a private chat attachment candidate.
+     * Supported purposes: GENERAL (default), CHAT, REVIEW, REPORT, SUPPORT.
      */
     @Operation(summary = "Upload image file", description = "Upload a JPEG or PNG image (max 5 MiB, max 4096px, max 16MP). Returns generated file metadata and public access URL.")
     @SecurityRequirement(name = "bearerAuth")
@@ -49,7 +52,7 @@ public class FileController {
     public ResponseEntity<FileUploadResponse> uploadFile(
             @Parameter(description = "Image file (JPEG or PNG, up to 5 MiB)")
             @RequestParam("file") MultipartFile file,
-            @Parameter(description = "Upload purpose: GENERAL (default) or CHAT for private chat attachments")
+            @Parameter(description = "Upload purpose: GENERAL (default), CHAT, REVIEW, REPORT, or SUPPORT")
             @RequestParam(value = "purpose", defaultValue = "GENERAL") UploadPurpose purpose,
             @AuthenticationPrincipal UserPrincipal principal
     ) {
@@ -59,13 +62,19 @@ public class FileController {
 
     /**
      * Public endpoint to serve an uploaded image by its server-generated filename.
-     * Files bound to a chat message are private and are never served here.
+     * Only GENERAL purpose images are served here.
+     * Private attachments (CHAT, REPORT, SUPPORT) and REVIEW images (which must observe
+     * parent-review moderation state) cannot be retrieved via this endpoint.
      */
-    @Operation(summary = "Retrieve uploaded file", description = "Publicly accessible endpoint to retrieve an image by its server-generated filename. Chat attachments are excluded.")
+    @Operation(summary = "Retrieve uploaded file", description = "Publicly accessible endpoint to retrieve an image by its server-generated filename. Only GENERAL purpose files are served.")
     @GetMapping("/{filename:.+}")
     public ResponseEntity<Resource> getFile(@PathVariable String filename) {
-        if (uploadedFileRepository.existsByFilenameAndBoundMessageIdIsNotNull(filename)) {
-            throw new ResourceNotFoundException("File not found: " + filename);
+        Optional<UploadedFile> fileOpt = uploadedFileRepository.findByFilename(filename);
+        if (fileOpt.isPresent()) {
+            UploadedFile file = fileOpt.get();
+            if (file.getPurpose() != UploadPurpose.GENERAL) {
+                throw new ResourceNotFoundException("File not found: " + filename);
+            }
         }
 
         Resource resource = fileStorageService.loadAsResource(filename);

@@ -4,6 +4,12 @@ spring:
     username: ${SPRING_TEST_DATASOURCE_USERNAME:shareloop_user}
     password: ${SPRING_TEST_DATASOURCE_PASSWORD:shareloop_password}
     driver-class-name: org.postgresql.Driver
+    hikari:
+      # Every test class with @DynamicPropertySource gets its own cached Spring
+      # context and therefore its own pool. The default 10 connections per pool
+      # exhausts PostgreSQL max_connections (100) across the full suite.
+      maximum-pool-size: 4
+      minimum-idle: 1
   jpa:
     hibernate:
       ddl-auto: none

@@ -507,11 +507,11 @@ class ChatImageAttachmentIntegrationTest {
     }
 
     @Test
-    @DisplayName("Unbound and GENERAL uploads remain publicly retrievable")
-    void unboundAndGeneralUploadsRemainPublic() throws Exception {
+    @DisplayName("GENERAL uploads are publicly retrievable, while CHAT uploads return 404")
+    void unboundChatUploadIsNotPublicWhileGeneralIsPublic() throws Exception {
         JsonNode unboundChat = uploadImage(bobToken, "CHAT");
         mockMvc.perform(get("/api/v1/files/{filename}", unboundChat.get("filename").asText()))
-                .andExpect(status().isOk());
+                .andExpect(status().isNotFound());
 
         JsonNode general = uploadImage(bobToken, null);
         mockMvc.perform(get("/api/v1/files/{filename}", general.get("filename").asText()))

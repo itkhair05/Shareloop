@@ -1,6 +1,7 @@
 package com.shareloop.repository;
 
 import com.shareloop.entity.UploadedFile;
+import com.shareloop.entity.enums.DeletionState;
 import com.shareloop.entity.enums.UploadPurpose;
 import jakarta.persistence.LockModeType;
 import org.springframework.data.domain.Pageable;
@@ -27,15 +28,32 @@ public interface UploadedFileRepository extends JpaRepository<UploadedFile, UUID
     Optional<UploadedFile> findByIdForUpdate(@Param("id") UUID id);
 
     /**
-     * Ids of cleanup-eligible uploads: unbound CHAT uploads created before the cutoff.
-     * GENERAL uploads (listing images and other public consumers) are never returned.
+     * Ids of cleanup-eligible uploads across multiple purposes (CHAT, REVIEW, REPORT, SUPPORT).
+     * GENERAL uploads and files already pending deletion are never returned.
      */
     @Query("SELECT f.id FROM UploadedFile f " +
-           "WHERE f.purpose = :purpose AND f.boundMessageId IS NULL AND f.createdAt < :cutoff " +
-           "ORDER BY f.createdAt ASC")
-    List<UUID> findExpiredUnboundIds(
-            @Param("purpose") UploadPurpose purpose,
+           "WHERE f.purpose IN :purposes " +
+           "AND f.deletionState = :deletionState " +
+           "AND f.boundMessageId IS NULL " +
+           "AND NOT EXISTS (SELECT 1 FROM UploadedFileBinding b WHERE b.fileId = f.id) " +
+           "AND f.createdAt < :cutoff " +
+           "ORDER BY f.createdAt ASC, f.id ASC")
+    List<UUID> findExpiredUnboundIdsByPurposes(
+            @Param("purposes") java.util.Collection<UploadPurpose> purposes,
+            @Param("deletionState") DeletionState deletionState,
             @Param("cutoff") Instant cutoff,
+            Pageable pageable
+    );
+
+    /**
+     * Ids of files whose deletion is pending, oldest first, including rows whose
+     * previous physical deletion attempt failed.
+     */
+    @Query("SELECT f.id FROM UploadedFile f " +
+           "WHERE f.deletionState = :deletionState " +
+           "ORDER BY f.pendingDeletionAt ASC, f.id ASC")
+    List<UUID> findPendingDeletionIds(
+            @Param("deletionState") DeletionState deletionState,
             Pageable pageable
     );
 

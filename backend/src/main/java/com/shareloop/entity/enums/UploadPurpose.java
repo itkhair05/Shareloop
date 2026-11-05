@@ -2,5 +2,8 @@ package com.shareloop.entity.enums;
 
 public enum UploadPurpose {
     GENERAL,
-    CHAT
+    CHAT,
+    REVIEW,
+    REPORT,
+    SUPPORT
 }

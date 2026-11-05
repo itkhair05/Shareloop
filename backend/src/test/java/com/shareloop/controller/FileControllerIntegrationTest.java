@@ -479,4 +479,157 @@ class FileControllerIntegrationTest {
                 () -> localStorageService.loadAsResource("..\\..\\windows\\win.ini")
         );
     }
+
+    // =========================================================================
+    // 5. Upload Purpose Expansion & Public Access Protection Tests
+    // =========================================================================
+
+    @Test
+    @DisplayName("POST /api/v1/files/upload with purpose=REVIEW succeeds")
+    void uploadFile_withReviewPurpose_succeeds() throws Exception {
+        byte[] jpegBytes = createValidImage("jpg", 50, 50);
+        MockMultipartFile file = new MockMultipartFile("file", "review.jpg", "image/jpeg", jpegBytes);
+
+        String responseContent = mockMvc.perform(multipart("/api/v1/files/upload")
+                        .file(file)
+                        .param("purpose", "REVIEW")
+                        .header(HttpHeaders.AUTHORIZATION, aliceToken))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.id", notNullValue()))
+                .andReturn().getResponse().getContentAsString();
+
+        trackUploadResponse(responseContent);
+    }
+
+    @Test
+    @DisplayName("POST /api/v1/files/upload with purpose=REPORT succeeds")
+    void uploadFile_withReportPurpose_succeeds() throws Exception {
+        byte[] pngBytes = createValidImage("png", 50, 50);
+        MockMultipartFile file = new MockMultipartFile("file", "report.png", "image/png", pngBytes);
+
+        String responseContent = mockMvc.perform(multipart("/api/v1/files/upload")
+                        .file(file)
+                        .param("purpose", "REPORT")
+                        .header(HttpHeaders.AUTHORIZATION, aliceToken))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.id", notNullValue()))
+                .andReturn().getResponse().getContentAsString();
+
+        trackUploadResponse(responseContent);
+    }
+
+    @Test
+    @DisplayName("POST /api/v1/files/upload with purpose=SUPPORT succeeds")
+    void uploadFile_withSupportPurpose_succeeds() throws Exception {
+        byte[] pngBytes = createValidImage("png", 50, 50);
+        MockMultipartFile file = new MockMultipartFile("file", "support.png", "image/png", pngBytes);
+
+        String responseContent = mockMvc.perform(multipart("/api/v1/files/upload")
+                        .file(file)
+                        .param("purpose", "SUPPORT")
+                        .header(HttpHeaders.AUTHORIZATION, aliceToken))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.id", notNullValue()))
+                .andReturn().getResponse().getContentAsString();
+
+        trackUploadResponse(responseContent);
+    }
+
+    @Test
+    @DisplayName("POST /api/v1/files/upload with invalid purpose returns 400 Bad Request")
+    void uploadFile_withInvalidPurpose_returns400() throws Exception {
+        byte[] jpegBytes = createValidImage("jpg", 50, 50);
+        MockMultipartFile file = new MockMultipartFile("file", "test.jpg", "image/jpeg", jpegBytes);
+
+        mockMvc.perform(multipart("/api/v1/files/upload")
+                        .file(file)
+                        .param("purpose", "NON_EXISTENT_PURPOSE")
+                        .header(HttpHeaders.AUTHORIZATION, aliceToken))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.status", is(400)));
+    }
+
+    @Test
+    @DisplayName("GET /api/v1/files/{filename} returns 404 for CHAT purpose file")
+    void getFile_chatPurpose_returns404OnGenericEndpoint() throws Exception {
+        byte[] pngBytes = createValidImage("png", 32, 32);
+        MockMultipartFile file = new MockMultipartFile("file", "chat.png", "image/png", pngBytes);
+
+        String responseContent = mockMvc.perform(multipart("/api/v1/files/upload")
+                        .file(file)
+                        .param("purpose", "CHAT")
+                        .header(HttpHeaders.AUTHORIZATION, aliceToken))
+                .andExpect(status().isCreated())
+                .andReturn().getResponse().getContentAsString();
+
+        String filename = objectMapper.readTree(responseContent).get("filename").asText();
+        uploadedFilenames.add(filename);
+
+        mockMvc.perform(get("/api/v1/files/" + filename))
+                .andExpect(status().isNotFound())
+                .andExpect(jsonPath("$.status", is(404)));
+    }
+
+    @Test
+    @DisplayName("GET /api/v1/files/{filename} returns 404 for REVIEW purpose file")
+    void getFile_reviewPurpose_returns404OnGenericEndpoint() throws Exception {
+        byte[] jpegBytes = createValidImage("jpg", 32, 32);
+        MockMultipartFile file = new MockMultipartFile("file", "review.jpg", "image/jpeg", jpegBytes);
+
+        String responseContent = mockMvc.perform(multipart("/api/v1/files/upload")
+                        .file(file)
+                        .param("purpose", "REVIEW")
+                        .header(HttpHeaders.AUTHORIZATION, aliceToken))
+                .andExpect(status().isCreated())
+                .andReturn().getResponse().getContentAsString();
+
+        String filename = objectMapper.readTree(responseContent).get("filename").asText();
+        uploadedFilenames.add(filename);
+
+        mockMvc.perform(get("/api/v1/files/" + filename))
+                .andExpect(status().isNotFound())
+                .andExpect(jsonPath("$.status", is(404)));
+    }
+
+    @Test
+    @DisplayName("GET /api/v1/files/{filename} returns 404 for REPORT purpose file")
+    void getFile_reportPurpose_returns404OnGenericEndpoint() throws Exception {
+        byte[] pngBytes = createValidImage("png", 32, 32);
+        MockMultipartFile file = new MockMultipartFile("file", "evidence.png", "image/png", pngBytes);
+
+        String responseContent = mockMvc.perform(multipart("/api/v1/files/upload")
+                        .file(file)
+                        .param("purpose", "REPORT")
+                        .header(HttpHeaders.AUTHORIZATION, aliceToken))
+                .andExpect(status().isCreated())
+                .andReturn().getResponse().getContentAsString();
+
+        String filename = objectMapper.readTree(responseContent).get("filename").asText();
+        uploadedFilenames.add(filename);
+
+        mockMvc.perform(get("/api/v1/files/" + filename))
+                .andExpect(status().isNotFound())
+                .andExpect(jsonPath("$.status", is(404)));
+    }
+
+    @Test
+    @DisplayName("GET /api/v1/files/{filename} returns 404 for SUPPORT purpose file")
+    void getFile_supportPurpose_returns404OnGenericEndpoint() throws Exception {
+        byte[] pngBytes = createValidImage("png", 32, 32);
+        MockMultipartFile file = new MockMultipartFile("file", "screenshot.png", "image/png", pngBytes);
+
+        String responseContent = mockMvc.perform(multipart("/api/v1/files/upload")
+                        .file(file)
+                        .param("purpose", "SUPPORT")
+                        .header(HttpHeaders.AUTHORIZATION, aliceToken))
+                .andExpect(status().isCreated())
+                .andReturn().getResponse().getContentAsString();
+
+        String filename = objectMapper.readTree(responseContent).get("filename").asText();
+        uploadedFilenames.add(filename);
+
+        mockMvc.perform(get("/api/v1/files/" + filename))
+                .andExpect(status().isNotFound())
+                .andExpect(jsonPath("$.status", is(404)));
+    }
 }
