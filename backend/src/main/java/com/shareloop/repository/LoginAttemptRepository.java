@@ -16,8 +16,18 @@ public interface LoginAttemptRepository extends JpaRepository<LoginAttempt, UUID
     @Query(value = "SELECT 1 FROM (SELECT pg_advisory_xact_lock(1001, hashtext(:ipAddress))) sub", nativeQuery = true)
     Integer acquireAdvisoryLock(@Param("ipAddress") String ipAddress);
 
+    @Query(value = "SELECT 1 FROM (SELECT pg_advisory_xact_lock(1005, hashtext(:accountKey))) sub", nativeQuery = true)
+    Integer acquireAccountAdvisoryLock(@Param("accountKey") String accountKey);
+
+    @Query(value = "SELECT 1 FROM (SELECT pg_advisory_xact_lock(1006, hashtext(:registrationKey))) sub", nativeQuery = true)
+    Integer acquireRegistrationAdvisoryLock(@Param("registrationKey") String registrationKey);
+
     @Query("SELECT COUNT(a) FROM LoginAttempt a WHERE a.ipAddress = :ipAddress AND a.createdAt >= :since")
     long countByIpAddressAndCreatedAtAfter(@Param("ipAddress") String ipAddress, @Param("since") Instant since);
+
+    @Modifying
+    @Query("DELETE FROM LoginAttempt a WHERE a.ipAddress = :key")
+    int deleteByIpAddress(@Param("key") String key);
 
     @Modifying
     @Query("DELETE FROM LoginAttempt a WHERE a.createdAt < :cutoff")

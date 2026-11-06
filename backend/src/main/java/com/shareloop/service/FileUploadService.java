@@ -3,7 +3,6 @@ package com.shareloop.service;
 import com.shareloop.dto.file.FileUploadResponse;
 import com.shareloop.entity.UploadedFile;
 import com.shareloop.entity.enums.UploadPurpose;
-import com.shareloop.repository.UploadedFileRepository;
 import com.shareloop.repository.UserRepository;
 import com.shareloop.security.UserPrincipal;
 import com.shareloop.service.filestorage.FileStorageService;
@@ -23,18 +22,18 @@ public class FileUploadService {
 
     private final FileStorageService fileStorageService;
     private final ImageFileValidator imageFileValidator;
-    private final UploadedFileRepository uploadedFileRepository;
+    private final UploadQuotaService uploadQuotaService;
     private final UserRepository userRepository;
 
     public FileUploadService(
             FileStorageService fileStorageService,
             ImageFileValidator imageFileValidator,
-            UploadedFileRepository uploadedFileRepository,
+            UploadQuotaService uploadQuotaService,
             UserRepository userRepository
     ) {
         this.fileStorageService = fileStorageService;
         this.imageFileValidator = imageFileValidator;
-        this.uploadedFileRepository = uploadedFileRepository;
+        this.uploadQuotaService = uploadQuotaService;
         this.userRepository = userRepository;
     }
 
@@ -48,8 +47,9 @@ public class FileUploadService {
      * - Authentication.
      * - Content validation (binary signature, MIME, decodability, dimension limits).
      * - Safe storage abstraction.
-     * - Ownership registry persistence; the physical file is deleted if the
-     *   registry insert fails so no partially registered upload remains.
+     * - Rolling per-user quota and ownership registry persistence in one
+     *   database transaction; the physical file is deleted if the quota check
+     *   or the registry insert fails so no partially registered upload remains.
      */
     public FileUploadResponse uploadImage(MultipartFile file, UploadPurpose purpose, UserPrincipal principal) {
         if (principal == null) {
@@ -71,7 +71,7 @@ public class FileUploadService {
                     stored.getSize(),
                     resolvedPurpose
             );
-            uploadedFileRepository.saveAndFlush(registry);
+            uploadQuotaService.checkQuotaAndRegister(registry);
         } catch (RuntimeException ex) {
             deleteStoredFileQuietly(stored.getFilename());
             throw ex;

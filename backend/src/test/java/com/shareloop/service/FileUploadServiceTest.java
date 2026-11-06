@@ -7,7 +7,7 @@ import com.shareloop.entity.enums.UploadPurpose;
 import com.shareloop.entity.enums.UserRole;
 import com.shareloop.entity.enums.UserStatus;
 import com.shareloop.exception.StorageException;
-import com.shareloop.repository.UploadedFileRepository;
+import com.shareloop.exception.UploadQuotaExceededException;
 import com.shareloop.repository.UserRepository;
 import com.shareloop.security.UserPrincipal;
 import com.shareloop.service.filestorage.FileStorageService;
@@ -40,7 +40,7 @@ class FileUploadServiceTest {
     private ImageFileValidator imageFileValidator;
 
     @Mock
-    private UploadedFileRepository uploadedFileRepository;
+    private UploadQuotaService uploadQuotaService;
 
     @Mock
     private UserRepository userRepository;
@@ -61,7 +61,7 @@ class FileUploadServiceTest {
         fileUploadService = new FileUploadService(
                 fileStorageService,
                 imageFileValidator,
-                uploadedFileRepository,
+                uploadQuotaService,
                 userRepository
         );
         multipartFile = new MockMultipartFile("file", "photo.png", "image/png", bytes);
@@ -97,7 +97,7 @@ class FileUploadServiceTest {
         assertThat(response.getUrl()).isEqualTo("/api/v1/files/" + fileId + ".png");
 
         ArgumentCaptor<UploadedFile> captor = ArgumentCaptor.forClass(UploadedFile.class);
-        verify(uploadedFileRepository).saveAndFlush(captor.capture());
+        verify(uploadQuotaService).checkQuotaAndRegister(captor.capture());
         UploadedFile registered = captor.getValue();
         assertThat(registered.getId()).isEqualTo(fileId);
         assertThat(registered.getFilename()).isEqualTo(fileId + ".png");
@@ -120,7 +120,7 @@ class FileUploadServiceTest {
         fileUploadService.uploadImage(multipartFile, principal);
 
         ArgumentCaptor<UploadedFile> captor = ArgumentCaptor.forClass(UploadedFile.class);
-        verify(uploadedFileRepository).saveAndFlush(captor.capture());
+        verify(uploadQuotaService).checkQuotaAndRegister(captor.capture());
         assertThat(captor.getValue().getPurpose()).isEqualTo(UploadPurpose.GENERAL);
     }
 
@@ -130,11 +130,26 @@ class FileUploadServiceTest {
         when(imageFileValidator.validate(multipartFile))
                 .thenReturn(new ImageFileValidator.ValidationResult(bytes, "png", "image/png"));
         when(fileStorageService.store(bytes, "png", "image/png")).thenReturn(storedResponse);
-        when(uploadedFileRepository.saveAndFlush(any(UploadedFile.class)))
-                .thenThrow(new DataIntegrityViolationException("registry insert failed"));
+        doThrow(new DataIntegrityViolationException("registry insert failed"))
+                .when(uploadQuotaService).checkQuotaAndRegister(any(UploadedFile.class));
 
         assertThatThrownBy(() -> fileUploadService.uploadImage(multipartFile, UploadPurpose.CHAT, principal))
                 .isInstanceOf(DataIntegrityViolationException.class);
+
+        verify(fileStorageService).delete(fileId + ".png");
+    }
+
+    @Test
+    @DisplayName("Quota rejection compensates by deleting the stored file")
+    void quotaRejectionCompensatesStoredFile() {
+        when(imageFileValidator.validate(multipartFile))
+                .thenReturn(new ImageFileValidator.ValidationResult(bytes, "png", "image/png"));
+        when(fileStorageService.store(bytes, "png", "image/png")).thenReturn(storedResponse);
+        doThrow(new UploadQuotaExceededException("quota exceeded"))
+                .when(uploadQuotaService).checkQuotaAndRegister(any(UploadedFile.class));
+
+        assertThatThrownBy(() -> fileUploadService.uploadImage(multipartFile, UploadPurpose.CHAT, principal))
+                .isInstanceOf(UploadQuotaExceededException.class);
 
         verify(fileStorageService).delete(fileId + ".png");
     }
@@ -150,7 +165,7 @@ class FileUploadServiceTest {
         assertThatThrownBy(() -> fileUploadService.uploadImage(multipartFile, UploadPurpose.CHAT, principal))
                 .isInstanceOf(StorageException.class);
 
-        verifyNoInteractions(uploadedFileRepository);
+        verifyNoInteractions(uploadQuotaService);
         verify(fileStorageService, never()).delete(anyString());
     }
 
@@ -160,6 +175,6 @@ class FileUploadServiceTest {
         assertThatThrownBy(() -> fileUploadService.uploadImage(multipartFile, UploadPurpose.CHAT, null))
                 .isInstanceOf(org.springframework.security.access.AccessDeniedException.class);
 
-        verifyNoInteractions(imageFileValidator, fileStorageService, uploadedFileRepository);
+        verifyNoInteractions(imageFileValidator, fileStorageService, uploadQuotaService);
     }
 }

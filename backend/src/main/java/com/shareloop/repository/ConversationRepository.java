@@ -25,6 +25,8 @@ public interface ConversationRepository extends JpaRepository<Conversation, UUID
 
     boolean existsByListingId(UUID listingId);
 
+    java.util.List<Conversation> findAllByListingId(UUID listingId);
+
     @Lock(LockModeType.PESSIMISTIC_WRITE)
     @Query("SELECT c FROM Conversation c WHERE c.id = :id")
     Optional<Conversation> findByIdForUpdate(@Param("id") UUID id);

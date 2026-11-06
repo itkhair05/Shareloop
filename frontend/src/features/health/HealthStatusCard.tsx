@@ -7,8 +7,18 @@ import { Badge } from '@/components/ui/Badge';
 import { LoadingSpinner, ErrorAlert } from '@/components/ui/Feedback';
 import type { HealthResponse } from '@/types/api';
 import { formatDateTime } from '@/lib/utils';
+import { appConfig } from '@/lib/config';
+
+function resolveApiHost(): string {
+  try {
+    return new URL(appConfig.apiBaseUrl).host;
+  } catch {
+    return appConfig.apiBaseUrl;
+  }
+}
 
 export function HealthStatusCard() {
+  const apiHost = resolveApiHost();
   const { data, error, isLoading, isFetching, refetch } = useQuery<HealthResponse>({
     queryKey: ['backend-health'],
     queryFn: () => apiClient.get<HealthResponse>('/api/health'),
@@ -49,7 +59,7 @@ export function HealthStatusCard() {
         {error && (
           <ErrorAlert
             title="Không thể kết nối máy chủ"
-            message={`${error.message}. Vui lòng đảm bảo dịch vụ Spring Boot đang chạy ở cổng 8080.`}
+            message={`${error.message}. Vui lòng kiểm tra kết nối mạng và trạng thái dịch vụ máy chủ.`}
             onRetry={() => refetch()}
             retryLabel="Thử lại"
             isRetrying={isFetching}
@@ -89,7 +99,7 @@ export function HealthStatusCard() {
         <div className="mt-4 pt-3 border-t border-slate-100 flex items-center justify-between text-xs text-slate-500">
           <span className="flex items-center gap-1.5">
             <Activity className="w-3.5 h-3.5 text-slate-400" />
-            Điều hướng Vite: <code>/api/*</code> &rarr; <code>http://localhost:8080</code>
+            Máy chủ API: <code>{apiHost}</code>
           </span>
           <span className="font-mono">HTTP 200 OK</span>
         </div>

@@ -25,6 +25,7 @@ import com.shareloop.repository.UserRepository;
 import com.shareloop.security.JwtService;
 import com.shareloop.security.google.GoogleIdTokenVerifierService;
 import com.shareloop.security.google.GoogleUserClaims;
+import com.shareloop.security.ratelimit.AccountLoginBackoffService;
 import com.shareloop.security.ratelimit.ForgotPasswordRateLimiter;
 import com.shareloop.security.ratelimit.GoogleAuthRateLimiter;
 import com.shareloop.security.ratelimit.RateLimitProperties;
@@ -72,6 +73,7 @@ public class AuthService {
     private final UserIdentityRepository userIdentityRepository;
     private final GoogleIdTokenVerifierService googleIdTokenVerifierService;
     private final GoogleAuthRateLimiter googleAuthRateLimiter;
+    private final AccountLoginBackoffService accountLoginBackoffService;
 
     public AuthService(
             UserRepository userRepository,
@@ -85,7 +87,8 @@ public class AuthService {
             PasswordResetTokenService passwordResetTokenService,
             UserIdentityRepository userIdentityRepository,
             GoogleIdTokenVerifierService googleIdTokenVerifierService,
-            GoogleAuthRateLimiter googleAuthRateLimiter
+            GoogleAuthRateLimiter googleAuthRateLimiter,
+            AccountLoginBackoffService accountLoginBackoffService
     ) {
         this.userRepository = userRepository;
         this.passwordEncoder = passwordEncoder;
@@ -99,6 +102,7 @@ public class AuthService {
         this.userIdentityRepository = userIdentityRepository;
         this.googleIdTokenVerifierService = googleIdTokenVerifierService;
         this.googleAuthRateLimiter = googleAuthRateLimiter;
+        this.accountLoginBackoffService = accountLoginBackoffService;
     }
 
     @Transactional
@@ -144,16 +148,30 @@ public class AuthService {
         );
     }
 
-    @Transactional(readOnly = true)
+    // Deliberately not transactional: the account backoff below commits in its own
+    // REQUIRES_NEW transaction. NOT_SUPPORTED still activates transaction
+    // synchronization, which keeps the query EntityManager (and its pooled
+    // connection) thread-bound until the method returns; recordSuccess would then
+    // suspend it and need a second connection, exhausting a small pool under
+    // concurrent logins. A plain method releases the connection after each query.
     public AuthResponse login(LoginRequest request) {
         String normalizedEmail = request.getEmail().trim().toLowerCase(Locale.ROOT);
 
-        User user = userRepository.findByEmail(normalizedEmail)
-                .orElseThrow(() -> new InvalidCredentialsException("Invalid email or password"));
+        User user = userRepository.findByEmail(normalizedEmail).orElse(null);
 
-        if (user.getPasswordHash() == null || !passwordEncoder.matches(request.getPassword(), user.getPasswordHash())) {
+        if (user == null || user.getPasswordHash() == null
+                || !passwordEncoder.matches(request.getPassword(), user.getPasswordHash())) {
+            int retryAfterSeconds = accountLoginBackoffService.recordFailure(normalizedEmail);
+            if (retryAfterSeconds > 0) {
+                throw new AccountBackoffException(
+                        AccountLoginBackoffService.BACKOFF_MESSAGE,
+                        retryAfterSeconds
+                );
+            }
             throw new InvalidCredentialsException("Invalid email or password");
         }
+
+        accountLoginBackoffService.recordSuccess(normalizedEmail);
 
         if (user.getStatus() == UserStatus.SUSPENDED) {
             throw new AccountSuspendedException("Your account has been suspended. Please contact support.");

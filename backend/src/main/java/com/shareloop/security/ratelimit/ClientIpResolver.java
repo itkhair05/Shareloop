@@ -5,195 +5,525 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Component;
 
-import java.net.Inet4Address;
-import java.net.Inet6Address;
-import java.net.InetAddress;
-import java.net.UnknownHostException;
+import java.util.ArrayList;
+import java.util.Enumeration;
 import java.util.List;
 
+/**
+ * Resolves the client IP used for rate limiting.
+ *
+ * <p>The resolver never performs DNS resolution. Only IPv4 and IPv6 literals are
+ * accepted; hostnames, zone identifiers and malformed chains are rejected and the
+ * connection remote address is used instead (fail-safe, never the attacker value).</p>
+ *
+ * <p>Trust model, selected explicitly through {@code app.security.rate-limit.client-ip-mode}:</p>
+ * <ul>
+ *     <li>{@code DIRECT} (default): ignore every forwarding header, use the connection remote address.</li>
+ *     <li>{@code TRUSTED_CIDR}: only trust {@code X-Forwarded-For} when the immediate peer matches a
+ *     configured CIDR; walk right-to-left and return the first address that is not a trusted proxy.
+ *     The leftmost value is never trusted.</li>
+ * </ul>
+ *
+ * <p>{@code TRUSTED_HOPS} was removed: hop counting alone cannot verify that the connection peer
+ * belongs to a trusted proxy boundary, so a direct attacker could forge an X-Forwarded-For chain
+ * of the configured length and escape rate-limit buckets. A configuration still naming it fails
+ * startup with an actionable error; it never falls back silently.</p>
+ *
+ * <p>{@code Forwarded} and {@code X-Real-IP} are intentionally ignored so only one header grammar is
+ * interpreted. Duplicate {@code X-Forwarded-For} header lines are treated as ambiguous and rejected.</p>
+ */
 @Component
 public class ClientIpResolver {
 
     private static final Logger log = LoggerFactory.getLogger(ClientIpResolver.class);
-    private static final String DEFAULT_FALLBACK_IP = "127.0.0.1";
+    static final String DEFAULT_FALLBACK_IP = "127.0.0.1";
+    private static final String X_FORWARDED_FOR = "X-Forwarded-For";
 
     private final RateLimitProperties properties;
+    private final Object trustedRulesLock = new Object();
+    private volatile List<CidrRule> trustedRules;
+    private volatile List<String> trustedRulesSource;
 
     public ClientIpResolver(RateLimitProperties properties) {
         this.properties = properties;
+        List<String> configured = properties != null ? properties.getTrustedProxies() : null;
+        this.trustedRules = parseTrustedRules(configured);
+        this.trustedRulesSource = snapshot(configured);
+        validateMode(properties, trustedRules.isEmpty());
     }
 
     /**
-     * Resolves the real client IP address from the request.
-     *
-     * Policy:
-     * 1. By default, use direct remote address.
-     * 2. Trust X-Forwarded-For only when the immediate remote address is a configured trusted proxy.
-     * 3. When trusted, parse right-to-left and pick the first untrusted IP.
-     * 4. Never blindly trust leftmost X-Forwarded-For.
-     * 5. Validate malformed IPs and normalize IPv4/IPv6 loopback.
+     * Validates the forwarding configuration without creating a Spring bean.
+     * Used by early production validation before the application context exists.
      */
+    public static void validateConfiguration(RateLimitProperties properties) {
+        if (properties == null) {
+            return;
+        }
+        List<CidrRule> rules = parseTrustedRules(properties.getTrustedProxies());
+        validateMode(properties, rules.isEmpty());
+    }
+
     public String resolveClientIp(HttpServletRequest request) {
         if (request == null) {
             return DEFAULT_FALLBACK_IP;
         }
 
-        String rawRemoteAddr = request.getRemoteAddr();
-        String normalizedRemote = normalizeIp(rawRemoteAddr);
-        if (normalizedRemote == null || normalizedRemote.isBlank()) {
-            return DEFAULT_FALLBACK_IP;
+        String remote = normalizeIp(request.getRemoteAddr());
+        if (remote == null) {
+            remote = DEFAULT_FALLBACK_IP;
         }
 
-        List<String> trustedProxies = properties.getTrustedProxies();
-        if (trustedProxies == null || trustedProxies.isEmpty() || !isTrustedProxy(normalizedRemote)) {
-            // Direct connection or untrusted immediate proxy -> ignore any forwarded headers
-            return normalizedRemote;
+        RateLimitProperties.ClientIpMode mode = properties.getClientIpMode();
+        if (mode == null || mode == RateLimitProperties.ClientIpMode.DIRECT) {
+            return remote;
         }
 
-        String xForwardedFor = request.getHeader("X-Forwarded-For");
-        if (xForwardedFor == null || xForwardedFor.isBlank()) {
-            return normalizedRemote;
+        String header = singleForwardedHeader(request);
+        if (header == null || header.isBlank()) {
+            return remote;
         }
 
-        String[] parts = xForwardedFor.split(",");
-        // Walk right-to-left
-        for (int i = parts.length - 1; i >= 0; i--) {
-            String candidate = parts[i].trim();
-            if (candidate.isEmpty()) {
-                continue;
+        String[] parts = header.split(",", -1);
+        if (mode == RateLimitProperties.ClientIpMode.TRUSTED_CIDR) {
+            if (!isTrustedProxy(remote)) {
+                log.debug("Ignoring X-Forwarded-For from untrusted peer '{}'", remote);
+                return remote;
             }
-            String normalizedCandidate = normalizeIp(candidate);
-            if (normalizedCandidate == null || normalizedCandidate.isBlank()) {
-                // Malformed IP in forwarding chain: stop and fall back safely to remote address
-                log.debug("Encountered malformed IP in X-Forwarded-For header, falling back to remote address");
-                return normalizedRemote;
+            for (int i = parts.length - 1; i >= 0; i--) {
+                String candidate = normalizeIp(parts[i]);
+                if (candidate == null) {
+                    log.debug("Rejecting ambiguous X-Forwarded-For chain from trusted peer '{}'", remote);
+                    return remote;
+                }
+                if (!isTrustedProxy(candidate)) {
+                    return candidate;
+                }
             }
-            if (!isTrustedProxy(normalizedCandidate)) {
-                // First untrusted IP encountered from right to left is the true client IP
-                return normalizedCandidate;
-            }
+            return remote;
         }
 
-        // If all IPs in chain are trusted proxies, fall back to remote address
-        return normalizedRemote;
+        // Legacy TRUSTED_HOPS can never reach here: validateMode rejects it at
+        // construction and during early production validation.
+        return remote;
     }
 
     public boolean isTrustedProxy(String ipAddress) {
-        List<String> trustedList = properties.getTrustedProxies();
-        if (trustedList == null || trustedList.isEmpty() || ipAddress == null || ipAddress.isBlank()) {
+        List<CidrRule> rules = rules();
+        if (rules.isEmpty()) {
             return false;
         }
-
-        InetAddress target;
-        try {
-            target = InetAddress.getByName(ipAddress.trim());
-        } catch (UnknownHostException e) {
+        byte[] bytes = literalBytes(ipAddress);
+        if (bytes == null) {
             return false;
         }
-
-        for (String rule : trustedList) {
-            if (rule == null || rule.isBlank()) {
-                continue;
-            }
-            if (matchesRule(target, rule.trim())) {
+        for (CidrRule rule : rules) {
+            if (rule.matches(bytes)) {
                 return true;
             }
         }
         return false;
     }
 
+    /**
+     * Normalizes an IPv4 or IPv6 literal into a canonical string.
+     * Returns {@code null} for hostnames, malformed values and anything that would require DNS.
+     */
     public String normalizeIp(String rawIp) {
-        if (rawIp == null) {
+        byte[] parsed = parseAddressLiteral(rawIp);
+        if (parsed == null) {
             return null;
         }
-        String trimmed = rawIp.trim();
-        if (trimmed.isEmpty()) {
-            return null;
+        if (parsed.length == 4) {
+            return canonicalIpv4(parsed);
         }
-
-        // Handle IPv4 with port, e.g. 192.168.1.1:8080
-        if (trimmed.indexOf(':') > 0 && trimmed.indexOf(':') == trimmed.lastIndexOf(':')) {
-            trimmed = trimmed.substring(0, trimmed.indexOf(':'));
+        if (isIpv4Mapped(parsed)) {
+            return canonicalIpv4(new byte[]{parsed[12], parsed[13], parsed[14], parsed[15]});
         }
-
-        // Handle bracketed IPv6, e.g. [::1]
-        if (trimmed.startsWith("[") && trimmed.contains("]")) {
-            trimmed = trimmed.substring(1, trimmed.indexOf(']'));
+        if (isIpv6Loopback(parsed)) {
+            return DEFAULT_FALLBACK_IP;
         }
+        return canonicalIpv6(parsed);
+    }
 
-        try {
-            InetAddress addr = InetAddress.getByName(trimmed);
-            if (addr.isLoopbackAddress()) {
-                return DEFAULT_FALLBACK_IP;
+    private static List<String> snapshot(List<String> configured) {
+        return configured == null ? List.of() : List.copyOf(configured);
+    }
+
+    /**
+     * Returns the parsed trusted-proxy rules, re-parsing when the configured list has changed.
+     * The list is read on each call so configuration refresh (or test mutation) is honoured,
+     * while the parsed result is cached to keep the per-request path cheap.
+     */
+    private List<CidrRule> rules() {
+        List<String> configured = snapshot(properties != null ? properties.getTrustedProxies() : null);
+        if (configured.equals(trustedRulesSource)) {
+            return trustedRules;
+        }
+        synchronized (trustedRulesLock) {
+            if (!configured.equals(trustedRulesSource)) {
+                List<CidrRule> parsed = parseTrustedRules(configured);
+                trustedRules = parsed;
+                trustedRulesSource = configured;
             }
-            if (addr instanceof Inet4Address) {
-                return addr.getHostAddress();
-            }
-            if (addr instanceof Inet6Address) {
-                // Check IPv4-mapped IPv6 (::ffff:192.0.2.128)
-                byte[] bytes = addr.getAddress();
-                if (isIpv4Mapped(bytes)) {
-                    return String.format("%d.%d.%d.%d",
-                            bytes[12] & 0xFF, bytes[13] & 0xFF, bytes[14] & 0xFF, bytes[15] & 0xFF);
-                }
-                return addr.getHostAddress().toLowerCase();
-            }
-            return addr.getHostAddress();
-        } catch (UnknownHostException e) {
-            return null;
+            return trustedRules;
         }
     }
 
-    private boolean isIpv4Mapped(byte[] bytes) {
+    private static void validateMode(RateLimitProperties properties, boolean noRulesConfigured) {
+        if (properties == null) {
+            return;
+        }
+        RateLimitProperties.ClientIpMode mode = properties.getClientIpMode();
+        if (mode == RateLimitProperties.ClientIpMode.TRUSTED_CIDR && noRulesConfigured) {
+            throw new IllegalStateException(
+                    "CLIENT_IP_MODE=TRUSTED_CIDR requires at least one valid TRUSTED_PROXIES entry " +
+                            "(for example the Render load-balancer CIDR)."
+            );
+        }
+        if (mode == RateLimitProperties.ClientIpMode.TRUSTED_HOPS) {
+            throw new IllegalStateException(
+                    "CLIENT_IP_MODE=TRUSTED_HOPS is no longer supported. Hop counting alone cannot verify " +
+                            "the connection peer against a trusted proxy boundary, so it allowed direct attackers " +
+                            "to forge X-Forwarded-For chains and escape rate-limit buckets. " +
+                            "Use CLIENT_IP_MODE=DIRECT (safe default), or CLIENT_IP_MODE=TRUSTED_CIDR with an " +
+                            "independently verified TRUSTED_PROXIES list. Remove TRUSTED_PROXY_HOPS if present."
+            );
+        }
+    }
+
+    private static String singleForwardedHeader(HttpServletRequest request) {
+        Enumeration<String> values = request.getHeaders(X_FORWARDED_FOR);
+        if (values == null || !values.hasMoreElements()) {
+            return null;
+        }
+        String first = values.nextElement();
+        if (values.hasMoreElements()) {
+            return null;
+        }
+        return first;
+    }
+
+    /**
+     * Parses a complete request address literal, including the bracketed IPv6 + port form.
+     * Accepted syntax: {@code 192.0.2.1}, {@code 192.0.2.1:443}, {@code 2001:db8::1},
+     * {@code [2001:db8::1]}, {@code [2001:db8::1]:443}.
+     */
+    private static byte[] parseAddressLiteral(String rawIp) {
+        if (rawIp == null) {
+            return null;
+        }
+        String value = rawIp.trim();
+        if (value.isEmpty() || value.indexOf(',') >= 0 || value.indexOf('"') >= 0
+                || value.indexOf(' ') >= 0 || value.indexOf('\t') >= 0) {
+            return null;
+        }
+
+        if (value.startsWith("[")) {
+            int close = value.indexOf(']');
+            if (close <= 1) {
+                return null;
+            }
+            String inner = value.substring(1, close);
+            String suffix = value.substring(close + 1);
+            if (!suffix.isEmpty()) {
+                if (!suffix.startsWith(":") || suffix.length() == 1 || !isAsciiDigits(suffix.substring(1))) {
+                    return null;
+                }
+            }
+            byte[] parsed = parseIpv6(inner);
+            return parsed != null ? parsed : null;
+        }
+
+        int firstColon = value.indexOf(':');
+        int lastColon = value.lastIndexOf(':');
+        if (firstColon > 0 && firstColon == lastColon) {
+            byte[] host = parseIpv4(value.substring(0, firstColon));
+            if (host != null) {
+                String port = value.substring(firstColon + 1);
+                if (!isAsciiDigits(port)) {
+                    return null;
+                }
+                return host;
+            }
+        }
+
+        byte[] parsed = parseIpv4(value);
+        if (parsed != null) {
+            return parsed;
+        }
+        return parseIpv6(value);
+    }
+
+    private static byte[] literalBytes(String rawIp) {
+        return parseAddressLiteral(rawIp);
+    }
+
+    private static byte[] parseIpv4(String value) {
+        String[] parts = value.split("\\.", -1);
+        if (parts.length != 4) {
+            return null;
+        }
+        byte[] bytes = new byte[4];
+        for (int i = 0; i < 4; i++) {
+            String part = parts[i];
+            if (part.isEmpty() || part.length() > 3 || !isAsciiDigits(part)) {
+                return null;
+            }
+            if (part.length() > 1 && part.charAt(0) == '0') {
+                // Reject leading zeros: they are ambiguous (octal) across parsers.
+                return null;
+            }
+            int octet = Integer.parseInt(part);
+            if (octet > 255) {
+                return null;
+            }
+            bytes[i] = (byte) octet;
+        }
+        return bytes;
+    }
+
+    private static byte[] parseIpv6(String value) {
+        if (value.isEmpty() || value.indexOf(':') < 0 || value.indexOf('%') >= 0) {
+            return null;
+        }
+
+        List<Integer> groups;
+        int doubleColon = value.indexOf("::");
+        if (doubleColon >= 0 && value.indexOf("::", doubleColon + 1) >= 0) {
+            return null;
+        }
+
+        if (doubleColon >= 0) {
+            List<Integer> left = parseIpv6Part(value.substring(0, doubleColon), false);
+            List<Integer> right = parseIpv6Part(value.substring(doubleColon + 2), true);
+            if (left == null || right == null) {
+                return null;
+            }
+            int known = left.size() + right.size();
+            if (known >= 8) {
+                return null;
+            }
+            groups = new ArrayList<>(left);
+            for (int i = known; i < 8; i++) {
+                groups.add(0);
+            }
+            groups.addAll(right);
+        } else {
+            List<Integer> all = parseIpv6Part(value, true);
+            if (all == null || all.size() != 8) {
+                return null;
+            }
+            groups = all;
+        }
+
+        byte[] bytes = new byte[16];
+        for (int i = 0; i < 8; i++) {
+            int group = groups.get(i);
+            bytes[i * 2] = (byte) (group >> 8);
+            bytes[i * 2 + 1] = (byte) (group & 0xFF);
+        }
+        return bytes;
+    }
+
+    private static List<Integer> parseIpv6Part(String part, boolean allowIpv4Tail) {
+        List<Integer> groups = new ArrayList<>();
+        if (part.isEmpty()) {
+            return groups;
+        }
+        String[] tokens = part.split(":", -1);
+        for (int i = 0; i < tokens.length; i++) {
+            String token = tokens[i];
+            if (token.isEmpty()) {
+                return null;
+            }
+            boolean last = i == tokens.length - 1;
+            if (token.indexOf('.') >= 0) {
+                if (!last || !allowIpv4Tail) {
+                    return null;
+                }
+                byte[] ipv4 = parseIpv4(token);
+                if (ipv4 == null) {
+                    return null;
+                }
+                groups.add(((ipv4[0] & 0xFF) << 8) | (ipv4[1] & 0xFF));
+                groups.add(((ipv4[2] & 0xFF) << 8) | (ipv4[3] & 0xFF));
+                continue;
+            }
+            if (token.length() > 4) {
+                return null;
+            }
+            int group = 0;
+            for (int c = 0; c < token.length(); c++) {
+                int digit = Character.digit(token.charAt(c), 16);
+                if (digit < 0) {
+                    return null;
+                }
+                group = (group << 4) | digit;
+            }
+            groups.add(group);
+        }
+        return groups;
+    }
+
+    private static String canonicalIpv4(byte[] bytes) {
+        if ((bytes[0] & 0xFF) == 127) {
+            return DEFAULT_FALLBACK_IP;
+        }
+        return (bytes[0] & 0xFF) + "." + (bytes[1] & 0xFF) + "." + (bytes[2] & 0xFF) + "." + (bytes[3] & 0xFF);
+    }
+
+    private static String canonicalIpv6(byte[] bytes) {
+        int[] groups = new int[8];
+        for (int i = 0; i < 8; i++) {
+            groups[i] = ((bytes[i * 2] & 0xFF) << 8) | (bytes[i * 2 + 1] & 0xFF);
+        }
+
+        int bestStart = -1;
+        int bestLength = 0;
+        for (int i = 0; i < 8; ) {
+            if (groups[i] != 0) {
+                i++;
+                continue;
+            }
+            int start = i;
+            while (i < 8 && groups[i] == 0) {
+                i++;
+            }
+            int length = i - start;
+            if (length > bestLength) {
+                bestStart = start;
+                bestLength = length;
+            }
+        }
+        if (bestLength < 2) {
+            bestStart = -1;
+        }
+
+        StringBuilder builder = new StringBuilder();
+        for (int i = 0; i < 8; i++) {
+            if (i == bestStart) {
+                builder.append("::");
+                i += bestLength - 1;
+                continue;
+            }
+            if (builder.length() > 0 && builder.charAt(builder.length() - 1) != ':') {
+                builder.append(':');
+            }
+            builder.append(Integer.toHexString(groups[i]));
+        }
+        return builder.length() == 0 ? "::" : builder.toString();
+    }
+
+    private static boolean isIpv4Mapped(byte[] bytes) {
         if (bytes == null || bytes.length != 16) {
             return false;
         }
         for (int i = 0; i < 10; i++) {
-            if (bytes[i] != 0) return false;
+            if (bytes[i] != 0) {
+                return false;
+            }
         }
         return (bytes[10] & 0xFF) == 0xFF && (bytes[11] & 0xFF) == 0xFF;
     }
 
-    private boolean matchesRule(InetAddress target, String rule) {
-        if (!rule.contains("/")) {
-            try {
-                InetAddress ruleAddr = InetAddress.getByName(rule);
-                return ruleAddr.equals(target);
-            } catch (UnknownHostException e) {
+    private static boolean isIpv6Loopback(byte[] bytes) {
+        if (bytes == null || bytes.length != 16) {
+            return false;
+        }
+        for (int i = 0; i < 15; i++) {
+            if (bytes[i] != 0) {
                 return false;
             }
         }
+        return bytes[15] == 1;
+    }
 
-        // CIDR notation (e.g. 10.0.0.0/8 or 192.168.0.0/16)
-        String[] parts = rule.split("/", 2);
-        try {
-            InetAddress subnet = InetAddress.getByName(parts[0].trim());
-            int prefixLength = Integer.parseInt(parts[1].trim());
-
-            byte[] targetBytes = target.getAddress();
-            byte[] subnetBytes = subnet.getAddress();
-
-            if (targetBytes.length != subnetBytes.length) {
+    private static boolean isAsciiDigits(String value) {
+        if (value == null || value.isEmpty()) {
+            return false;
+        }
+        for (int i = 0; i < value.length(); i++) {
+            char c = value.charAt(i);
+            if (c < '0' || c > '9') {
                 return false;
             }
+        }
+        return true;
+    }
 
-            int fullBytes = prefixLength / 8;
-            int remainderBits = prefixLength % 8;
-
-            for (int i = 0; i < fullBytes; i++) {
-                if (targetBytes[i] != subnetBytes[i]) {
-                    return false;
+    private static List<CidrRule> parseTrustedRules(List<String> rawRules) {
+        if (rawRules == null || rawRules.isEmpty()) {
+            return List.of();
+        }
+        List<CidrRule> rules = new ArrayList<>();
+        for (String rawRule : rawRules) {
+            if (rawRule == null || rawRule.isBlank()) {
+                continue;
+            }
+            String rule = rawRule.trim();
+            String addressPart = rule;
+            Integer prefixLength = null;
+            int slash = rule.indexOf('/');
+            if (slash >= 0) {
+                addressPart = rule.substring(0, slash).trim();
+                String prefixPart = rule.substring(slash + 1).trim();
+                try {
+                    prefixLength = Integer.parseInt(prefixPart);
+                } catch (NumberFormatException e) {
+                    throw new IllegalStateException(
+                            "Invalid trusted proxy rule '" + rule + "': prefix length must be an integer.");
                 }
             }
 
-            if (remainderBits > 0 && fullBytes < targetBytes.length) {
-                int mask = (0xFF << (8 - remainderBits)) & 0xFF;
-                return (targetBytes[fullBytes] & mask) == (subnetBytes[fullBytes] & mask);
+            byte[] network = parseAddressLiteral(addressPart);
+            if (network == null) {
+                throw new IllegalStateException(
+                        "Invalid trusted proxy rule '" + rule + "': expected an IPv4 or IPv6 literal.");
             }
 
-            return true;
-        } catch (Exception e) {
-            return false;
+            int familyBits = network.length * 8;
+            if (network.length == 16 && isIpv4Mapped(network)) {
+                byte[] mapped = new byte[]{network[12], network[13], network[14], network[15]};
+                if (prefixLength != null) {
+                    if (prefixLength < 96 || prefixLength > 128) {
+                        throw new IllegalStateException(
+                                "Invalid trusted proxy rule '" + rule + "': IPv4-mapped prefix must be between 96 and 128.");
+                    }
+                    prefixLength -= 96;
+                }
+                network = mapped;
+                familyBits = 32;
+            }
+
+            int prefix = prefixLength != null ? prefixLength : familyBits;
+            if (prefix < 0 || prefix > familyBits) {
+                throw new IllegalStateException(
+                        "Invalid trusted proxy rule '" + rule + "': prefix length must be between 0 and " + familyBits + ".");
+            }
+            rules.add(new CidrRule(network, prefix));
+        }
+        return List.copyOf(rules);
+    }
+
+    private record CidrRule(byte[] network, int prefixLength) {
+
+        boolean matches(byte[] address) {
+            if (address == null || address.length != network.length) {
+                return false;
+            }
+            int fullBytes = prefixLength / 8;
+            int remainderBits = prefixLength % 8;
+            for (int i = 0; i < fullBytes; i++) {
+                if (address[i] != network[i]) {
+                    return false;
+                }
+            }
+            if (remainderBits == 0) {
+                return true;
+            }
+            int mask = (0xFF << (8 - remainderBits)) & 0xFF;
+            return (address[fullBytes] & mask) == (network[fullBytes] & mask);
         }
     }
 }

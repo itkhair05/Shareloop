@@ -46,6 +46,28 @@ public interface UploadedFileRepository extends JpaRepository<UploadedFile, UUID
     );
 
     /**
+     * Ids of expired GENERAL uploads that are not referenced by any listing image.
+     * Listing images are stored as URL strings, so a reference exists when the
+     * stored URL is the filename itself or ends with "/" + filename.
+     */
+    @Query("SELECT f.id FROM UploadedFile f " +
+           "WHERE f.purpose = :purpose " +
+           "AND f.deletionState = :deletionState " +
+           "AND f.boundMessageId IS NULL " +
+           "AND NOT EXISTS (SELECT 1 FROM UploadedFileBinding b WHERE b.fileId = f.id) " +
+           "AND f.createdAt < :cutoff " +
+           "AND NOT EXISTS (SELECT 1 FROM ListingImage li " +
+           "                WHERE li.imageUrl = f.filename " +
+           "                   OR li.imageUrl LIKE CONCAT('%/', f.filename)) " +
+           "ORDER BY f.createdAt ASC, f.id ASC")
+    List<UUID> findOrphanedGeneralIds(
+            @Param("purpose") UploadPurpose purpose,
+            @Param("deletionState") DeletionState deletionState,
+            @Param("cutoff") Instant cutoff,
+            Pageable pageable
+    );
+
+    /**
      * Ids of files whose deletion is pending, oldest first, including rows whose
      * previous physical deletion attempt failed.
      */
@@ -58,4 +80,22 @@ public interface UploadedFileRepository extends JpaRepository<UploadedFile, UUID
     );
 
     long countByOwnerId(UUID ownerId);
+
+    /**
+     * Transaction-scoped advisory lock that serializes quota checks and inserts
+     * for one owner across application instances.
+     */
+    @Query(value = "SELECT 1 FROM (SELECT pg_advisory_xact_lock(1007, hashtext(:ownerKey))) sub", nativeQuery = true)
+    Integer acquireQuotaAdvisoryLock(@Param("ownerKey") String ownerKey);
+
+    /**
+     * Bytes registered by the owner since the start of the rolling quota window.
+     * Rows pending physical deletion are still counted until the row is removed.
+     */
+    @Query("SELECT COALESCE(SUM(f.sizeBytes), 0) FROM UploadedFile f " +
+           "WHERE f.owner.id = :ownerId AND f.createdAt >= :since")
+    long sumSizeBytesByOwnerIdAndCreatedAtAfter(
+            @Param("ownerId") UUID ownerId,
+            @Param("since") Instant since
+    );
 }

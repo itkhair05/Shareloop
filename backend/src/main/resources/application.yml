@@ -1,14 +1,27 @@
 server:
   port: ${PORT:8080}
+  shutdown: graceful
 
 spring:
   application:
     name: shareloop-backend
+  lifecycle:
+    timeout-per-shutdown-phase: ${SHUTDOWN_TIMEOUT_PER_PHASE:30s}
   datasource:
     url: ${SPRING_DATASOURCE_URL:jdbc:postgresql://localhost:5432/shareloop_db}
     username: ${SPRING_DATASOURCE_USERNAME:shareloop_user}
     password: ${SPRING_DATASOURCE_PASSWORD:shareloop_password}
     driver-class-name: org.postgresql.Driver
+    hikari:
+      maximum-pool-size: ${DB_POOL_MAX_SIZE:10}
+      minimum-idle: ${DB_POOL_MIN_IDLE:2}
+      connection-timeout: ${DB_CONNECTION_TIMEOUT_MS:30000}
+      validation-timeout: ${DB_VALIDATION_TIMEOUT_MS:5000}
+      idle-timeout: ${DB_IDLE_TIMEOUT_MS:600000}
+      max-lifetime: ${DB_MAX_LIFETIME_MS:1800000}
+      keepalive-time: ${DB_KEEPALIVE_TIME_MS:300000}
+      data-source-properties:
+        sslmode: ${DB_SSL_MODE:prefer}
   jpa:
     hibernate:
       ddl-auto: none
@@ -49,18 +62,34 @@ app:
     production-confirmed: ${APP_ADMIN_BOOTSTRAP_PRODUCTION_CONFIRMED:false}
   cors:
     allowed-origins: ${CORS_ALLOWED_ORIGINS:http://localhost:5173,http://localhost:3000}
+    allowed-origin-patterns: ${CORS_ALLOWED_ORIGIN_PATTERNS:}
+    allow-credentials: ${CORS_ALLOW_CREDENTIALS:false}
   security:
     rate-limit:
+      # DIRECT (default) ignores forwarding headers. Use TRUSTED_CIDR with an
+      # explicit TRUSTED_PROXIES list only when the deployment topology guarantees
+      # that boundary. TRUSTED_HOPS was removed and fails startup if configured.
+      client-ip-mode: ${CLIENT_IP_MODE:DIRECT}
       trusted-proxies: ${TRUSTED_PROXIES:}
       login-limit: ${LOGIN_RATE_LIMIT:5}
       login-window-seconds: ${LOGIN_RATE_LIMIT_WINDOW_SECONDS:60}
       login-attempt-retention-hours: ${LOGIN_RATE_LIMIT_RETENTION_HOURS:24}
+      registration-ip-limit: ${REGISTRATION_IP_LIMIT:5}
+      registration-window-seconds: ${REGISTRATION_WINDOW_SECONDS:3600}
+      account-backoff-enabled: ${ACCOUNT_BACKOFF_ENABLED:true}
+      account-failure-limit: ${ACCOUNT_FAILURE_LIMIT:5}
+      account-window-seconds: ${ACCOUNT_WINDOW_SECONDS:900}
+      account-backoff-base-seconds: ${ACCOUNT_BACKOFF_BASE_SECONDS:30}
+      account-backoff-max-seconds: ${ACCOUNT_BACKOFF_MAX_SECONDS:900}
       chat-message-limit: ${CHAT_RATE_LIMIT:20}
       chat-window-seconds: ${CHAT_RATE_LIMIT_WINDOW_SECONDS:60}
       forgot-password-ip-limit: ${FORGOT_PASSWORD_IP_LIMIT:5}
       forgot-password-email-limit: ${FORGOT_PASSWORD_EMAIL_LIMIT:3}
       forgot-password-window-seconds: ${FORGOT_PASSWORD_WINDOW_SECONDS:900}
       forgot-password-secret: ${FORGOT_PASSWORD_SECRET:shareloop-forgot-password-salt-key-default}
+      # Dedicated HMAC key for account backoff. Falls back to FORGOT_PASSWORD_SECRET
+      # with a warning while unset; set it to rotate the two functions independently.
+      account-backoff-secret: ${ACCOUNT_BACKOFF_HMAC_SECRET:}
       reset-token-expiration-minutes: ${RESET_TOKEN_EXPIRATION_MINUTES:15}
       forgot-password-attempt-retention-hours: ${FORGOT_PASSWORD_ATTEMPT_RETENTION_HOURS:24}
       password-reset-token-retention-days: ${PASSWORD_RESET_TOKEN_RETENTION_DAYS:7}
@@ -95,11 +124,19 @@ app:
       secret-access-key: ${R2_SECRET_ACCESS_KEY:}
       public-url-prefix: ${R2_PUBLIC_URL_PREFIX:}
   uploads:
+    quota:
+      # Rolling per-user upload budget enforced atomically in the database.
+      enabled: ${UPLOAD_QUOTA_ENABLED:true}
+      user-period-bytes: ${UPLOAD_QUOTA_USER_PERIOD_BYTES:52428800}
+      user-period-hours: ${UPLOAD_QUOTA_USER_PERIOD_HOURS:24}
     cleanup:
-      # Hourly sweep of unbound CHAT uploads older than the TTL.
+      # Hourly sweep of unbound CHAT/REVIEW/REPORT/SUPPORT uploads older than the TTL.
       cron: ${UPLOAD_CLEANUP_CRON:0 0 * * * *}
       ttl-hours: ${UPLOAD_CLEANUP_TTL_HOURS:24}
       batch-size: ${UPLOAD_CLEANUP_BATCH_SIZE:100}
+      listing-images:
+        # GENERAL uploads referenced by no listing image are swept only after this longer TTL.
+        ttl-hours: ${UPLOAD_LISTING_CLEANUP_TTL_HOURS:168}
 
 springdoc:
   api-docs:

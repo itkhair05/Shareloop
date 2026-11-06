@@ -1,4 +1,44 @@
-# Production environment configuration
+# Production environment configuration.
+# Activated with SPRING_PROFILES_ACTIVE=prod. The application fails fast at
+# startup when any required production setting is missing or unsafe.
+server:
+  shutdown: graceful
+  # Never let Spring rewrite getRemoteAddr() from client-controlled headers.
+  # Client IP resolution is handled explicitly by ClientIpResolver, which only
+  # trusts X-Forwarded-For when CLIENT_IP_MODE and the trusted proxy boundary
+  # are configured for this deployment.
+  forward-headers-strategy: none
+
+spring:
+  lifecycle:
+    timeout-per-shutdown-phase: ${SHUTDOWN_TIMEOUT_PER_PHASE:30s}
+  datasource:
+    hikari:
+      # Keep the pool small: Render instances x DB_POOL_MAX_SIZE must stay
+      # below the Neon connection limit.
+      maximum-pool-size: ${DB_POOL_MAX_SIZE:5}
+      minimum-idle: ${DB_POOL_MIN_IDLE:1}
+      data-source-properties:
+        # Matches Neon. Use verify-full when DB_SSL_ROOT_CERT is configured.
+        sslmode: ${DB_SSL_MODE:require}
+  # Flyway reuses the datasource above by default. To run migrations through
+  # Neon's DIRECT endpoint while the application uses the POOLED endpoint, set
+  # the standard Spring Boot properties:
+  #   SPRING_FLYWAY_URL=jdbc:postgresql://<direct-host>/<db>?sslmode=require
+  #   SPRING_FLYWAY_USER=<migration-user>
+  #   SPRING_FLYWAY_PASSWORD=<migration-password>
+  # The URL must include sslmode=require, verify-ca or verify-full.
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health
+  endpoint:
+    health:
+      show-details: never
+      show-components: never
+
 app:
   seed:
     enabled: false
@@ -6,3 +46,17 @@ app:
     enabled: false
   mail:
     provider: ${MAIL_PROVIDER:brevo}
+    frontend-base-url: ${FRONTEND_BASE_URL:}
+  cors:
+    allowed-origins: ${CORS_ALLOWED_ORIGINS:}
+    allowed-origin-patterns: ${CORS_ALLOWED_ORIGIN_PATTERNS:}
+    allow-credentials: ${CORS_ALLOW_CREDENTIALS:false}
+  storage:
+    provider: ${STORAGE_PROVIDER:r2}
+
+# API documentation is not exposed in production.
+springdoc:
+  api-docs:
+    enabled: false
+  swagger-ui:
+    enabled: false

@@ -1,5 +1,6 @@
 package com.shareloop.service;
 
+import com.shareloop.config.StorageProperties;
 import com.shareloop.dto.auth.UserProfileResponse;
 import com.shareloop.dto.file.FileUploadResponse;
 import com.shareloop.entity.User;
@@ -16,6 +17,8 @@ import org.springframework.transaction.support.TransactionTemplate;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.time.Instant;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.UUID;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -37,17 +40,20 @@ public class AvatarService {
     private final FileStorageService fileStorageService;
     private final ImageFileValidator imageFileValidator;
     private final TransactionTemplate transactionTemplate;
+    private final List<String> managedAbsolutePrefixes;
 
     public AvatarService(
             UserRepository userRepository,
             FileStorageService fileStorageService,
             ImageFileValidator imageFileValidator,
-            PlatformTransactionManager transactionManager
+            PlatformTransactionManager transactionManager,
+            StorageProperties storageProperties
     ) {
         this.userRepository = userRepository;
         this.fileStorageService = fileStorageService;
         this.imageFileValidator = imageFileValidator;
         this.transactionTemplate = new TransactionTemplate(transactionManager);
+        this.managedAbsolutePrefixes = resolveManagedAbsolutePrefixes(storageProperties);
     }
 
     /**
@@ -191,6 +197,17 @@ public class AvatarService {
         }
         String trimmed = avatarUrl.trim();
 
+        // Legacy absolute object-storage URLs (for example a previous R2/CDN base URL).
+        for (String prefix : managedAbsolutePrefixes) {
+            if (trimmed.startsWith(prefix + "/")) {
+                String candidate = trimmed.substring(prefix.length() + 1);
+                Matcher matcher = MANAGED_AVATAR_FILENAME_PATTERN.matcher(candidate);
+                if (matcher.matches()) {
+                    return matcher.group(1);
+                }
+            }
+        }
+
         if (trimmed.startsWith("http://") || trimmed.startsWith("https://")) {
             int idx = trimmed.indexOf("/api/v1/files/");
             if (idx != -1) {
@@ -209,6 +226,32 @@ public class AvatarService {
         }
 
         return null;
+    }
+
+    private static List<String> resolveManagedAbsolutePrefixes(StorageProperties storageProperties) {
+        List<String> prefixes = new ArrayList<>();
+        if (storageProperties == null) {
+            return prefixes;
+        }
+        addAbsolutePrefix(prefixes, storageProperties.getR2().getPublicUrlPrefix());
+        addAbsolutePrefix(prefixes, storageProperties.getLocal().getBaseUrl());
+        return List.copyOf(prefixes);
+    }
+
+    private static void addAbsolutePrefix(List<String> prefixes, String value) {
+        if (value == null) {
+            return;
+        }
+        String trimmed = value.trim();
+        if (!trimmed.startsWith("http://") && !trimmed.startsWith("https://")) {
+            return;
+        }
+        while (trimmed.endsWith("/")) {
+            trimmed = trimmed.substring(0, trimmed.length() - 1);
+        }
+        if (!trimmed.isBlank()) {
+            prefixes.add(trimmed);
+        }
     }
 
     private record AvatarUpdateResult(User user, String oldCustomAvatarUrl) {}

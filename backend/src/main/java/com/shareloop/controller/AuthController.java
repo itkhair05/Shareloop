@@ -17,6 +17,7 @@ import com.shareloop.service.AvatarService;
 import com.shareloop.security.ratelimit.ClientIpResolver;
 import com.shareloop.security.ratelimit.LoginRateLimiter;
 import com.shareloop.security.ratelimit.PasswordRateLimiter;
+import com.shareloop.security.ratelimit.RegistrationRateLimiter;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -38,6 +39,7 @@ public class AuthController {
     private final AvatarService avatarService;
     private final ClientIpResolver clientIpResolver;
     private final LoginRateLimiter loginRateLimiter;
+    private final RegistrationRateLimiter registrationRateLimiter;
     private final PasswordRateLimiter passwordRateLimiter;
 
     public AuthController(
@@ -45,17 +47,24 @@ public class AuthController {
             AvatarService avatarService,
             ClientIpResolver clientIpResolver,
             LoginRateLimiter loginRateLimiter,
+            RegistrationRateLimiter registrationRateLimiter,
             PasswordRateLimiter passwordRateLimiter
     ) {
         this.authService = authService;
         this.avatarService = avatarService;
         this.clientIpResolver = clientIpResolver;
         this.loginRateLimiter = loginRateLimiter;
+        this.registrationRateLimiter = registrationRateLimiter;
         this.passwordRateLimiter = passwordRateLimiter;
     }
 
     @PostMapping("/register")
-    public ResponseEntity<AuthResponse> register(@Valid @RequestBody RegisterRequest request) {
+    public ResponseEntity<AuthResponse> register(
+            @Valid @RequestBody RegisterRequest request,
+            HttpServletRequest httpRequest
+    ) {
+        String clientIp = clientIpResolver.resolveClientIp(httpRequest);
+        registrationRateLimiter.checkAndRecordAttempt(clientIp);
         AuthResponse response = authService.register(request);
         return ResponseEntity.status(HttpStatus.CREATED).body(response);
     }

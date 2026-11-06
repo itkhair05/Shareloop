@@ -3,6 +3,7 @@ package com.shareloop.service;
 import com.shareloop.entity.UploadedFile;
 import com.shareloop.entity.enums.DeletionState;
 import com.shareloop.entity.enums.UploadPurpose;
+import com.shareloop.repository.ListingImageRepository;
 import com.shareloop.repository.UploadedFileBindingRepository;
 import com.shareloop.repository.UploadedFileRepository;
 import com.shareloop.service.filestorage.FileStorageService;
@@ -61,6 +62,7 @@ public class UploadedFileCleanupService {
 
     private final UploadedFileRepository uploadedFileRepository;
     private final UploadedFileBindingRepository uploadedFileBindingRepository;
+    private final ListingImageRepository listingImageRepository;
     private final FileStorageService fileStorageService;
     private final TransactionTemplate transactionTemplate;
     private final Clock clock;
@@ -71,15 +73,20 @@ public class UploadedFileCleanupService {
     @Value("${app.uploads.cleanup.batch-size:100}")
     private int batchSize = 100;
 
+    @Value("${app.uploads.cleanup.listing-images.ttl-hours:168}")
+    private long listingImageTtlHours = 168;
+
     public UploadedFileCleanupService(
             UploadedFileRepository uploadedFileRepository,
             UploadedFileBindingRepository uploadedFileBindingRepository,
+            ListingImageRepository listingImageRepository,
             FileStorageService fileStorageService,
             PlatformTransactionManager transactionManager,
             Clock clock
     ) {
         this.uploadedFileRepository = uploadedFileRepository;
         this.uploadedFileBindingRepository = uploadedFileBindingRepository;
+        this.listingImageRepository = listingImageRepository;
         this.fileStorageService = fileStorageService;
         this.transactionTemplate = new TransactionTemplate(transactionManager);
         this.clock = clock;
@@ -88,8 +95,10 @@ public class UploadedFileCleanupService {
     @Scheduled(cron = "${app.uploads.cleanup.cron:0 0 * * * *}")
     public void scheduledCleanup() {
         int deleted = cleanupExpiredUnboundUploads();
-        if (deleted > 0) {
-            log.info("Cleaned up {} expired unbound uploads", deleted);
+        int orphanedListingImages = cleanupOrphanedListingImages();
+        if (deleted > 0 || orphanedListingImages > 0) {
+            log.info("Cleaned up {} expired unbound uploads and {} orphaned listing images",
+                    deleted, orphanedListingImages);
         }
     }
 
@@ -110,6 +119,67 @@ public class UploadedFileCleanupService {
             log.info("Marked {} expired unbound uploads as pending deletion", marked);
         }
         return finalized;
+    }
+
+    /**
+     * Removes GENERAL uploads that were never attached to a listing.
+     *
+     * <p>Listing images are stored as URL strings, so the registry cannot be bound
+     * to the listing. Instead, an upload is eligible only when it is older than the
+     * listing-image TTL and no listing image row references its filename. The
+     * reference is checked again under the row lock before physical deletion, so a
+     * concurrently created listing is never broken by the sweep.</p>
+     *
+     * @return number of registry rows finalized (deleted) in this pass
+     */
+    public int cleanupOrphanedListingImages() {
+        long effectiveTtl = Math.max(1, listingImageTtlHours);
+        int effectiveBatchSize = Math.max(1, batchSize);
+        Instant cutoff = clock.instant().minus(effectiveTtl, ChronoUnit.HOURS);
+
+        int marked = markOrphanedListingImagesAsPending(cutoff, effectiveBatchSize);
+        int finalized = finalizePendingDeletions(effectiveBatchSize);
+
+        if (marked > 0) {
+            log.info("Marked {} unreferenced listing images as pending deletion", marked);
+        }
+        return finalized;
+    }
+
+    private int markOrphanedListingImagesAsPending(Instant cutoff, int effectiveBatchSize) {
+        int markedTotal = 0;
+        Set<UUID> failedThisPass = new HashSet<>();
+
+        for (int batch = 0; batch < MAX_BATCHES_PER_RUN; batch++) {
+            List<UUID> candidates = retainUnfailed(
+                    uploadedFileRepository.findOrphanedGeneralIds(
+                            UploadPurpose.GENERAL,
+                            DeletionState.ACTIVE,
+                            cutoff,
+                            PageRequest.of(0, effectiveBatchSize)
+                    ),
+                    failedThisPass
+            );
+            if (candidates.isEmpty()) {
+                break;
+            }
+
+            int markedInBatch = 0;
+            for (UUID id : candidates) {
+                if (markGeneralPendingIfEligible(id, cutoff)) {
+                    markedInBatch++;
+                } else {
+                    failedThisPass.add(id);
+                }
+            }
+            markedTotal += markedInBatch;
+
+            if (markedInBatch == 0) {
+                break;
+            }
+        }
+
+        return markedTotal;
     }
 
     private int markExpiredAsPending(Instant cutoff, int effectiveBatchSize) {
@@ -179,6 +249,36 @@ public class UploadedFileCleanupService {
         }
     }
 
+    private boolean markGeneralPendingIfEligible(UUID uploadId, Instant cutoff) {
+        try {
+            Boolean marked = transactionTemplate.execute(status -> {
+                UploadedFile file = uploadedFileRepository.findByIdForUpdate(uploadId).orElse(null);
+                if (file == null
+                        || file.getPurpose() != UploadPurpose.GENERAL
+                        || file.getDeletionState() != DeletionState.ACTIVE) {
+                    return false;
+                }
+                if (file.isBound() || uploadedFileBindingRepository.existsById(uploadId)) {
+                    return false;
+                }
+                if (file.getCreatedAt() == null || !file.getCreatedAt().isBefore(cutoff)) {
+                    return false;
+                }
+                if (listingImageRepository.countReferencesToFilename(file.getFilename()) > 0) {
+                    return false;
+                }
+
+                file.markPendingDeletion(clock.instant());
+                uploadedFileRepository.saveAndFlush(file);
+                return true;
+            });
+            return Boolean.TRUE.equals(marked);
+        } catch (RuntimeException ex) {
+            log.error("Failed to mark orphaned listing image {} as pending deletion: {}", uploadId, ex.getMessage());
+            return false;
+        }
+    }
+
     private int finalizePendingDeletions(int effectiveBatchSize) {
         int finalizedTotal = 0;
         Set<UUID> failedThisPass = new HashSet<>();
@@ -221,13 +321,18 @@ public class UploadedFileCleanupService {
                 if (file == null || file.getDeletionState() != DeletionState.PENDING_DELETION) {
                     return null;
                 }
-                if (!CLEANUP_PURPOSES.contains(file.getPurpose())) {
+                if (!isDeletablePurpose(file.getPurpose())) {
                     log.error("Upload {} is pending deletion but has non-cleanup purpose {}; refusing to delete it",
                             uploadId, file.getPurpose());
                     return null;
                 }
                 if (file.isBound() || uploadedFileBindingRepository.existsById(uploadId)) {
                     log.error("Pending-deletion upload {} is unexpectedly bound; refusing to delete it", uploadId);
+                    return null;
+                }
+                if (isReferencedByListingImage(file)) {
+                    log.error("Pending-deletion GENERAL upload {} is referenced by a listing image; refusing to delete it",
+                            uploadId);
                     return null;
                 }
 
@@ -263,9 +368,14 @@ public class UploadedFileCleanupService {
                     log.error("Deletion of upload {} was reversed after physical deletion; refusing to remove the row", uploadId);
                     return false;
                 }
-                if (!CLEANUP_PURPOSES.contains(file.getPurpose())) {
+                if (!isDeletablePurpose(file.getPurpose())) {
                     log.error("Upload {} changed to non-cleanup purpose {} after physical deletion; refusing to remove the row",
                             uploadId, file.getPurpose());
+                    return false;
+                }
+                if (isReferencedByListingImage(file)) {
+                    log.error("Upload {} became referenced by a listing image after physical deletion; refusing to remove the row",
+                            uploadId);
                     return false;
                 }
                 if (file.isBound() || uploadedFileBindingRepository.existsById(uploadId)) {
@@ -288,6 +398,15 @@ public class UploadedFileCleanupService {
                     attempt.filename(), uploadId, ex.getMessage());
             return false;
         }
+    }
+
+    private static boolean isDeletablePurpose(UploadPurpose purpose) {
+        return CLEANUP_PURPOSES.contains(purpose) || purpose == UploadPurpose.GENERAL;
+    }
+
+    private boolean isReferencedByListingImage(UploadedFile file) {
+        return file.getPurpose() == UploadPurpose.GENERAL
+                && listingImageRepository.countReferencesToFilename(file.getFilename()) > 0;
     }
 
     private static List<UUID> retainUnfailed(List<UUID> ids, Set<UUID> failedThisPass) {

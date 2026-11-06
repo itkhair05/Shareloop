@@ -30,4 +30,11 @@ public interface ChatMessageRepository extends JpaRepository<ChatMessage, UUID> 
 
     @Query("SELECT COUNT(m) FROM ChatMessage m WHERE m.sender.id = :senderId AND m.createdAt >= :since")
     long countBySenderIdAndCreatedAtAfter(@Param("senderId") UUID senderId, @Param("since") java.time.Instant since);
+
+    long countByConversationId(UUID conversationId);
+
+    @org.springframework.transaction.annotation.Transactional
+    @org.springframework.data.jpa.repository.Modifying
+    @org.springframework.data.jpa.repository.Query("DELETE FROM ChatMessage m WHERE m.conversation.id IN :conversationIds")
+    int deleteByConversationIds(@Param("conversationIds") java.util.Collection<UUID> conversationIds);
 }

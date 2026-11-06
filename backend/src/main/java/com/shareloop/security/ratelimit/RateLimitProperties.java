@@ -10,11 +10,38 @@ import java.util.List;
 @ConfigurationProperties(prefix = "app.security.rate-limit")
 public class RateLimitProperties {
 
+    public enum ClientIpMode {
+        /** Always use the connection remote address and ignore every forwarding header. */
+        DIRECT,
+        /** Trust X-Forwarded-For only when the connection remote address matches a configured trusted CIDR. */
+        TRUSTED_CIDR,
+        /**
+         * Legacy value retained only so that a stale CLIENT_IP_MODE=TRUSTED_HOPS configuration
+         * fails startup with an actionable error instead of being silently ignored. It must
+         * never activate hop-count-based trust; use TRUSTED_CIDR with verified proxy CIDRs.
+         */
+        TRUSTED_HOPS
+    }
+
+    /**
+     * How the real client IP is derived from an HTTP request.
+     * Defaults to DIRECT, which ignores all client-supplied forwarding headers.
+     */
+    private ClientIpMode clientIpMode = ClientIpMode.DIRECT;
+
     /**
      * List of trusted proxy IP addresses or CIDR blocks (e.g. "127.0.0.1", "10.0.0.0/8").
-     * When empty, X-Forwarded-For headers are never trusted.
+     * Only used by TRUSTED_CIDR. Invalid entries fail application startup.
      */
     private List<String> trustedProxies = new ArrayList<>();
+
+    public ClientIpMode getClientIpMode() {
+        return clientIpMode;
+    }
+
+    public void setClientIpMode(ClientIpMode clientIpMode) {
+        this.clientIpMode = clientIpMode != null ? clientIpMode : ClientIpMode.DIRECT;
+    }
 
     /**
      * Maximum login requests allowed per IP within the rolling window.
@@ -118,6 +145,13 @@ public class RateLimitProperties {
     private String forgotPasswordSecret = "shareloop-forgot-password-salt-key-default";
 
     /**
+     * Dedicated secret for the account backoff HMAC key. When blank, the
+     * forgot-password secret is used as a transitional fallback (a warning is
+     * logged once). Env var: ACCOUNT_BACKOFF_HMAC_SECRET.
+     */
+    private String accountBackoffSecret = "";
+
+    /**
      * Expiration duration in minutes for password reset tokens (default: 15 minutes).
      */
     private int resetTokenExpirationMinutes = 15;
@@ -152,6 +186,14 @@ public class RateLimitProperties {
 
     public void setForgotPasswordSecret(String forgotPasswordSecret) {
         this.forgotPasswordSecret = forgotPasswordSecret;
+    }
+
+    public String getAccountBackoffSecret() {
+        return accountBackoffSecret;
+    }
+
+    public void setAccountBackoffSecret(String accountBackoffSecret) {
+        this.accountBackoffSecret = accountBackoffSecret != null ? accountBackoffSecret.trim() : "";
     }
 
     public int getResetTokenExpirationMinutes() {
@@ -277,6 +319,97 @@ public class RateLimitProperties {
 
     public void setSetPasswordWindowSeconds(int setPasswordWindowSeconds) {
         this.setPasswordWindowSeconds = setPasswordWindowSeconds;
+    }
+
+    /**
+     * Maximum registration requests allowed per client IP within the rolling window.
+     */
+    private int registrationIpLimit = 5;
+
+    /**
+     * Duration in seconds of the registration rolling window (default: 3600 seconds / 1 hour).
+     */
+    private int registrationWindowSeconds = 3600;
+
+    /**
+     * Enables account-oriented progressive login backoff in addition to the per-IP limit.
+     */
+    private boolean accountBackoffEnabled = true;
+
+    /**
+     * Consecutive failed logins for the same account before backoff is applied.
+     */
+    private int accountFailureLimit = 5;
+
+    /**
+     * Rolling window in seconds used to count account failures (default: 900 seconds / 15 minutes).
+     */
+    private int accountWindowSeconds = 900;
+
+    /**
+     * Base retry delay in seconds after reaching the account failure limit.
+     */
+    private int accountBackoffBaseSeconds = 30;
+
+    /**
+     * Upper bound in seconds for the progressive account backoff delay.
+     */
+    private int accountBackoffMaxSeconds = 900;
+
+    public int getRegistrationIpLimit() {
+        return registrationIpLimit;
+    }
+
+    public void setRegistrationIpLimit(int registrationIpLimit) {
+        this.registrationIpLimit = registrationIpLimit;
+    }
+
+    public int getRegistrationWindowSeconds() {
+        return registrationWindowSeconds;
+    }
+
+    public void setRegistrationWindowSeconds(int registrationWindowSeconds) {
+        this.registrationWindowSeconds = registrationWindowSeconds;
+    }
+
+    public boolean isAccountBackoffEnabled() {
+        return accountBackoffEnabled;
+    }
+
+    public void setAccountBackoffEnabled(boolean accountBackoffEnabled) {
+        this.accountBackoffEnabled = accountBackoffEnabled;
+    }
+
+    public int getAccountFailureLimit() {
+        return accountFailureLimit;
+    }
+
+    public void setAccountFailureLimit(int accountFailureLimit) {
+        this.accountFailureLimit = accountFailureLimit;
+    }
+
+    public int getAccountWindowSeconds() {
+        return accountWindowSeconds;
+    }
+
+    public void setAccountWindowSeconds(int accountWindowSeconds) {
+        this.accountWindowSeconds = accountWindowSeconds;
+    }
+
+    public int getAccountBackoffBaseSeconds() {
+        return accountBackoffBaseSeconds;
+    }
+
+    public void setAccountBackoffBaseSeconds(int accountBackoffBaseSeconds) {
+        this.accountBackoffBaseSeconds = accountBackoffBaseSeconds;
+    }
+
+    public int getAccountBackoffMaxSeconds() {
+        return accountBackoffMaxSeconds;
+    }
+
+    public void setAccountBackoffMaxSeconds(int accountBackoffMaxSeconds) {
+        this.accountBackoffMaxSeconds = accountBackoffMaxSeconds;
     }
 }
 

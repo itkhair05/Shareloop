@@ -1,0 +1,22 @@
+# Build output and local artifacts
+target/
+uploads/
+storage/
+media/
+*.log
+
+# Secrets and local environment
+.env
+.env.*
+!.env.example
+
+# Version control and tooling
+.git
+.gitignore
+.idea/
+.vscode/
+*.iml
+
+# Container metadata (not needed inside the image)
+Dockerfile
+.dockerignore

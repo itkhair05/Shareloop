@@ -1,6 +1,7 @@
 package com.shareloop.service;
 
 import com.shareloop.entity.*;
+import com.shareloop.entity.enums.DeletionState;
 import com.shareloop.entity.enums.ListingStatus;
 import com.shareloop.entity.enums.ListingType;
 import com.shareloop.entity.enums.UploadPurpose;
@@ -67,6 +68,9 @@ class UploadedFileCleanupIntegrationTest {
     private ChatMessageRepository chatMessageRepository;
 
     @Autowired
+    private ListingImageRepository listingImageRepository;
+
+    @Autowired
     private PasswordEncoder passwordEncoder;
 
     @Autowired
@@ -124,6 +128,7 @@ class UploadedFileCleanupIntegrationTest {
         chatMessageRepository.deleteAll();
         uploadedFileBindingRepository.deleteAll();
         uploadedFileRepository.deleteAll();
+        listingImageRepository.deleteAll();
         conversationRepository.deleteAll();
         listingRepository.delete(listing);
         categoryRepository.delete(category);
@@ -203,6 +208,28 @@ class UploadedFileCleanupIntegrationTest {
 
     private Instant recent() {
         return Instant.now().minus(1, ChronoUnit.HOURS);
+    }
+
+    private Instant olderThanListingImageTtl() {
+        return Instant.now().minus(8, ChronoUnit.DAYS);
+    }
+
+    private void attachListingImage(String imageUrl) {
+        UUID listingId = listing.getId();
+        transactionTemplate.executeWithoutResult(status -> {
+            Listing managed = listingRepository.findById(listingId).orElseThrow();
+            managed.addImage(new ListingImage(managed, imageUrl, 0));
+            listingRepository.saveAndFlush(managed);
+        });
+    }
+
+    private void clearListingImages() {
+        UUID listingId = listing.getId();
+        transactionTemplate.executeWithoutResult(status -> {
+            Listing managed = listingRepository.findById(listingId).orElseThrow();
+            managed.getImages().clear();
+            listingRepository.saveAndFlush(managed);
+        });
     }
 
     @Test
@@ -396,5 +423,71 @@ class UploadedFileCleanupIntegrationTest {
         assertThat(uploadedFileRepository.findById(boundReview.getId())).isPresent();
         assertThat(uploadedFileRepository.findById(general.getId())).isPresent();
         assertThat(uploadedFileRepository.countByOwnerId(requester.getId())).isEqualTo(4);
+    }
+
+    @Test
+    @DisplayName("Unreferenced GENERAL upload older than the listing TTL is swept")
+    void orphanedListingImageDeleted() {
+        UploadedFile file = createUpload(requester, UploadPurpose.GENERAL, olderThanListingImageTtl(), true);
+
+        int deleted = cleanupService.cleanupOrphanedListingImages();
+
+        assertThat(deleted).isGreaterThanOrEqualTo(1);
+        assertThat(uploadedFileRepository.findById(file.getId())).isEmpty();
+        assertThat(Files.exists(localStorageService.getRootPath().resolve(file.getFilename()))).isFalse();
+    }
+
+    @Test
+    @DisplayName("GENERAL upload referenced by a relative listing image is retained")
+    void referencedListingImageRetained() {
+        UploadedFile file = createUpload(requester, UploadPurpose.GENERAL, olderThanListingImageTtl(), true);
+        attachListingImage("/api/v1/files/" + file.getFilename());
+
+        cleanupService.cleanupOrphanedListingImages();
+
+        UploadedFile reloaded = uploadedFileRepository.findById(file.getId()).orElseThrow();
+        assertThat(reloaded.getDeletionState()).isEqualTo(DeletionState.ACTIVE);
+        assertThat(Files.exists(localStorageService.getRootPath().resolve(file.getFilename()))).isTrue();
+    }
+
+    @Test
+    @DisplayName("GENERAL upload referenced by an absolute URL is retained")
+    void absoluteUrlListingReferenceRetained() {
+        UploadedFile file = createUpload(requester, UploadPurpose.GENERAL, olderThanListingImageTtl(), true);
+        attachListingImage("https://cdn.shareloop.example/api/v1/files/" + file.getFilename());
+
+        cleanupService.cleanupOrphanedListingImages();
+
+        UploadedFile reloaded = uploadedFileRepository.findById(file.getId()).orElseThrow();
+        assertThat(reloaded.getDeletionState()).isEqualTo(DeletionState.ACTIVE);
+        assertThat(Files.exists(localStorageService.getRootPath().resolve(file.getFilename()))).isTrue();
+    }
+
+    @Test
+    @DisplayName("A GENERAL upload becomes eligible once its last listing reference is removed")
+    void removedListingReferenceBecomesEligible() {
+        UploadedFile file = createUpload(requester, UploadPurpose.GENERAL, olderThanListingImageTtl(), true);
+        attachListingImage("/api/v1/files/" + file.getFilename());
+
+        cleanupService.cleanupOrphanedListingImages();
+        assertThat(uploadedFileRepository.findById(file.getId())).isPresent();
+        assertThat(Files.exists(localStorageService.getRootPath().resolve(file.getFilename()))).isTrue();
+
+        clearListingImages();
+        cleanupService.cleanupOrphanedListingImages();
+
+        assertThat(uploadedFileRepository.findById(file.getId())).isEmpty();
+        assertThat(Files.exists(localStorageService.getRootPath().resolve(file.getFilename()))).isFalse();
+    }
+
+    @Test
+    @DisplayName("Recent GENERAL uploads are retained by the listing sweep")
+    void recentGeneralUploadRetainedByListingSweep() {
+        UploadedFile file = createUpload(requester, UploadPurpose.GENERAL, recent(), true);
+
+        cleanupService.cleanupOrphanedListingImages();
+
+        assertThat(uploadedFileRepository.findById(file.getId())).isPresent();
+        assertThat(Files.exists(localStorageService.getRootPath().resolve(file.getFilename()))).isTrue();
     }
 }

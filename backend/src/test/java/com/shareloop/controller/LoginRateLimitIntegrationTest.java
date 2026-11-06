@@ -92,6 +92,7 @@ class LoginRateLimitIntegrationTest {
         ));
 
         rateLimitProperties.setTrustedProxies(Collections.emptyList());
+        rateLimitProperties.setClientIpMode(RateLimitProperties.ClientIpMode.DIRECT);
     }
 
     @AfterEach
@@ -104,6 +105,7 @@ class LoginRateLimitIntegrationTest {
             userRepository.deleteById(adminUser.getId());
         }
         rateLimitProperties.setTrustedProxies(Collections.emptyList());
+        rateLimitProperties.setClientIpMode(RateLimitProperties.ClientIpMode.DIRECT);
     }
 
     private LoginRequest buildValidLogin(User user) {
@@ -456,7 +458,8 @@ class LoginRateLimitIntegrationTest {
     @Test
     @DisplayName("TC 11: Trusted proxy forwarding chain resolves to correct client IP")
     void trustedProxyForwardingChainResolvesCorrectly() throws Exception {
-        // Configure 10.0.0.1 as a trusted proxy
+        // Configure an explicit trusted boundary and CIDR mode
+        rateLimitProperties.setClientIpMode(RateLimitProperties.ClientIpMode.TRUSTED_CIDR);
         rateLimitProperties.setTrustedProxies(List.of("10.0.0.1"));
 
         String realClientIp = "203.0.113.195";
@@ -511,6 +514,7 @@ class LoginRateLimitIntegrationTest {
     @Test
     @DisplayName("TC 13: Malformed forwarded headers are handled safely without crashing")
     void malformedForwardedHeadersHandledSafely() throws Exception {
+        rateLimitProperties.setClientIpMode(RateLimitProperties.ClientIpMode.TRUSTED_CIDR);
         rateLimitProperties.setTrustedProxies(List.of("10.0.0.1"));
 
         LoginRequest request = buildValidLogin(normalUser);
@@ -529,6 +533,82 @@ class LoginRateLimitIntegrationTest {
         // Safely falls back to remote address
         assertThat(loginAttemptRepository.countByIpAddressAndCreatedAtAfter("10.0.0.1", Instant.now().minus(1, ChronoUnit.MINUTES)))
                 .isEqualTo(1);
+    }
+
+    @Test
+    @DisplayName("TC 16: Changing attacker-controlled forwarding headers cannot escape the IP bucket")
+    void changingForwardedHeadersCannotEscapeIpBucket() throws Exception {
+        // DIRECT is the production default: forwarded headers are ignored entirely.
+        rateLimitProperties.setClientIpMode(RateLimitProperties.ClientIpMode.DIRECT);
+        String realClientIp = "203.0.113.77";
+
+        for (int i = 0; i < 5; i++) {
+            mockMvc.perform(post("/api/v1/auth/login")
+                            .with(req -> {
+                                req.setRemoteAddr(realClientIp);
+                                return req;
+                            })
+                            .header("X-Forwarded-For", "198.51.100." + (i + 1))
+                            .header("Forwarded", "for=198.51.100." + (i + 1))
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content(objectMapper.writeValueAsString(buildValidLogin(normalUser))))
+                    .andExpect(status().isOk());
+        }
+
+        // 6th request, again with a fresh spoofed header, must still be throttled
+        mockMvc.perform(post("/api/v1/auth/login")
+                        .with(req -> {
+                            req.setRemoteAddr(realClientIp);
+                            return req;
+                        })
+                        .header("X-Forwarded-For", "198.51.100.99")
+                        .header("Forwarded", "for=198.51.100.99")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(buildValidLogin(normalUser))))
+                .andExpect(status().isTooManyRequests())
+                .andExpect(jsonPath("$.message").value(RATE_LIMIT_MESSAGE));
+
+        // All attempts belong to the real remote address only
+        assertThat(loginAttemptRepository.countByIpAddressAndCreatedAtAfter(realClientIp, Instant.now().minus(1, ChronoUnit.MINUTES)))
+                .isEqualTo(5);
+        assertThat(loginAttemptRepository.countByIpAddressAndCreatedAtAfter("198.51.100.99", Instant.now().minus(1, ChronoUnit.MINUTES)))
+                .isZero();
+    }
+
+    @Test
+    @DisplayName("TC 17: Same spoofing resistance holds with an explicit trusted proxy and CIDR mode")
+    void changingForwardedHeadersCannotEscapeBucketBehindTrustedProxy() throws Exception {
+        rateLimitProperties.setClientIpMode(RateLimitProperties.ClientIpMode.TRUSTED_CIDR);
+        rateLimitProperties.setTrustedProxies(List.of("10.0.0.1"));
+        String realClientIp = "203.0.113.78";
+        String proxyIp = "10.0.0.1";
+
+        // The trusted edge proxy reports the same real client on every request while
+        // the attacker keeps trying to prepend a different fake address.
+        for (int i = 0; i < 5; i++) {
+            mockMvc.perform(post("/api/v1/auth/login")
+                            .with(req -> {
+                                req.setRemoteAddr(proxyIp);
+                                return req;
+                            })
+                            .header("X-Forwarded-For", "198.51.100." + (i + 1) + ", " + realClientIp)
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content(objectMapper.writeValueAsString(buildValidLogin(normalUser))))
+                    .andExpect(status().isOk());
+        }
+
+        mockMvc.perform(post("/api/v1/auth/login")
+                        .with(req -> {
+                            req.setRemoteAddr(proxyIp);
+                            return req;
+                        })
+                        .header("X-Forwarded-For", "198.51.100.50, 198.51.100.51, " + realClientIp)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(buildValidLogin(normalUser))))
+                .andExpect(status().isTooManyRequests());
+
+        assertThat(loginAttemptRepository.countByIpAddressAndCreatedAtAfter(realClientIp, Instant.now().minus(1, ChronoUnit.MINUTES)))
+                .isEqualTo(5);
     }
 
     @Test

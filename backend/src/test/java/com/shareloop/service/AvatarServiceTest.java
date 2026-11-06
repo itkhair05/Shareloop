@@ -1,5 +1,6 @@
 package com.shareloop.service;
 
+import com.shareloop.config.StorageProperties;
 import com.shareloop.dto.auth.UserProfileResponse;
 import com.shareloop.dto.file.FileUploadResponse;
 import com.shareloop.entity.User;
@@ -50,7 +51,8 @@ class AvatarServiceTest {
     void setUp() {
         // Execute transaction callback directly synchronously in unit tests
         lenient().when(transactionManager.getTransaction(any())).thenReturn(new SimpleTransactionStatus());
-        avatarService = new AvatarService(userRepository, fileStorageService, imageFileValidator, transactionManager);
+        avatarService = new AvatarService(
+                userRepository, fileStorageService, imageFileValidator, transactionManager, new StorageProperties());
     }
 
     @Test
@@ -235,5 +237,27 @@ class AvatarServiceTest {
         // Null and blank -> must return null
         assertThat(avatarService.extractManagedFilename(null)).isNull();
         assertThat(avatarService.extractManagedFilename("   ")).isNull();
+    }
+
+    @Test
+    @DisplayName("extractManagedFilename: recognizes a configured legacy storage prefix only")
+    void extractManagedFilename_recognizesConfiguredStoragePrefix() {
+        StorageProperties properties = new StorageProperties();
+        properties.getR2().setPublicUrlPrefix("https://cdn.shareloop.example/");
+        AvatarService prefixedService = new AvatarService(
+                userRepository, fileStorageService, imageFileValidator, transactionManager, properties);
+
+        String uuid = "550e8400-e29b-41d4-a716-446655440000";
+
+        assertThat(prefixedService.extractManagedFilename(
+                "https://cdn.shareloop.example/" + uuid + ".jpg")).isEqualTo(uuid + ".jpg");
+        assertThat(prefixedService.extractManagedFilename(
+                "https://cdn.shareloop.example/" + uuid + ".png")).isEqualTo(uuid + ".png");
+        assertThat(prefixedService.extractManagedFilename(
+                "https://other.example/" + uuid + ".jpg")).isNull();
+        assertThat(prefixedService.extractManagedFilename(
+                "https://cdn.shareloop.example/not-a-managed-file.jpg")).isNull();
+        assertThat(prefixedService.extractManagedFilename(
+                "https://lh3.googleusercontent.com/a/photo.jpg")).isNull();
     }
 }

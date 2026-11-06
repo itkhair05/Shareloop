@@ -96,15 +96,10 @@ class ChatRateLimitIntegrationTest {
     private Listing activeListing;
     private Conversation convAliceBob;
     private Conversation convAliceCharlie;
+    private final List<Listing> createdListings = new ArrayList<>();
 
     @BeforeEach
     void setUp() {
-        chatMessageRepository.deleteAll();
-        conversationRepository.deleteAll();
-        listingRepository.deleteAll();
-        categoryRepository.deleteAll();
-        userRepository.deleteAll();
-
         rateLimitProperties.setChatMessageLimit(20);
         rateLimitProperties.setChatWindowSeconds(60);
 
@@ -158,11 +153,58 @@ class ChatRateLimitIntegrationTest {
 
     @AfterEach
     void tearDown() {
-        chatMessageRepository.deleteAll();
-        conversationRepository.deleteAll();
-        listingRepository.deleteAll();
-        categoryRepository.deleteAll();
-        userRepository.deleteAll();
+        // Only remove records owned by this test. The shared test database keeps
+        // Flyway-seeded categories and other tests' fixtures intact, so the suite
+        // stays hermetic regardless of execution order.
+        for (Listing listing : createdListings) {
+            chatMessageRepository.deleteByConversationIds(
+                    conversationRepository.findAllByListingId(listing.getId())
+                            .stream().map(Conversation::getId).toList());
+            conversationRepository.deleteAll(conversationRepository.findAllByListingId(listing.getId()));
+            if (listingRepository.existsById(listing.getId())) {
+                listingRepository.delete(listing);
+            }
+        }
+        createdListings.clear();
+
+        List<UUID> conversationIds = new ArrayList<>();
+        if (convAliceBob != null) {
+            conversationIds.add(convAliceBob.getId());
+        }
+        if (convAliceCharlie != null) {
+            conversationIds.add(convAliceCharlie.getId());
+        }
+        if (!conversationIds.isEmpty()) {
+            chatMessageRepository.deleteByConversationIds(conversationIds);
+        }
+        if (convAliceBob != null) {
+            conversationRepository.delete(convAliceBob);
+        }
+        if (convAliceCharlie != null) {
+            conversationRepository.delete(convAliceCharlie);
+        }
+        conversationRepository.flush();
+
+        if (activeListing != null && listingRepository.existsById(activeListing.getId())) {
+            listingRepository.delete(activeListing);
+        }
+        listingRepository.flush();
+
+        if (category != null) {
+            categoryRepository.delete(category);
+        }
+        categoryRepository.flush();
+
+        if (ownerAlice != null) {
+            userRepository.deleteById(ownerAlice.getId());
+        }
+        if (requesterBob != null) {
+            userRepository.deleteById(requesterBob.getId());
+        }
+        if (otherCharlie != null) {
+            userRepository.deleteById(otherCharlie.getId());
+        }
+        userRepository.flush();
 
         rateLimitProperties.setChatMessageLimit(20);
         rateLimitProperties.setChatWindowSeconds(60);
@@ -448,7 +490,7 @@ class ChatRateLimitIntegrationTest {
         }
         chatMessageRepository.flush();
 
-        long totalCountBefore = chatMessageRepository.count();
+        long totalCountBefore = chatMessageRepository.countByConversationId(convAliceBob.getId());
 
         mockMvc.perform(post("/api/v1/conversations/{conversationId}/messages", convAliceBob.getId())
                         .header(HttpHeaders.AUTHORIZATION, bobToken)
@@ -456,7 +498,7 @@ class ChatRateLimitIntegrationTest {
                         .content(objectMapper.writeValueAsString(buildMessage("Rejected message"))))
                 .andExpect(status().isTooManyRequests());
 
-        long totalCountAfter = chatMessageRepository.count();
+        long totalCountAfter = chatMessageRepository.countByConversationId(convAliceBob.getId());
         assertThat(totalCountAfter).isEqualTo(totalCountBefore);
     }
 
@@ -500,6 +542,7 @@ class ChatRateLimitIntegrationTest {
                 "Description",
                 "Ha Noi"
         ));
+        createdListings.add(newListing);
 
         CreateConversationRequest request = new CreateConversationRequest("Initial message from Bob");
         mockMvc.perform(post("/api/v1/listings/{listingId}/conversations", newListing.getId())
@@ -533,9 +576,10 @@ class ChatRateLimitIntegrationTest {
                 "Description",
                 "Ha Noi"
         ));
+        createdListings.add(targetListing);
 
-        long initialConvCount = conversationRepository.count();
-        long initialMsgCount = chatMessageRepository.count();
+        long initialConvCount = conversationRepository.findAllByListingId(targetListing.getId()).size();
+        long initialMsgCount = chatMessageRepository.countByConversationId(convAliceBob.getId());
 
         CreateConversationRequest request = new CreateConversationRequest("Blocked initial message 21");
         mockMvc.perform(post("/api/v1/listings/{listingId}/conversations", targetListing.getId())
@@ -552,10 +596,10 @@ class ChatRateLimitIntegrationTest {
         assertThat(conversationRepository.findByListingIdAndRequesterId(targetListing.getId(), requesterBob.getId()))
                 .as("Conversation creation must be rolled back atomically")
                 .isEmpty();
-        assertThat(conversationRepository.count())
+        assertThat(conversationRepository.findAllByListingId(targetListing.getId()).size())
                 .as("Total conversation count must not increase")
                 .isEqualTo(initialConvCount);
-        assertThat(chatMessageRepository.count())
+        assertThat(chatMessageRepository.countByConversationId(convAliceBob.getId()))
                 .as("Total message count must not increase")
                 .isEqualTo(initialMsgCount);
         assertThat(chatMessageRepository.countBySenderIdAndCreatedAtAfter(requesterBob.getId(), now.minus(60, ChronoUnit.SECONDS)))
@@ -579,6 +623,7 @@ class ChatRateLimitIntegrationTest {
                 "Description",
                 "Ha Noi"
         ));
+        createdListings.add(targetListing);
 
         // Bob creates conversation with empty initialMessage
         CreateConversationRequest request = new CreateConversationRequest(null);
